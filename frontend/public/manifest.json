@@ -1,6 +1,6 @@
 {
-  "short_name": "Omniference",
-  "name": "Omniference - AI Performance Analysis Platform",
+  "short_name": "Runara",
+  "name": "Runara - GPU Profiling and Deep Inference Optimization",
   "icons": [
     {
       "src": "favicon.svg",
@@ -10,6 +10,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#61DAFB",
-  "background_color": "#ffffff"
+  "theme_color": "#3DA866",
+  "background_color": "#0D1B13"
 }

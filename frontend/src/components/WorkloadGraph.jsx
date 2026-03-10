@@ -6,12 +6,12 @@ const nodeHeight = 120;
 const THEMES = {
   light: {
     canvas: "#f7f8fb",
-    panelBg: "#ffffff",
+    panelBg: "#142B1D",
     panelBorder: "#e6e8ef",
     panelShadow: "0 8px 24px rgba(22,29,37,.08)",
     text: "#0f172a",
     textMuted: "#6b7280",
-    nodeBg: "#ffffff",
+    nodeBg: "#142B1D",
     nodeBorder: "#d6dae4",
     blockBorder: "#3b82f6",
     blockBg: "#f8fafc",
@@ -21,7 +21,7 @@ const THEMES = {
     chipNeutralText: "#374151",
     edge: "#0ea5e9",
     edgeSelected: "#fbbf24",
-    detailsBg: "#ffffff",
+    detailsBg: "#142B1D",
     detailsCardBg: "#f2f5fb",
     detailsBorder: "#e3e7ef",
   },
@@ -124,7 +124,7 @@ const roleForNode = (n) => {
 };
 
 const roleColors = {
-  light: { decoder: "#fce7f3", lm_head: "#dbeafe", embed_out: "#fef9c3", kernel: "#ffffff" },
+  light: { decoder: "#fce7f3", lm_head: "#dbeafe", embed_out: "#fef9c3", kernel: "#142B1D" },
   dark: { decoder: "#831843", lm_head: "#1e3a8a", embed_out: "#78350f", kernel: "#1f2937" },
 };
 

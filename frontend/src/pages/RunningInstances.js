@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Button, Chip, CircularProgress,
-  Alert, IconButton, Tooltip, Stack
+  Alert, IconButton, Tooltip, Stack, Collapse
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
@@ -13,6 +13,39 @@ import {
   Assessment as ProfileIcon,
   Dns as DnsIcon
 } from '@mui/icons-material';
+
+// GPU specifications lookup
+const GPU_SPECS = {
+  'H100': { vram: 80, vramUnit: 'GB HBM3', cudaCores: 16896, tensorCores: 528, memBandwidth: '3.35 TB/s', arch: 'Hopper', tdp: 700 },
+  'H200': { vram: 141, vramUnit: 'GB HBM3e', cudaCores: 16896, tensorCores: 528, memBandwidth: '4.8 TB/s', arch: 'Hopper', tdp: 700 },
+  'A100': { vram: 80, vramUnit: 'GB HBM2e', cudaCores: 6912, tensorCores: 432, memBandwidth: '2.0 TB/s', arch: 'Ampere', tdp: 400 },
+  'A10': { vram: 24, vramUnit: 'GB GDDR6', cudaCores: 9216, tensorCores: 288, memBandwidth: '600 GB/s', arch: 'Ampere', tdp: 150 },
+  'L4': { vram: 24, vramUnit: 'GB GDDR6', cudaCores: 7424, tensorCores: 232, memBandwidth: '300 GB/s', arch: 'Ada Lovelace', tdp: 72 },
+  'L40': { vram: 48, vramUnit: 'GB GDDR6', cudaCores: 18176, tensorCores: 568, memBandwidth: '864 GB/s', arch: 'Ada Lovelace', tdp: 300 },
+  'L40S': { vram: 48, vramUnit: 'GB GDDR6', cudaCores: 18176, tensorCores: 568, memBandwidth: '864 GB/s', arch: 'Ada Lovelace', tdp: 350 },
+  'V100': { vram: 32, vramUnit: 'GB HBM2', cudaCores: 5120, tensorCores: 640, memBandwidth: '900 GB/s', arch: 'Volta', tdp: 300 },
+  'T4': { vram: 16, vramUnit: 'GB GDDR6', cudaCores: 2560, tensorCores: 320, memBandwidth: '300 GB/s', arch: 'Turing', tdp: 70 },
+  'B200': { vram: 192, vramUnit: 'GB HBM3e', cudaCores: 18432, tensorCores: 576, memBandwidth: '8.0 TB/s', arch: 'Blackwell', tdp: 1000 },
+  'GH200': { vram: 96, vramUnit: 'GB HBM3', cudaCores: 16896, tensorCores: 528, memBandwidth: '4.0 TB/s', arch: 'Hopper', tdp: 900 },
+  'MI300': { vram: 192, vramUnit: 'GB HBM3', arch: 'CDNA 3', tdp: 750, memBandwidth: '5.3 TB/s' },
+};
+
+function lookupGpuSpecs(name) {
+  if (!name) return null;
+  const upper = name.toUpperCase();
+  const sorted = Object.keys(GPU_SPECS).sort((a, b) => b.length - a.length);
+  for (const key of sorted) {
+    if (upper.includes(key)) return { key, ...GPU_SPECS[key] };
+  }
+  return null;
+}
+
+// Parse GPU count from commercial_type like "H100-1-80G" or "L4-4-24G"
+function parseGpuCount(commercialType) {
+  if (!commercialType) return null;
+  const match = commercialType.match(/-(\d+)-\d+[gG]/);
+  return match ? parseInt(match[1]) : null;
+}
 
 const BASE = 'https://api.scaleway.com/instance/v1/zones';
 const SECRET_KEY = process.env.REACT_APP_SCW_SECRET_KEY || '';
@@ -236,8 +269,9 @@ export default function RunningInstances() {
         <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
           <Table size="small">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#fafafa' }}>
+              <TableRow sx={{ backgroundColor: '#0D1B13' }}>
                 <TableCell sx={{ fontWeight: 600 }}>Instance Name</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>GPU</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Region</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>IP Address</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
@@ -263,16 +297,37 @@ export default function RunningInstances() {
                       sx={{
                         opacity: actionLoading[server.id] === 'terminate' ? 0.5 : 1,
                         transition: 'opacity 0.3s',
-                        '&:hover': { backgroundColor: '#f5f5f5' },
+                        '&:hover': { backgroundColor: 'rgba(61, 168, 102, 0.05)' },
                       }}
                     >
                       <TableCell>
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>{server.name}</Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                            {server.commercial_type}
-                          </Typography>
-                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>{server.name}</Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                          {server.commercial_type}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const specs = lookupGpuSpecs(server.commercial_type);
+                          const gpuCount = parseGpuCount(server.commercial_type);
+                          if (!specs) return <Typography variant="body2" color="text.secondary">—</Typography>;
+                          return (
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                                {specs.key}{gpuCount ? ` × ${gpuCount}` : ''}
+                              </Typography>
+                              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.25 }}>
+                                <Chip label={`${specs.vram} ${specs.vramUnit}`} size="small" variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
+                                <Chip label={specs.arch} size="small" variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
+                              </Stack>
+                              {specs.memBandwidth && (
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25, fontSize: '0.65rem' }}>
+                                  {specs.memBandwidth} bandwidth
+                                </Typography>
+                              )}
+                            </Box>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>{server.zone}</TableCell>
                       <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
@@ -354,7 +409,7 @@ export default function RunningInstances() {
                     </TableRow>
                     {actionError[server.id] && (
                       <TableRow>
-                        <TableCell colSpan={8}>
+                        <TableCell colSpan={9}>
                           <Alert severity="error" sx={{ py: 0 }}>
                             {actionError[server.id]}
                           </Alert>

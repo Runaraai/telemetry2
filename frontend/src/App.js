@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, Navigate, Link } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box, Toolbar, Button, Avatar, Typography, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, IconButton, Menu, MenuItem, CircularProgress } from '@mui/material';
@@ -12,15 +12,16 @@ import ManageInstances from './pages/ManageInstances';
 import RunningInstances from './pages/RunningInstances';
 import TelemetryHistory from './components/TelemetryHistory';
 import LoginPage from './pages/Login';
+import Workload from './pages/Workload';
 
 const theme = createTheme({
   palette: {
-    mode: 'light',
+    mode: 'dark',
     primary: {
-      main: '#0879f4',
+      main: '#3DA866',
     },
     secondary: {
-      main: '#dc004e',
+      main: '#3A6B4E',
     },
     error: {
       main: '#d32f2f',
@@ -35,92 +36,113 @@ const theme = createTheme({
       main: '#2e7d32',
     },
     default: {
-      main: '#616161',
+      main: '#3A6B4E',
       contrastText: '#fff',
     },
     background: {
-      default: '#f6f7f9',
-      paper: '#ffffff',
+      default: '#0D1B13',
+      paper: '#142B1D',
     },
     text: {
-      primary: '#373737',
-      secondary: '#919191',
+      primary: '#e2e8f0',
+      secondary: '#94a3b8',
     },
+    divider: '#1E4530',
   },
   typography: {
-    fontFamily: '"Open Sans", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Inter", system-ui, sans-serif',
     h1: {
-      fontFamily: '"Open Sans", sans-serif',
+      fontFamily: '"Inter", system-ui, sans-serif',
       fontWeight: 600,
       fontSize: '24px',
-      color: '#373737',
+      color: '#e2e8f0',
     },
     h2: {
-      fontFamily: '"Open Sans", sans-serif',
+      fontFamily: '"Inter", system-ui, sans-serif',
       fontWeight: 600,
       fontSize: '20px',
-      color: '#373737',
+      color: '#e2e8f0',
     },
     h3: {
-      fontFamily: '"Open Sans", sans-serif',
+      fontFamily: '"Inter", system-ui, sans-serif',
       fontWeight: 600,
       fontSize: '18px',
-      color: '#373737',
+      color: '#e2e8f0',
     },
     h4: {
-      fontFamily: '"Open Sans", sans-serif',
+      fontFamily: '"Inter", system-ui, sans-serif',
       fontWeight: 600,
       fontSize: '16px',
-      color: '#373737',
+      color: '#e2e8f0',
     },
     h5: {
-      fontFamily: '"Open Sans", sans-serif',
+      fontFamily: '"Inter", system-ui, sans-serif',
       fontWeight: 600,
       fontSize: '16px',
-      color: '#373737',
+      color: '#e2e8f0',
     },
     h6: {
-      fontFamily: '"Open Sans", sans-serif',
+      fontFamily: '"Inter", system-ui, sans-serif',
       fontWeight: 600,
       fontSize: '16px',
-      color: '#373737',
+      color: '#e2e8f0',
     },
     body1: {
-      fontFamily: '"Open Sans", sans-serif',
+      fontFamily: '"Inter", system-ui, sans-serif',
       fontSize: '14px',
-      color: '#373737',
+      color: '#e2e8f0',
       fontWeight: 400,
     },
     body2: {
-      fontFamily: '"Open Sans", sans-serif',
+      fontFamily: '"Inter", system-ui, sans-serif',
       fontSize: '12px',
-      color: '#373737',
+      color: '#e2e8f0',
       fontWeight: 400,
     },
     button: {
-      fontFamily: '"Inter", "Open Sans", sans-serif',
+      fontFamily: '"Inter", system-ui, sans-serif',
       fontWeight: 500,
       fontSize: '14px',
       textTransform: 'none',
     },
     caption: {
-      fontFamily: '"Open Sans", sans-serif',
+      fontFamily: '"Inter", system-ui, sans-serif',
       fontSize: '12px',
-      color: '#919191',
+      color: '#94a3b8',
       fontWeight: 400,
     },
     subtitle1: {
-      fontFamily: '"Open Sans", sans-serif',
+      fontFamily: '"Inter", system-ui, sans-serif',
       fontSize: '14px',
-      color: '#373737',
+      color: '#e2e8f0',
     },
     subtitle2: {
-      fontFamily: '"Open Sans", sans-serif',
+      fontFamily: '"Inter", system-ui, sans-serif',
       fontSize: '12px',
-      color: '#373737',
+      color: '#e2e8f0',
     },
   },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: {
+          backgroundColor: '#0D1B13',
+          color: '#e2e8f0',
+          WebkitFontSmoothing: 'antialiased',
+        },
+        '::-webkit-scrollbar': {
+          width: '6px',
+          height: '6px',
+        },
+        '::-webkit-scrollbar-track': {
+          background: '#142B1D',
+        },
+        '::-webkit-scrollbar-thumb': {
+          background: '#1E4530',
+          borderRadius: '3px',
+        },
+      },
+    },
     MuiButton: {
       defaultProps: {
         color: 'primary',
@@ -128,10 +150,25 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           textTransform: 'none',
-          fontFamily: '"Inter", "Open Sans", sans-serif',
+          fontFamily: '"Inter", system-ui, sans-serif',
           fontWeight: 500,
           borderRadius: '8px',
           fontSize: '14px',
+        },
+        contained: {
+          backgroundColor: '#3DA866',
+          color: '#ffffff',
+          '&:hover': {
+            backgroundColor: '#22c55e',
+          },
+        },
+        outlined: {
+          borderColor: '#1E4530',
+          color: '#94a3b8',
+          '&:hover': {
+            borderColor: '#3DA866',
+            backgroundColor: 'rgba(61, 168, 102, 0.08)',
+          },
         },
         sizeSmall: {
           fontSize: '10px',
@@ -143,10 +180,10 @@ const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          boxShadow: '0.5px 0.5px 1px 0px rgba(0,0,0,0.1)',
-          borderRadius: '8px',
-          backgroundColor: '#ffffff',
-          border: '1px solid rgba(0,0,0,0.1)',
+          boxShadow: 'none',
+          borderRadius: '12px',
+          backgroundColor: '#142B1D',
+          border: '1px solid #1E4530',
         },
       },
     },
@@ -156,7 +193,24 @@ const theme = createTheme({
           '& .MuiOutlinedInput-root': {
             borderRadius: '8px',
             fontSize: '14px',
-            fontFamily: '"Open Sans", sans-serif',
+            fontFamily: '"Inter", system-ui, sans-serif',
+            backgroundColor: '#0D1B13',
+            color: '#e2e8f0',
+            '& fieldset': {
+              borderColor: '#1E4530',
+            },
+            '&:hover fieldset': {
+              borderColor: '#3A6B4E',
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: '#3DA866',
+            },
+          },
+          '& .MuiInputLabel-root': {
+            color: '#94a3b8',
+          },
+          '& .MuiInputLabel-root.Mui-focused': {
+            color: '#3DA866',
           },
         },
       },
@@ -164,7 +218,7 @@ const theme = createTheme({
     MuiChip: {
       styleOverrides: {
         root: {
-          fontFamily: '"Open Sans", sans-serif',
+          fontFamily: '"Inter", system-ui, sans-serif',
           fontSize: '12px',
           borderRadius: '4px',
         },
@@ -173,36 +227,49 @@ const theme = createTheme({
     MuiTab: {
       styleOverrides: {
         root: {
-          fontFamily: '"Open Sans", sans-serif',
+          fontFamily: '"Inter", system-ui, sans-serif',
           fontSize: '10px',
           fontWeight: 400,
           textTransform: 'none',
           minHeight: 'auto',
           padding: '3px 10px',
+          color: '#94a3b8',
+          '&.Mui-selected': {
+            color: '#3DA866',
+          },
+        },
+      },
+    },
+    MuiTabs: {
+      styleOverrides: {
+        indicator: {
+          backgroundColor: '#3DA866',
         },
       },
     },
     MuiTypography: {
       styleOverrides: {
         root: {
-          fontFamily: '"Open Sans", sans-serif',
+          fontFamily: '"Inter", system-ui, sans-serif',
         },
       },
     },
     MuiPaper: {
       styleOverrides: {
         root: {
-          borderRadius: '8px',
-          border: '1px solid rgba(0,0,0,0.1)',
+          borderRadius: '12px',
+          border: '1px solid #1E4530',
+          backgroundColor: '#142B1D',
+          backgroundImage: 'none',
         },
         elevation1: {
-          boxShadow: '0.5px 0.5px 1px 0px rgba(0,0,0,0.1)',
+          boxShadow: 'none',
         },
         elevation2: {
-          boxShadow: '0.5px 0.5px 1px 0px rgba(0,0,0,0.1)',
+          boxShadow: 'none',
         },
         elevation3: {
-          boxShadow: '0.5px 0.5px 1px 0px rgba(0,0,0,0.1)',
+          boxShadow: 'none',
         },
       },
     },
@@ -210,43 +277,79 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: '8px',
-          fontFamily: '"Open Sans", sans-serif',
+          fontFamily: '"Inter", system-ui, sans-serif',
           fontSize: '14px',
+        },
+        standardError: {
+          backgroundColor: 'rgba(153, 27, 27, 0.3)',
+          border: '1px solid #991b1b',
+          color: '#f87171',
+        },
+        standardSuccess: {
+          backgroundColor: 'rgba(22, 101, 52, 0.3)',
+          border: '1px solid #166534',
+          color: '#4ade80',
+        },
+        standardWarning: {
+          backgroundColor: 'rgba(146, 64, 14, 0.3)',
+          border: '1px solid #92400e',
+          color: '#fbbf24',
+        },
+        standardInfo: {
+          backgroundColor: 'rgba(30, 58, 138, 0.3)',
+          border: '1px solid #1e3a8a',
+          color: '#60a5fa',
         },
       },
     },
     MuiDialog: {
       styleOverrides: {
         paper: {
-          borderRadius: '8px',
-          border: '1px solid #d7d7d7',
+          borderRadius: '12px',
+          border: '1px solid #1E4530',
+          backgroundColor: '#142B1D',
+          backgroundImage: 'none',
         },
       },
     },
     MuiTable: {
       styleOverrides: {
         root: {
-          fontFamily: '"Open Sans", sans-serif',
+          fontFamily: '"Inter", system-ui, sans-serif',
         },
       },
     },
     MuiTableCell: {
       styleOverrides: {
         root: {
-          fontFamily: '"Open Sans", sans-serif',
+          fontFamily: '"Inter", system-ui, sans-serif',
           fontSize: '14px',
+          borderBottomColor: '#1E4530',
+          color: '#e2e8f0',
         },
         head: {
-          fontFamily: '"Open Sans", sans-serif',
+          fontFamily: '"Inter", system-ui, sans-serif',
           fontSize: '12px',
           fontWeight: 600,
+          color: '#94a3b8',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+        },
+      },
+    },
+    MuiTableRow: {
+      styleOverrides: {
+        root: {
+          '&:hover': {
+            backgroundColor: 'rgba(61, 168, 102, 0.05)',
+          },
         },
       },
     },
     MuiSelect: {
       styleOverrides: {
         root: {
-          fontFamily: '"Open Sans", sans-serif',
+          fontFamily: '"Inter", system-ui, sans-serif',
           fontSize: '14px',
           borderRadius: '8px',
         },
@@ -255,15 +358,16 @@ const theme = createTheme({
     MuiInputLabel: {
       styleOverrides: {
         root: {
-          fontFamily: '"Open Sans", sans-serif',
+          fontFamily: '"Inter", system-ui, sans-serif',
           fontSize: '14px',
+          color: '#94a3b8',
         },
       },
     },
     MuiFormControlLabel: {
       styleOverrides: {
         label: {
-          fontFamily: '"Open Sans", sans-serif',
+          fontFamily: '"Inter", system-ui, sans-serif',
           fontSize: '14px',
         },
       },
@@ -271,396 +375,175 @@ const theme = createTheme({
     MuiAccordion: {
       styleOverrides: {
         root: {
-          borderRadius: '8px',
-          border: '1px solid rgba(0,0,0,0.1)',
+          borderRadius: '12px',
+          border: '1px solid #1E4530',
+          backgroundColor: '#142B1D',
+          backgroundImage: 'none',
           '&:before': {
             display: 'none',
           },
         },
       },
     },
+    MuiMenu: {
+      styleOverrides: {
+        paper: {
+          backgroundColor: '#142B1D',
+          border: '1px solid #1E4530',
+          backgroundImage: 'none',
+        },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          color: '#e2e8f0',
+          '&:hover': {
+            backgroundColor: 'rgba(61, 168, 102, 0.1)',
+          },
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          '& fieldset': {
+            borderColor: '#1E4530',
+          },
+          '&:hover fieldset': {
+            borderColor: '#3A6B4E',
+          },
+          '&.Mui-focused fieldset': {
+            borderColor: '#3DA866',
+          },
+        },
+      },
+    },
+    MuiDivider: {
+      styleOverrides: {
+        root: {
+          borderColor: '#1E4530',
+        },
+      },
+    },
   },
 });
 
-const drawerWidth = 260;
+const SIDEBAR_WIDTH = 220;
 
-function SidebarNavigation() {
+function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
 
   const menuItems = [
-    { text: 'Profiling', icon: <AssessmentIcon />, path: '/profiling' },
-    { text: 'Manage Instances', icon: <Cloud />, path: '/instances' },
-    { text: 'Running Instances', icon: <DnsIcon />, path: '/running-instances' },
-    { text: 'Telemetry History', icon: <HistoryIcon />, path: '/telemetry-history' }
+    { text: 'Manage Instances', path: '/instances' },
+    { text: 'Running Instances', path: '/running-instances' },
+    { text: 'Workload', path: '/workload' },
+    { text: 'Telemetry History', path: '/telemetry-history' }
   ];
 
+  const isActive = (path) =>
+    location.pathname === path || location.pathname.startsWith(path + '/');
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
   return (
-    <Drawer
-      variant="permanent"
+    <Box
+      component="nav"
       sx={{
-        width: drawerWidth,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': {
-          width: drawerWidth,
-          boxSizing: 'border-box',
-          backgroundColor: '#FFFFFF',
-          borderRight: '1px solid #E0E0E0',
-          position: 'fixed',
-          height: '100vh',
-          top: 0,
-          left: 0,
-          zIndex: 1200,
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column'
-        },
+        width: SIDEBAR_WIDTH,
+        minWidth: SIDEBAR_WIDTH,
+        height: '100vh',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        borderRight: '1px solid #1E4530',
+        backgroundColor: 'rgba(20, 43, 29, 0.5)',
+        backdropFilter: 'blur(12px)',
+        display: 'flex',
+        flexDirection: 'column',
+        zIndex: 50,
       }}
     >
-      <Box sx={{ 
-        height: '100%', 
-        display: 'flex', 
-        flexDirection: 'column',
-        backgroundColor: '#FFFFFF'
-      }}>
-        {/* Header */}
-        <Box sx={{ p: 3, pb: 2.5, borderBottom: '1px solid #E0E0E0' }}>
-          <Box sx={{ 
-            height: '40px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-start'
-          }}>
-            <img 
-              src="/runara-logo.png?v=2"
-              alt="Runara Logo" 
-              style={{ 
-                height: '100%', 
-                width: 'auto',
-                objectFit: 'contain',
-                display: 'block'
-              }}
-            />
-          </Box>
-        </Box>
-
-        {/* Navigation Items */}
-        <List sx={{ flex: 1, py: 3, px: 2, overflowY: 'auto' }}>
-          {menuItems.map((item) => (
-            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-              <ListItemButton
-                onClick={() => navigate(item.path)}
-                sx={{
-                  borderRadius: 2,
-                  py: 1.5,
-                  px: 2,
-                  backgroundColor: location.pathname === item.path ? '#E8F0FE' : 'transparent',
-                  '&:hover': {
-                    backgroundColor: location.pathname === item.path ? '#D2E3FC' : '#F5F5F5'
-                  },
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <ListItemIcon sx={{ 
-                  color: location.pathname === item.path ? '#1976d2' : '#616161', 
-                  minWidth: 44 
-                }}>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={item.text}
-                  primaryTypographyProps={{
-                    sx: { 
-                      color: '#373737',
-                      fontWeight: 400,
-                      fontSize: '14px'
-                    }
-                  }} 
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-
-        {/* User Actions - Account Button */}
-        <Box sx={{ 
-          borderTop: 'none', 
-          pt: 0, 
-          pb: 0,
-          mt: 'auto',
-          flexShrink: 0,
-          px: '7px',
-          mb: '40px'
-        }}>
-          <Button
-            onClick={() => {
-              // Show user info in alert for now
-              alert(`Profile\nEmail: ${user?.email || 'N/A'}\nUser ID: ${user?.user_id || 'N/A'}`);
-            }}
-            sx={{
-              borderRadius: '8px',
-              py: '15px',
-              px: '34px',
-              gap: '15px',
-              backgroundColor: '#f1efef',
-              border: '1px solid #d9d9d9',
-              width: '100%',
-              justifyContent: 'flex-start',
-              textTransform: 'none',
-              height: '49px',
-              '&:hover': {
-                backgroundColor: '#e8e8e8'
-              },
-              transition: 'all 0.2s ease'
-            }}
-          >
-            <Avatar 
-              sx={{ 
-                width: 20, 
-                height: 20,
-                bgcolor: '#FFFFFF',
-                borderRadius: '100px',
-                flexShrink: 0
-              }}
-            >
-              {/* Profile image placeholder */}
-            </Avatar>
-            <Typography
-              sx={{ 
-                color: '#373737',
-                fontWeight: 400,
-                fontSize: '14px'
-              }}
-            >
-              Account
-            </Typography>
-          </Button>
-          
-          {/* Logout Button - Matching style */}
-          <Button
-            onClick={handleLogout}
-            sx={{
-              borderRadius: '8px',
-              py: '15px',
-              px: '34px',
-              gap: '15px',
-              backgroundColor: '#f1efef',
-              border: '1px solid #d9d9d9',
-              width: '100%',
-              justifyContent: 'flex-start',
-              textTransform: 'none',
-              height: '49px',
-              mt: '8px',
-              '&:hover': {
-                backgroundColor: '#ffebee',
-                borderColor: '#d32f2f'
-              },
-              transition: 'all 0.2s ease'
-            }}
-          >
-            <ListItemIcon sx={{ 
-              color: '#d32f2f', 
-              minWidth: '20px',
-              width: '20px',
-              height: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <Logout sx={{ fontSize: '20px' }} />
-            </ListItemIcon>
-            <Typography
-              sx={{ 
-                color: '#d32f2f',
-                fontWeight: 400,
-                fontSize: '14px'
-              }}
-            >
-              Logout
-            </Typography>
-          </Button>
-        </Box>
-
-        {/* Footer */}
-        <Box sx={{ 
-          p: 0, 
-          pt: 0, 
-          textAlign: 'center', 
-          borderTop: 'none',
-          position: 'absolute',
-          bottom: '8px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%'
-        }}>
-          <Typography variant="caption" sx={{ 
-            color: '#919191', 
-            fontSize: '12px',
-            display: 'block'
-          }}>
-            Product of Runara
-          </Typography>
-        </Box>
+      {/* Logo */}
+      <Box
+        component={Link}
+        to="/profiling"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          textDecoration: 'none',
+          px: 2.5,
+          py: 2.5,
+          borderBottom: '1px solid #1E4530',
+        }}
+      >
+        <img
+          src="/logo.png"
+          alt="Runara"
+          style={{ height: '28px' }}
+        />
       </Box>
-    </Drawer>
-  );
-}
 
-function NavigationBar() {
-  const { user, logout } = useAuth();
-  const [anchorEl, setAnchorEl] = useState(null);
-  const navigate = useNavigate();
-
-  const handleAccountClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-    handleClose();
-  };
-
-  const getInitials = (email) => {
-    if (!email) return 'U';
-    return email.charAt(0).toUpperCase();
-  };
-
-  if (!user) {
-    return null; // Don't render if user is not loaded
-  }
-
-  return (
-    <Box sx={{ 
-      backgroundColor: '#FFFFFF',
-      borderBottom: '1px solid #d7d7d7',
-      borderTop: 'none',
-      borderLeft: 'none',
-      borderRight: 'none',
-      boxShadow: 'none',
-      position: 'fixed',
-      top: 0,
-      left: `${drawerWidth}px`,
-      right: 0,
-      zIndex: 1100,
-      width: `calc(100% - ${drawerWidth}px)`,
-      height: '65px'
-    }}>
-      <Toolbar sx={{ 
-        py: 0, 
-        px: '30px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        minHeight: '65px',
-        height: '65px'
-      }}>
-        {/* Left Section - Logo and Company Name */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Runara Logo */}
-          <Box sx={{ 
-            height: '36px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            flexShrink: 0
-          }}>
-            <img 
-              src="/runara-logo.png?v=2"
-              alt="Runara Logo" 
-              style={{ 
-                height: '100%', 
-                width: 'auto',
-                objectFit: 'contain',
-                display: 'block'
-              }}
-            />
-          </Box>
-          
-          {/* DIO Text */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '2px' }}>
-            <Typography variant="h6" sx={{ 
-              color: '#373737', 
-              fontWeight: 600,
-              fontSize: '16px',
-              letterSpacing: '0',
-              lineHeight: 1.2,
-              margin: 0
-            }}>
-              DIO
-            </Typography>
-            <Typography variant="caption" sx={{ 
-              color: 'rgba(55, 55, 55, 0.7)', 
-              fontWeight: 400,
-              fontSize: '11px',
-              letterSpacing: '0',
-              lineHeight: 1.2,
-              margin: 0
-            }}>
-              deep inference optimization
-            </Typography>
-          </Box>
-        </Box>
-
-        {/* Right Section - Account Button */}
-        <Box>
-          <Button
-            variant="outlined"
-            onClick={handleAccountClick}
-            startIcon={
-              <Avatar 
-                sx={{ 
-                  width: 28, 
-                  height: 28,
-                  bgcolor: '#8D6E63',
-                  fontSize: '0.75rem',
-                  fontWeight: 600
-                }}
-              >
-                {getInitials(user?.email)}
-              </Avatar>
-            }
+      {/* Nav Links */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, px: 1.5, py: 2, flex: 1 }}>
+        {menuItems.map((item) => (
+          <Box
+            key={item.text}
+            component={Link}
+            to={item.path}
             sx={{
-              color: '#424242',
-              borderColor: '#E0E0E0',
-              backgroundColor: '#FFFFFF',
-              borderRadius: '10px',
-              px: 2.5,
-              py: 1.25,
-              textTransform: 'none',
+              px: 1.5,
+              py: 1,
+              borderRadius: '6px',
+              fontSize: '14px',
               fontWeight: 500,
-              fontSize: '0.9375rem',
-              '&:hover': {
-                backgroundColor: '#F5F5F5',
-                borderColor: '#BDBDBD'
-              }
+              textDecoration: 'none',
+              transition: 'all 0.15s ease',
+              ...(isActive(item.path)
+                ? {
+                    backgroundColor: 'rgba(61, 168, 102, 0.15)',
+                    color: '#3DA866',
+                  }
+                : {
+                    color: '#94a3b8',
+                    '&:hover': {
+                      color: '#e2e8f0',
+                      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                    },
+                  }),
             }}
           >
-            {user?.email || 'Account'}
-          </Button>
-          <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={handleClose}
-          >
-            <MenuItem onClick={handleLogout}>
-              <Logout sx={{ mr: 1 }} />
-              Logout
-            </MenuItem>
-          </Menu>
-        </Box>
-      </Toolbar>
+            {item.text}
+          </Box>
+        ))}
+      </Box>
+
+      {/* Sign out at bottom */}
+      <Box sx={{ borderTop: '1px solid #1E4530', px: 1.5, py: 1.5 }}>
+        <Button
+          onClick={handleLogout}
+          fullWidth
+          sx={{
+            justifyContent: 'flex-start',
+            fontSize: '14px',
+            color: '#94a3b8',
+            '&:hover': {
+              color: '#e2e8f0',
+              backgroundColor: 'rgba(255, 255, 255, 0.04)',
+            },
+            textTransform: 'none',
+            fontWeight: 400,
+            px: 1.5,
+          }}
+        >
+          Sign out
+        </Button>
+      </Box>
     </Box>
   );
 }
@@ -690,7 +573,7 @@ function AppContent() {
 
   // Update document title and force favicon refresh
   React.useEffect(() => {
-    document.title = 'DIO';
+    document.title = 'Runara';
     
     // Force favicon refresh to clear any cached Grafana icon
     const favicon = document.querySelector('link[rel="icon"]');
@@ -722,20 +605,17 @@ function AppContent() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', position: 'relative' }}>
-      <SidebarNavigation />
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#0D1B13', display: 'flex' }}>
+      <Sidebar />
       <Box
         component="main"
         sx={{
-          position: 'absolute',
-          top: 0,
-          left: `${drawerWidth}px`,
-          right: 0,
-          bottom: 0,
-          p: 0,
-          m: 0,
-          backgroundColor: '#FFFFFF',
-          overflowY: 'auto'
+          flex: 1,
+          marginLeft: `${SIDEBAR_WIDTH}px`,
+          maxWidth: `calc(1280px + 64px)`,
+          width: '100%',
+          px: { xs: 2, sm: 3, lg: 4 },
+          py: 4,
         }}
       >
         <Routes>
@@ -743,6 +623,7 @@ function AppContent() {
           <Route path="/profiling" element={<ProtectedRoute><Benchmarking /></ProtectedRoute>} />
           <Route path="/instances" element={<ProtectedRoute><ManageInstances /></ProtectedRoute>} />
           <Route path="/running-instances" element={<ProtectedRoute><RunningInstances /></ProtectedRoute>} />
+          <Route path="/workload" element={<ProtectedRoute><Workload /></ProtectedRoute>} />
           <Route path="/telemetry-history" element={<ProtectedRoute><TelemetryHistory /></ProtectedRoute>} />
           <Route path="/login" element={<Navigate to="/" replace />} />
         </Routes>

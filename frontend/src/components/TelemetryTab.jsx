@@ -205,7 +205,7 @@ const deriveDefaultBackendUrl = () => {
 const DEFAULT_BACKEND_URL = deriveDefaultBackendUrl();
 const PREFERRED_POLL_INTERVALS = [1, 2, 5, 10];
 const COLOR_PALETTE = [
-  '#1976d2',
+  '#3DA866',
   '#ef5350',
   '#26a69a',
   '#ffa726',
@@ -756,7 +756,7 @@ const MetricChartComponent = ({ title, metricKey, unit, domain, data, gpuIds, ic
   // Enhanced color palette with gradients
   const getGradientColors = (baseColor, index) => {
     const gradients = [
-      { start: '#1976d2', end: '#42a5f5' },
+      { start: '#3DA866', end: '#6ee7b7' },
       { start: '#ef5350', end: '#e57373' },
       { start: '#26a69a', end: '#4db6ac' },
       { start: '#ffa726', end: '#ffb74d' },
@@ -2175,7 +2175,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                   sx={{
                     p: 2,
                     borderRadius: '8px',
-                    backgroundColor: alpha('#f5f5f5', 0.3),
+                    backgroundColor: alpha('#1E4530', 0.3),
                   }}
                 >
                 <FormControlLabel
@@ -2303,7 +2303,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                       const getStatusColor = (status) => {
                         if (status.status === 'healthy') return '#4caf50'; // green
                         if (status.status === 'error') return '#f44336'; // red
-                        return '#e0e0e0'; // white/gray for not_found
+                        return '#1E4530'; // white/gray for not_found
                       };
                       const getStatusLabel = (status) => {
                         if (status.status === 'healthy') return '✓';
@@ -2829,7 +2829,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                   sx={{
                     p: 3,
                     borderRadius: '8px',
-                    backgroundColor: alpha('#f5f5f5', 0.3),
+                    backgroundColor: alpha('#1E4530', 0.3),
                   }}
                 >
                   <Grid container spacing={3}>

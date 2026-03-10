@@ -24,6 +24,35 @@ import { useUI } from '../components/ui/UIProvider';
 import RefreshControl from '../components/ui/RefreshControl';
 import { ListSkeleton } from '../components/ui/Skeletons';
 
+// GPU specifications lookup — maps GPU family keywords to their known specs
+const GPU_SPECS = {
+  'H100': { vram: 80, vramUnit: 'GB HBM3', cudaCores: 16896, tensorCores: 528, memBandwidth: '3.35 TB/s', arch: 'Hopper', tdp: 700 },
+  'H200': { vram: 141, vramUnit: 'GB HBM3e', cudaCores: 16896, tensorCores: 528, memBandwidth: '4.8 TB/s', arch: 'Hopper', tdp: 700 },
+  'A100': { vram: 80, vramUnit: 'GB HBM2e', cudaCores: 6912, tensorCores: 432, memBandwidth: '2.0 TB/s', arch: 'Ampere', tdp: 400 },
+  'A10': { vram: 24, vramUnit: 'GB GDDR6', cudaCores: 9216, tensorCores: 288, memBandwidth: '600 GB/s', arch: 'Ampere', tdp: 150 },
+  'L4': { vram: 24, vramUnit: 'GB GDDR6', cudaCores: 7424, tensorCores: 232, memBandwidth: '300 GB/s', arch: 'Ada Lovelace', tdp: 72 },
+  'L40': { vram: 48, vramUnit: 'GB GDDR6', cudaCores: 18176, tensorCores: 568, memBandwidth: '864 GB/s', arch: 'Ada Lovelace', tdp: 300 },
+  'L40S': { vram: 48, vramUnit: 'GB GDDR6', cudaCores: 18176, tensorCores: 568, memBandwidth: '864 GB/s', arch: 'Ada Lovelace', tdp: 350 },
+  'V100': { vram: 32, vramUnit: 'GB HBM2', cudaCores: 5120, tensorCores: 640, memBandwidth: '900 GB/s', arch: 'Volta', tdp: 300 },
+  'T4': { vram: 16, vramUnit: 'GB GDDR6', cudaCores: 2560, tensorCores: 320, memBandwidth: '300 GB/s', arch: 'Turing', tdp: 70 },
+  'B200': { vram: 192, vramUnit: 'GB HBM3e', cudaCores: 18432, tensorCores: 576, memBandwidth: '8.0 TB/s', arch: 'Blackwell', tdp: 1000 },
+  'GH200': { vram: 96, vramUnit: 'GB HBM3', cudaCores: 16896, tensorCores: 528, memBandwidth: '4.0 TB/s', arch: 'Hopper', tdp: 900 },
+  'MI300': { vram: 192, vramUnit: 'GB HBM3', arch: 'CDNA 3', tdp: 750, memBandwidth: '5.3 TB/s' },
+  'RENDER-S': { vram: 16, vramUnit: 'GB GDDR6', arch: 'Turing', tdp: 70 },
+};
+
+// Match a commercial type or GPU model string to a GPU_SPECS entry
+function lookupGpuSpecs(nameOrModel) {
+  if (!nameOrModel) return null;
+  const upper = nameOrModel.toUpperCase();
+  // Try exact prefix matches first (longer keys first to match L40S before L40)
+  const sorted = Object.keys(GPU_SPECS).sort((a, b) => b.length - a.length);
+  for (const key of sorted) {
+    if (upper.includes(key)) return { key, ...GPU_SPECS[key] };
+  }
+  return null;
+}
+
 const PROVIDERS = [
   {
     id: 'scaleway',
@@ -31,7 +60,7 @@ const PROVIDERS = [
     logo: 'https://www.scaleway.com/favicon-192x192.png',
     name: 'Scaleway',
     color: '#4A00FF',
-    bgColor: '#FFFFFF',
+    bgColor: '#142B1D',
     requiredFields: ['Access Key', 'Secret Key', 'Project ID'],
     helpUrl: 'https://www.scaleway.com/en/docs/iam/how-to/create-api-keys/',
     helpText: 'To get your Scaleway credentials:\\n1. Go to Scaleway Console -> IAM -> API Keys\\n2. Create an Access Key and Secret Key\\n3. Copy your Project ID from Project settings\\n4. Paste keys and Project ID here'
@@ -165,7 +194,7 @@ export default function ManageInstances() {
   
   // Ensure page is white on mount
   useEffect(() => {
-    document.body.style.backgroundColor = '#FFFFFF';
+    document.body.style.backgroundColor = '#0D1B13';
     return () => {
       document.body.style.backgroundColor = '';
     };
@@ -2258,47 +2287,10 @@ const normalizeAvailability = (cfg, zone) => {
       {/* Main Content Area */}
       <Box sx={{ flex: 1, p: 4, display: 'flex', flexDirection: 'column' }}>
         {/* Messages */}
-        {message && <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setMessage('')}>{message}</Alert>}
         {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError('')}>{error}</Alert>}
 
-        <RefreshControl lastUpdated={lastUpdated} loading={loading} onRefresh={handleRefresh} />
-
-        {/* View Mode Toggle - Only show when in cloud view mode (not local) */}
-        {viewMode === 'cloud' && (
-          <Box sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs 
-              value={aggregatedViewMode} 
-              onChange={(e, newValue) => {
-                setAggregatedViewMode(newValue);
-                setSelectedProvider(null);
-                if (newValue === 'aggregated') {
-                  // Always refresh when entering aggregated view so the list reflects
-                  // the latest credentials + provider state.
-                  fetchAggregatedInstances();
-                }
-              }}
-              sx={{ minHeight: 48 }}
-            >
-              <Tab 
-                label="Cloud Based" 
-                value="cloud" 
-                sx={{ textTransform: 'none', fontWeight: aggregatedViewMode === 'cloud' ? 600 : 400 }}
-              />
-              <Tab 
-                label="Instance Based" 
-                value="aggregated" 
-                sx={{ textTransform: 'none', fontWeight: aggregatedViewMode === 'aggregated' ? 600 : 400 }}
-              />
-            </Tabs>
-          </Box>
-        )}
 
         {loading && <Box sx={{ mb: 3 }}><ListSkeleton items={3} /></Box>}
-        {!loading && aggregatedViewMode === 'cloud' && selectedProvider && providerInstances.length === 0 && (
-          <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
-            No running instances found for {selectedProvider}. Launch one or refresh.
-          </Alert>
-        )}
 
         {/* Empty State or Content */}
         {viewMode === 'local' ? (
@@ -2503,13 +2495,22 @@ const normalizeAvailability = (cfg, zone) => {
                           )}
 
                           {/* GPU Info */}
-                          {instance.gpu_model && (
-                            <Box sx={{ mb: 1.5 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                {instance.gpu_model} {instance.num_gpus && `× ${instance.num_gpus}`}
-                              </Typography>
-                            </Box>
-                          )}
+                          {instance.gpu_model && (() => {
+                            const specs = lookupGpuSpecs(instance.gpu_model) || lookupGpuSpecs(instance.name);
+                            return (
+                              <Box sx={{ mb: 1.5 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                  {instance.gpu_model} {instance.num_gpus && `× ${instance.num_gpus}`}
+                                </Typography>
+                                {specs && (
+                                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                    <Chip label={`${specs.vram} ${specs.vramUnit}`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                                    {specs.arch && <Chip label={specs.arch} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />}
+                                  </Stack>
+                                )}
+                              </Box>
+                            );
+                          })()}
 
                           {/* Resource Info */}
                           <Stack spacing={0.5} sx={{ mb: 1.5 }}>
@@ -2520,7 +2521,7 @@ const normalizeAvailability = (cfg, zone) => {
                             )}
                             {instance.memory_gb && (
                               <Typography variant="body2" color="text.secondary">
-                                Memory: {instance.memory_gb.toFixed(0)} GB
+                                RAM: {instance.memory_gb.toFixed(0)} GB
                               </Typography>
                             )}
                           </Stack>
@@ -2606,35 +2607,6 @@ const normalizeAvailability = (cfg, zone) => {
               {PROVIDERS.find(p => p.id === selectedProvider)?.name}
             </Typography>
             
-            {isProviderConnected(selectedProvider) && viewMode === 'cloud' && (
-              <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-              <Button
-                variant="contained"
-                disabled={loading}
-                onClick={async () => {
-                  try {
-                    setError('');
-                    setMessage('');
-                    const raw = localStorage.getItem(storageKey(selectedProvider));
-                    if (!raw) {
-                      setError('No credentials found. Please integrate first.');
-                      return;
-                    }
-                    
-                    const parsed = JSON.parse(raw);
-                    
-                    await fetchScalewayInstances(scwRegion);
-                  } catch (e) {
-                    console.error('Fetch button error:', e);
-                    setError(`Failed to fetch instances: ${e.message || 'Unknown error'}`);
-                  }
-                }}
-                  sx={{ textTransform: 'none' }}
-              >
-                {loading ? 'Fetching...' : 'Fetch Instances'}
-                </Button>
-              </Stack>
-            )}
           </Box>
         )}
 
@@ -3003,11 +2975,25 @@ const normalizeAvailability = (cfg, zone) => {
                         <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
                           {name}
                         </Typography>
-                        {gpuModel && (
-                          <Typography variant="body2" color="primary" sx={{ mb: 1, fontWeight: 600 }}>
-                            {gpuModel}
-                          </Typography>
-                        )}
+                        {(() => {
+                          const specs = lookupGpuSpecs(gpuModel) || lookupGpuSpecs(name);
+                          return (
+                            <>
+                              {(gpuModel || specs) && (
+                                <Typography variant="body2" color="primary" sx={{ mb: 0.5, fontWeight: 600 }}>
+                                  {gpuModel || specs?.key || ''}
+                                </Typography>
+                              )}
+                              {specs && (
+                                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+                                  <Chip label={`${specs.vram} ${specs.vramUnit}`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                                  {specs.arch && <Chip label={specs.arch} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />}
+                                  {specs.tdp && <Chip label={`${specs.tdp}W TDP`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />}
+                                </Stack>
+                              )}
+                            </>
+                          );
+                        })()}
 
                         <Box sx={{ mb: 2 }}>
                           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
@@ -3015,6 +3001,12 @@ const normalizeAvailability = (cfg, zone) => {
                           </Typography>
                           <Stack spacing={0.5}>
                             <Typography variant="body2" color="text.secondary">GPUs: <strong>{gpus}</strong></Typography>
+                            {(() => {
+                              const specs = lookupGpuSpecs(gpuModel) || lookupGpuSpecs(name);
+                              return specs ? (
+                                <Typography variant="body2" color="text.secondary">VRAM Total: <strong>{specs.vram * (typeof gpus === 'number' ? gpus : 1)} GB</strong></Typography>
+                              ) : null;
+                            })()}
                             <Typography variant="body2" color="text.secondary">System Memory: <strong>{formatGiB(ramBytes)}</strong></Typography>
                             <Typography variant="body2" color="text.secondary">vCPUs: <strong>{vcpus}</strong></Typography>
                             {cfg.raw?.storage_gib && (
@@ -3035,11 +3027,11 @@ const normalizeAvailability = (cfg, zone) => {
                           />
                         </Box>
 
-                        <Box sx={{ 
-                          backgroundColor: '#f5f7fb',
+                        <Box sx={{
+                          backgroundColor: '#0D1B13',
                           p: 1.5,
                           borderRadius: 1,
-                          border: '1px solid #e1e7f0',
+                          border: '1px solid #1E4530',
                           textAlign: 'center',
                           mb: 2
                         }}>

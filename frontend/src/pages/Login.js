@@ -56,27 +56,28 @@ function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#f6f7f9',
+        backgroundColor: '#0D1B13',
+        px: 2,
       }}
     >
-      <Container maxWidth="sm">
+      <Box sx={{ width: '100%', maxWidth: '400px' }}>
+        {/* Logo */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
+          <img src="/logo.png" alt="Runara" style={{ height: '32px' }} />
+        </Box>
+
         <Paper
           elevation={0}
           sx={{
             p: 4,
-            borderRadius: '8px',
-            border: '1px solid #d7d7d7',
-            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            border: '1px solid #1E4530',
+            backgroundColor: '#142B1D',
           }}
         >
-          <Box sx={{ mb: 3, textAlign: 'center' }}>
-            <Typography variant="h4" component="h1" gutterBottom>
-              DIO
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {tab === 0 ? 'Sign in to your account' : 'Create a new account'}
-            </Typography>
-          </Box>
+          <Typography variant="h5" component="h1" sx={{ mb: 3, fontWeight: 600, color: '#ffffff' }}>
+            {tab === 0 ? 'Sign in' : 'Create account'}
+          </Typography>
 
           <Tabs
             value={tab}
@@ -84,19 +85,25 @@ function LoginPage() {
               setTab(newValue);
               setError('');
             }}
-            sx={{ 
+            sx={{
               mb: 3,
               '& .MuiTabs-indicator': {
-                backgroundColor: '#0879f4',
+                backgroundColor: '#3DA866',
               },
             }}
           >
-            <Tab label="Login" />
-            <Tab label="Sign Up" />
+            <Tab label="Login" sx={{ color: '#94a3b8', '&.Mui-selected': { color: '#3DA866' } }} />
+            <Tab label="Sign Up" sx={{ color: '#94a3b8', '&.Mui-selected': { color: '#3DA866' } }} />
           </Tabs>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{
+              mb: 2,
+              backgroundColor: 'rgba(153, 27, 27, 0.3)',
+              border: '1px solid #991b1b',
+              color: '#f87171',
+              '& .MuiAlert-icon': { color: '#f87171' }
+            }}>
               {error}
             </Alert>
           )}
@@ -111,6 +118,7 @@ function LoginPage() {
               required
               margin="normal"
               autoComplete="email"
+              placeholder="you@example.com"
             />
             <TextField
               fullWidth
@@ -121,20 +129,27 @@ function LoginPage() {
               required
               margin="normal"
               autoComplete={tab === 0 ? 'current-password' : 'new-password'}
+              placeholder="••••••••"
               helperText={tab === 1 ? 'Password must be at least 6 characters' : ''}
             />
             <Button
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ mt: 3, mb: 2, py: 1.5 }}
+              sx={{
+                mt: 3,
+                mb: 2,
+                py: 1.5,
+                backgroundColor: '#3DA866',
+                '&:hover': { backgroundColor: '#22c55e' },
+              }}
               disabled={loading}
             >
               {loading ? 'Please wait...' : tab === 0 ? 'Sign In' : 'Sign Up'}
             </Button>
           </form>
         </Paper>
-      </Container>
+      </Box>
     </Box>
   );
 }

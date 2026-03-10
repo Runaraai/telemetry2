@@ -11,7 +11,7 @@ export const NEBius_PROVIDER_CONFIG = {
   logo: 'https://nebius.com/favicon.ico',
   name: 'Nebius AI Cloud',
   color: '#0b7c7e',
-  bgColor: '#FFFFFF',
+  bgColor: '#142B1D',
   requiredFields: ['Service Account JSON', 'Project ID'],
   helpUrl: 'https://docs.nebius.com/compute/virtual-machines/creating/regular-vm',
   helpText: 'To get your Nebius credentials:\n1. In Nebius Console, go to Administration → IAM → Service accounts\n2. Create or select a service account and copy the Service Account ID\n3. Create an authorized key (RSA) and copy its ID\n4. Download the private key PEM file\n5. Paste the entire JSON credentials object below (or individual fields)\n6. Provide your Project ID that maps to your region',

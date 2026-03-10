@@ -77,7 +77,7 @@ import AIInsightsBox from './AIInsightsBox';
 import SMMetricsOverlay from './SMMetricsOverlay';
 
 const COLOR_PALETTE = [
-  '#1976d2',
+  '#3DA866',
   '#ef5350',
   '#26a69a',
   '#ffa726',
@@ -525,7 +525,7 @@ const MetricChart = ({ title, metricKey, unit, domain, data, gpuIds, icon: IconC
   // Enhanced color palette with gradients
   const getGradientColors = (baseColor, index) => {
     const gradients = [
-      { start: '#1976d2', end: '#42a5f5' },
+      { start: '#3DA866', end: '#6ee7b7' },
       { start: '#ef5350', end: '#e57373' },
       { start: '#26a69a', end: '#4db6ac' },
       { start: '#ffa726', end: '#ffb74d' },
@@ -1723,7 +1723,7 @@ const TelemetryHistory = () => {
                       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
                         <Table size="medium">
                           <TableHead>
-                            <TableRow sx={{ bgcolor: '#fafafa' }}>
+                            <TableRow sx={{ bgcolor: '#0D1B13' }}>
                               <TableCell sx={{ fontWeight: 600, py: 2 }}>Run ID</TableCell>
                               <TableCell sx={{ fontWeight: 600, py: 2 }}>Status</TableCell>
                               <TableCell sx={{ fontWeight: 600, py: 2 }}>Start Time</TableCell>
