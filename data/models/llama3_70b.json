@@ -1,0 +1,162 @@
+{
+  "model": {
+    "name": "LLaMA-3 70B",
+    "type": "decoder-only",
+    "params": "70B",
+    "layers": 80,
+    "hidden_dim": 8192,
+    "intermediate_size": 28672,
+    "num_heads": 64,
+    "num_kv_heads": 8,
+    "vocab_size": 128256,
+    "context_length": 8192
+  },
+  "model_graph": {
+    "nodes": [
+      {
+        "id": "embedding",
+        "type": "embedding",
+        "label": "Token Embedding",
+        "flops": 1.05,
+        "memory_gb": 2.1,
+        "output_shape": [null, null, 8192]
+      },
+      {
+        "id": "layers",
+        "type": "layer_stack",
+        "label": "80 Decoder Layers",
+        "count": 80,
+        "flops_per_layer": 233,
+        "memory_gb_per_layer": 1.75
+      },
+      {
+        "id": "ln_final",
+        "type": "norm",
+        "label": "Final LayerNorm",
+        "flops": 0.016,
+        "memory_gb": 0.032
+      },
+      {
+        "id": "lm_head",
+        "type": "linear",
+        "label": "LM Head",
+        "flops": 2.1,
+        "memory_gb": 4.2,
+        "output_shape": [null, null, 128256]
+      }
+    ],
+    "edges": [
+      {"source": "embedding", "target": "layers"},
+      {"source": "layers", "target": "ln_final"},
+      {"source": "ln_final", "target": "lm_head"}
+    ]
+  },
+  "layer_graph": {
+    "nodes": [
+      {
+        "id": "input",
+        "type": "input",
+        "label": "Layer Input"
+      },
+      {
+        "id": "ln1",
+        "type": "norm",
+        "label": "RMSNorm",
+        "flops": 0.016
+      },
+      {
+        "id": "attention",
+        "type": "attention_block",
+        "label": "Multi-Head Attention",
+        "flops": 90.2,
+        "memory_gb": 0.68,
+        "num_heads": 64,
+        "num_kv_heads": 8
+      },
+      {
+        "id": "add1",
+        "type": "residual",
+        "label": "Add & Norm"
+      },
+      {
+        "id": "ln2",
+        "type": "norm",
+        "label": "RMSNorm",
+        "flops": 0.016
+      },
+      {
+        "id": "mlp",
+        "type": "mlp_block",
+        "label": "Feed Forward",
+        "flops": 142.8,
+        "memory_gb": 1.07
+      },
+      {
+        "id": "add2",
+        "type": "residual",
+        "label": "Add & Norm"
+      },
+      {
+        "id": "output",
+        "type": "output",
+        "label": "Layer Output"
+      }
+    ],
+    "edges": [
+      {"source": "input", "target": "ln1"},
+      {"source": "ln1", "target": "attention"},
+      {"source": "attention", "target": "add1"},
+      {"source": "input", "target": "add1", "type": "residual"},
+      {"source": "add1", "target": "ln2"},
+      {"source": "ln2", "target": "mlp"},
+      {"source": "mlp", "target": "add2"},
+      {"source": "add1", "target": "add2", "type": "residual"},
+      {"source": "add2", "target": "output"}
+    ]
+  },
+  "attention_graph": {
+    "nodes": [
+      {"id": "input", "type": "input", "label": "Input"},
+      {"id": "q_proj", "type": "linear", "label": "Q Linear", "flops": 16.8},
+      {"id": "k_proj", "type": "linear", "label": "K Linear", "flops": 2.1},
+      {"id": "v_proj", "type": "linear", "label": "V Linear", "flops": 2.1},
+      {"id": "rope", "type": "position", "label": "RoPE", "flops": 0.3},
+      {"id": "qk_matmul", "type": "matmul", "label": "Q @ K^T", "flops": 67.1},
+      {"id": "softmax", "type": "activation", "label": "Softmax", "memory_gb": 4.2},
+      {"id": "av_matmul", "type": "matmul", "label": "Attn @ V", "flops": 67.1},
+      {"id": "o_proj", "type": "linear", "label": "O Linear", "flops": 16.8},
+      {"id": "output", "type": "output", "label": "Output"}
+    ],
+    "edges": [
+      {"source": "input", "target": "q_proj"},
+      {"source": "input", "target": "k_proj"},
+      {"source": "input", "target": "v_proj"},
+      {"source": "q_proj", "target": "rope"},
+      {"source": "k_proj", "target": "rope"},
+      {"source": "rope", "target": "qk_matmul"},
+      {"source": "qk_matmul", "target": "softmax"},
+      {"source": "softmax", "target": "av_matmul"},
+      {"source": "v_proj", "target": "av_matmul"},
+      {"source": "av_matmul", "target": "o_proj"},
+      {"source": "o_proj", "target": "output"}
+    ]
+  },
+  "mlp_graph": {
+    "nodes": [
+      {"id": "input", "type": "input", "label": "Input"},
+      {"id": "gate_proj", "type": "linear", "label": "Gate Linear", "flops": 58.7},
+      {"id": "up_proj", "type": "linear", "label": "Up Linear", "flops": 58.7},
+      {"id": "swiglu", "type": "activation", "label": "SwiGLU"},
+      {"id": "down_proj", "type": "linear", "label": "Down Linear", "flops": 58.7},
+      {"id": "output", "type": "output", "label": "Output"}
+    ],
+    "edges": [
+      {"source": "input", "target": "gate_proj"},
+      {"source": "input", "target": "up_proj"},
+      {"source": "gate_proj", "target": "swiglu"},
+      {"source": "up_proj", "target": "swiglu"},
+      {"source": "swiglu", "target": "down_proj"},
+      {"source": "down_proj", "target": "output"}
+    ]
+  }
+}

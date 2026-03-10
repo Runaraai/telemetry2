@@ -1,0 +1,19 @@
+{
+  "datacenter": {
+    "id": "dc-001",
+    "name": "Omniference_DataCenter_1",
+    "location": "US-West-2",
+    "total_power_capacity_MW": 15.0,
+    "cooling_type": "liquid",
+    "cooling_capacity_MW": 12.0,
+    "pue": 1.15,
+    "zones": ["zone-a", "zone-b", "zone-c"],
+    "network_backbone": {
+      "type": "400G_Ethernet + InfiniBand_NDR",
+      "topology": "spine-leaf"
+    },
+    "total_clusters": 3,
+    "clusters": ["a100", "h100", "b100"]
+  }
+}
+

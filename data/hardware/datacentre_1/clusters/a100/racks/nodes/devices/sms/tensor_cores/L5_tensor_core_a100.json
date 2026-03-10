@@ -1,0 +1,65 @@
+{
+    "level": 5,
+    "tensor_core": {
+      "id": "tc-a100-00",
+      "sm_id": "sm-a100-00",
+      "architecture": "Ampere",
+      "generation": "3rd Gen Tensor Core",
+      "description": "Ampere Tensor Core supporting FP16, BF16, TF32, and mixed-precision operations.",
+  
+      "supported_precisions": ["fp16", "bf16", "tf32", "fp32", "int8"],
+      "matrix_dimensions": {
+        "fp16": { "m": 16, "n": 16, "k": 16 },
+        "bf16": { "m": 16, "n": 16, "k": 16 },
+        "tf32": { "m": 16, "n": 16, "k": 8 }
+      },
+      "operations_per_cycle": {
+        "fp16": 256,
+        "tf32": 128,
+        "bf16": 256,
+        "int8": 512
+      },
+      "peak_throughput_TFLOPS": {
+        "fp16": 0.78,
+        "tf32": 0.39,
+        "bf16": 0.78,
+        "int8": 1.56
+      },
+      "latency_cycles": {
+        "fp16": 8,
+        "tf32": 12
+      },
+  
+      "energy": {
+        "energy_per_op_pJ": 0.8,
+        "power_W": 0.875,
+        "efficiency_TFLOPS_per_W": 0.9
+      },
+  
+      "connections": {
+        "shared_memory_bandwidth_GBps": 8000,
+        "l1_to_tc_latency_ns": 1.2
+      },
+  
+      "visualization_hints": {
+        "grid": { "rows": 2, "cols": 2 },
+        "color_map": {
+          "fp16": "#10b981",
+          "tf32": "#f59e0b",
+          "int8": "#3b82f6"
+        },
+        "glow_intensity": 0.25
+      },
+      "bottleneck_analysis": {
+      "bottleneck_type": "compute_precision",
+      "bottleneck": "Limited matrix dimension granularity and precision conversion overhead in TF32/BF16 modes.",
+      "description": "Tensor Cores on Ampere are optimized for 16×16×16 tile sizes. When matrix dimensions don’t align perfectly, additional conversion and accumulation steps reduce effective utilization of the tensor compute pipeline.",
+      "workload_characteristic": "Mixed-precision GEMMs in transformer blocks where tensors don’t align to 16×16 tile sizes—under-utilizing tensor-core pipelines and causing extra casting/accumulation latency."
+    },
+
+      "sources": [
+        "NVIDIA Ampere Architecture Whitepaper (2020)"
+      ]
+    }
+  }
+  

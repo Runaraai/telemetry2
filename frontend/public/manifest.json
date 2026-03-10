@@ -1,0 +1,15 @@
+{
+  "short_name": "Omniference",
+  "name": "Omniference - AI Performance Analysis Platform",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "32x32",
+      "type": "image/svg+xml"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#61DAFB",
+  "background_color": "#ffffff"
+}

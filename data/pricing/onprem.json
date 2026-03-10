@@ -1,0 +1,20 @@
+{
+    "mode": "onprem",
+    "capex": {
+      "device_usd": 200000,
+      "infra_multiplier": 1.35,
+      "lifetime_years": 3,
+      "residual_fraction": 0.10
+    },
+    "opex": {
+      "pue": 1.25,
+      "energy_usd_per_kwh": 0.11,
+      "network_usd_per_GB": 0.02,
+      "support_fraction_per_year": 0.08
+    },
+    "cloud": {
+      "hourly_usd_per_device": 32.50,
+      "egress_usd_per_GB": 0.05
+    },
+    "utilization_target": 0.70
+  }

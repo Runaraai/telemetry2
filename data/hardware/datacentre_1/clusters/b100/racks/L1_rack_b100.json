@@ -1,0 +1,54 @@
+{
+    "level": 1,
+    "rack": {
+      "id": "rack-b100-01",
+      "cluster_id": "cluster-b100",
+      "position": { "row": 1, "col": 1 },
+      "rack_units": 42,
+      "nodes_per_rack": 8,
+      "height_m": 2.0,
+      "power_kW": 220,
+      "cooling_type": "liquid",
+      "fabric_connection": {
+        "type": "InfiniBand NDR800",
+        "uplinks": 4,
+        "bandwidth_GBps": 800,
+        "latency_ns": 90
+      },
+      "nodes": [
+        "node-b100-01", "node-b100-02", "node-b100-03", "node-b100-04",
+        "node-b100-05", "node-b100-06", "node-b100-07", "node-b100-08"
+      ],
+      "summary": {
+        "total_nodes": 8,
+        "total_gpus": 64,
+        "total_memory_TB": 12.0,
+        "total_fp8_PFLOPS": 253.4,
+        "total_fp16_PFLOPS": 126.7,
+        "total_fp32_PFLOPS": 31.7,
+        "aggregate_nvlink_bandwidth_TBps": 115.2,
+        "power_utilization_percent": 86
+      },
+      "visualization_hints": {
+        "orientation": "vertical",
+        "spacing": 0.5,
+        "color_map": {
+          "node": "#f43f5e",
+          "fabric": "#fde047"
+        },
+        "glow_intensity": 0.4
+      },
+      "bottleneck_analysis": {
+      "bottleneck_type": "network",
+      "bottleneck": "Rack uplink contention on InfiniBand NDR800 fabric.",
+      "description": "Each rack provides four 800 GB/s uplinks (3.2 TB/s total) for 64 GPUs. During cross-rack data exchange, simultaneous transmission from all nodes saturates uplinks, creating transient congestion despite NDR800’s doubled per-link bandwidth compared to Hopper’s NDR400.",
+      "workload_characteristic": "Cross-rack collectives in MoE or pipeline-parallel models where inter-rack activation transfers peak simultaneously."
+    },
+
+      "sources": [
+        "NVIDIA Blackwell B100 Architecture Overview (2024)",
+        "DGX B100 System Power & Cooling Whitepaper (2024)"
+      ]
+    }
+  }
+  

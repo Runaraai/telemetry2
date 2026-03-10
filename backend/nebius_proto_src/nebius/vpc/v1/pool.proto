@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package nebius.vpc.v1;
+
+import "buf/validate/validate.proto";
+import "nebius/common/v1/metadata.proto";
+import "nebius/annotations.proto";
+
+option go_package = "github.com/nebius/gosdk/proto/nebius/vpc/v1";
+option java_multiple_files = true;
+option java_outer_classname = "PoolProto";
+option java_package = "ai.nebius.pub.vpc.v1";
+
+message Pool {
+  // Metadata associated with the Pool.
+  // `metadata.parent_id` represents the Project.
+  common.v1.ResourceMetadata metadata = 1;
+
+  // Specification of the Pool.
+  PoolSpec spec = 2;
+
+  // Status information for the Pool.
+  PoolStatus status = 3;
+}
+
+message PoolSpec {
+  // ID of the source pool.
+  // CIDR blocks of a pool must be within the range defined by its source pool.
+  string source_pool_id = 1 [(field_behavior) = IMMUTABLE];
+
+  // IP version of the pool.
+  IpVersion version = 3 [(buf.validate.field).required = true, (field_behavior) = IMMUTABLE];
+
+  // Configures whether the pool is private or public.
+  // Only public pools IP addresses are routable in the Internet.
+  IpVisibility visibility = 5 [(buf.validate.field).required = true, (field_behavior) = IMMUTABLE];
+
+  // CIDR blocks defined by the pool.
+  repeated PoolCidr cidrs = 4;
+}
+
+message PoolCidr {
+  // A CIDR block (e.g., "10.1.2.0/24") or a prefix length (e.g., "/24").
+  // If prefix length is specified, the CIDR block will be auto-allocated from
+  // the available space in the parent pool.
+  string cidr = 1 [
+    (buf.validate.field) = {
+      cel: [
+        {
+          id: "string.valid_cidr",
+          message: "value must be a valid IP address, CIDR or mask",
+          expression: "this == '' || this.matches('^/([0-9]|[1-9][0-9]|1[0-2][0-8])$') || this.isIpPrefix(true)"
+        },
+        {
+          id: "string.ip_empty",
+          message: "value is empty, which is not a valid IP address",
+          expression: "this != ''"
+        }
+      ],
+      required: true
+    }
+  ];
+
+  // Controls provisioning of IP addresses from the CIDR block to other pools
+  // or allocations. Defaults to AVAILABLE.
+  AddressBlockState state = 2 [(field_behavior) = NON_EMPTY_DEFAULT];
+
+  // Maximum mask length for this pool child pools and allocations.
+  // Default max_mask_length is 32 for IPv4.
+  int64 max_mask_length = 3 [
+    (field_behavior) = NON_EMPTY_DEFAULT,
+    (buf.validate.field) = { int64: { lte: 128, gte: 0 } }
+  ];
+}
+
+// Controls provisioning of IP addresses from this pool to other pools
+// or allocations. Defaults to AVAILABLE.
+enum AddressBlockState {
+  STATE_UNSPECIFIED = 0; // Not used, mandated by the protocol.
+
+  AVAILABLE = 1; // Default state. Provision of the IP addresses from this CIDR block is allowed.
+
+  DISABLED = 2; // Provision of the IP addresses from this CIDR block is denied.
+}
+
+message PoolStatus {
+  // Possible states of the Pool.
+  enum State {
+    STATE_UNSPECIFIED = 0; // Default, unspecified state.
+
+    CREATING = 1; // Pool is being created.
+
+    READY = 2; // Pool is ready for use.
+
+    DELETING = 3; // Pool is being deleted.
+  }
+
+  // Current state of the Pool.
+  State state = 1;
+
+  // CIDR blocks.
+  repeated string cidrs = 2;
+
+  // Scope is the unique identifier for single pool tree.
+  string scope_id = 3;
+
+  // Assignment details for this Pool
+  PoolAssignment assignment = 4;
+}
+
+enum IpVersion {
+  IP_VERSION_UNSPECIFIED = 0; // Default, unspecified IP version.
+
+  IPV4 = 1; // IPv4 address.
+
+  IPV6 = 2; // IPv6 address.
+}
+
+enum IpVisibility {
+  IP_VISIBILITY_UNSPECIFIED = 0; // Default, unspecified IP visibility.
+
+  PRIVATE = 1; // Private address.
+
+  PUBLIC = 2; // Public address.
+}
+
+message PoolAssignment {
+  // IDs of Networks to which the Pool is assigned.
+  repeated string networks = 1;
+
+  // IDs of Subnets to which the Pool is assigned.
+  repeated string subnets = 2;
+}

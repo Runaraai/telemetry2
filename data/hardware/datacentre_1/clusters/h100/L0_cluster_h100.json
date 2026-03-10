@@ -1,0 +1,93 @@
+{
+    "level": 0,
+    "cluster": {
+      "id": "cluster-h100",
+      "name": "H100_SuperPod_01",
+      "vendor": "NVIDIA",
+      "architecture": "Hopper",
+      "generation": "H100",
+      "hardware_type": "gpu",
+      "description": "NVIDIA DGX H100 SuperPod with 32 racks (8192 GPUs) connected via NVLink 4.0 and InfiniBand NDR400 fabric.",
+  
+      "composition": {
+        "racks": 32,
+        "nodes_per_rack": 8,
+        "gpus_per_node": 8,
+        "total_nodes": 256,
+        "total_gpus": 8192
+      },
+  
+      "fabric": {
+        "type": "NVLink 4.0 + InfiniBand NDR400",
+        "topology": "fat-tree",
+        "nvlink": {
+          "links_per_gpu": 18,
+          "per_link_bandwidth_GBps": 100,
+          "aggregate_per_gpu_GBps": 900,
+          "latency_ns": 1.2
+        },
+        "nvswitch": {
+          "version": "3.0",
+          "switches_per_node": 6,
+          "aggregate_bandwidth_GBps": 3600
+        },
+        "infiniBand": {
+          "version": "NDR400",
+          "ports_per_node": 8,
+          "link_bandwidth_GBps": 50,
+          "bisection_bandwidth_TBps": 51.2,
+          "inter_rack_latency_ns": 120
+        }
+      },
+  
+      "power": {
+        "tdp_W_per_gpu": 700,
+        "total_gpu_power_kW": 5734.4,
+        "cluster_total_kW": 7500,
+        "pue": 1.12,
+        "utilization_percent": 84.5
+      },
+  
+      "cooling": {
+        "type": "liquid",
+        "capacity_kW": 8000,
+        "redundancy": "N+1",
+        "coolant": "dielectric_liquid"
+      },
+  
+      "summary": {
+        "total_racks": 32,
+        "total_nodes": 256,
+        "total_devices": 8192,
+        "total_sms": 1081344,
+        "total_tensor_cores": 4325376,
+        "total_memory_TB": 640,
+        "total_bandwidth_TBps": 27445,
+        "peak_fp8_PFLOPS": 16203,
+        "peak_fp16_PFLOPS": 8101,
+        "peak_fp32_PFLOPS": 491,
+        "aggregate_nvlink_bandwidth_TBps": 7372.8
+      },
+  
+      "visualization_hints": {
+        "layout": { "rows": 4, "cols": 8, "spacing": 10 },
+        "color_map": { "rack": "#22c55e", "fabric": "#f59e0b", "node": "#10b981" },
+        "cluster_glow": { "color": "#34d399", "intensity": 0.4 }
+      },
+
+      "bottleneck_analysis": {
+      "bottleneck_type": "network",
+      "bottleneck": "Inter-rack InfiniBand latency and collective synchronization overhead.",
+      "description": "Despite 51.2 TB/s bisection bandwidth, cross-rack collective operations (all-reduce, broadcast) suffer from ~120 ns inter-rack latency and serialization delay, limiting scaling efficiency for global model synchronization.",
+      "workload_characteristic": "Large-scale model-parallel or pipeline-parallel LLM training requiring frequent cross-rack gradient or KV-cache exchange."
+    },
+
+  
+      "sources": [
+        "NVIDIA Hopper Architecture Whitepaper (2022)",
+        "NVIDIA DGX H100 SuperPod System Guide (2023)",
+        "InfiniBand NDR400 Technical Overview (Mellanox 2023)"
+      ]
+    }
+  }
+  

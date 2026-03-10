@@ -1,0 +1,29 @@
+{
+  "metadata": {
+    "datacenter_id": "dc-001",
+    "total_clusters": 3,
+      "hardware": "Datacenter",
+    "description": "Index for datacenter_1 containing A100, H100, and B100 clusters"
+  },
+  "clusters": [
+    {
+      "id": "cluster-a100",
+      "type": "a100",
+      "name": "A100_SuperPod",
+      "path": "clusters/a100/L0_cluster_a100.json"
+    },
+    {
+      "id": "cluster-h100",
+      "type": "h100",
+      "name": "H100_Hopper_Cluster",
+      "path": "clusters/h100/L0_cluster_h100.json"
+    },
+    {
+      "id": "cluster-b100",
+      "type": "b100",
+      "name": "B100_Blackwell_Cluster",
+      "path": "clusters/b100/L0_cluster_b100.json"
+    }
+  ]
+}
+

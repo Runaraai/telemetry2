@@ -1,0 +1,71 @@
+version: "3.9"
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: omniference
+    ports:
+      - "5432:5432"          # change to 5433:5432 if 5432 is busy on host
+    volumes:
+      - timescaledb-data:/var/lib/postgresql/data
+    healthcheck:
+      # wait until the *database* is accepting connections
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $${POSTGRES_DB} -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    # internal-only; avoids 6379 conflicts on host
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  omniference-backend:
+    build:
+      context: ./backend
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      PYTHONPATH: /app
+      TELEMETRY_DATABASE_URL: postgresql+asyncpg://postgres:password@timescaledb:5432/omniference
+      TELEMETRY_REDIS_URL: redis://redis:6379/0
+      TELEMETRY_CREDENTIAL_SECRET_KEY: ${TELEMETRY_CREDENTIAL_SECRET_KEY:-change-me-please}
+      TELEMETRY_AGENT_IMAGE: ${TELEMETRY_AGENT_IMAGE:-allyin/telemetry-agent:latest}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # Public base URL used when generating manifest links for the agent.
+      # If API_BASE_URL is set in .env, use that; otherwise default to https://omniference.com
+      API_BASE_URL: ${API_BASE_URL:-https://omniference.com}
+    volumes:
+      - ./backend/examples:/app/examples
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        REACT_APP_API_URL: ${FRONTEND_API_URL:-${API_BASE_URL:-}}
+    ports:
+      - "3000:80"
+    depends_on:
+      omniference-backend:
+        condition: service_healthy
+
+volumes:
+  timescaledb-data:

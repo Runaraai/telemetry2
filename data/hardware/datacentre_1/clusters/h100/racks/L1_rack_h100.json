@@ -1,0 +1,54 @@
+{
+    "level": 1,
+    "rack": {
+      "id": "rack-h100-01",
+      "cluster_id": "cluster-h100",
+      "position": { "row": 1, "col": 1 },
+      "rack_units": 42,
+      "nodes_per_rack": 8,
+      "height_m": 2.0,
+      "power_kW": 180,
+      "cooling_type": "liquid",
+      "fabric_connection": {
+        "type": "InfiniBand NDR400",
+        "uplinks": 4,
+        "bandwidth_GBps": 400,
+        "latency_ns": 100
+      },
+      "nodes": [
+        "node-h100-01", "node-h100-02", "node-h100-03", "node-h100-04",
+        "node-h100-05", "node-h100-06", "node-h100-07", "node-h100-08"
+      ],
+      "summary": {
+        "total_nodes": 8,
+        "total_gpus": 64,
+        "total_memory_TB": 5.12,
+        "total_fp8_PFLOPS": 126.7,
+        "total_fp16_PFLOPS": 63.4,
+        "total_fp32_PFLOPS": 3.84,
+        "aggregate_nvlink_bandwidth_TBps": 57.6,
+        "power_utilization_percent": 84
+      },
+      "visualization_hints": {
+        "orientation": "vertical",
+        "spacing": 0.5,
+        "color_map": {
+          "node": "#22c55e",
+          "fabric": "#facc15"
+        },
+        "glow_intensity": 0.35
+      },
+      "bottleneck_analysis": {
+      "bottleneck_type": "network",
+      "bottleneck": "InfiniBand uplink congestion across rack boundaries.",
+      "description": "Each rack’s 64 GPUs share four 400 GB/s uplinks (~1.6 TB/s total). When multiple nodes transmit inter-rack activations or optimizer states simultaneously, uplinks saturate, queuing traffic and delaying collectives.",
+      "workload_characteristic": "MoE (Mixture-of-Experts) or ZeRO-3 distributed training where inter-rack traffic spikes due to expert routing or optimizer state partitioning."
+    },
+
+      "sources": [
+        "NVIDIA Hopper H100 Architecture Whitepaper (2022)",
+        "DGX H100 SuperPod Technical Guide (2023)"
+      ]
+    }
+  }
+  

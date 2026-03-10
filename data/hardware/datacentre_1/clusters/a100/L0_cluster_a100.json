@@ -1,0 +1,94 @@
+{
+    "level": 0,
+    "cluster": {
+      "id": "cluster-a100",
+      "name": "A100_SuperPod_01",
+      "vendor": "NVIDIA",
+      "architecture": "Ampere",
+      "generation": "A100",
+      "hardware_type": "gpu",
+      "description": "NVIDIA DGX A100 SuperPod cluster with 32 racks, liquid-cooled InfiniBand + NVLink3 fabric, scaling to 8 192 GPUs.",
+  
+      "composition": {
+        "racks": 32,
+        "nodes_per_rack": 8,
+        "gpus_per_node": 8,
+        "total_nodes": 256,
+        "total_gpus": 8192
+      },
+  
+      "fabric": {
+        "type": "NVLink 3.0 + InfiniBand HDR",
+        "topology": "fat-tree",
+        "nvlink": {
+          "links_per_gpu": 12,
+          "per_link_bandwidth_GBps": 50,
+          "aggregate_per_gpu_GBps": 600,
+          "latency_ns": 2.0
+        },
+        "nvswitch": {
+          "version": "2.0",
+          "switches_per_node": 6,
+          "aggregate_bandwidth_GBps": 2400
+        },
+        "infiniBand": {
+          "version": "HDR",
+          "ports_per_node": 8,
+          "link_bandwidth_GBps": 25,
+          "bisection_bandwidth_TBps": 25.6,
+          "inter_rack_latency_ns": 150
+        }
+      },
+  
+      "power": {
+        "tdp_W_per_gpu": 400,
+        "total_gpu_power_kW": 3276.8,
+        "cluster_total_kW": 4200,
+        "pue": 1.1,
+        "utilization_percent": 82.5
+      },
+  
+      "cooling": {
+        "type": "liquid",
+        "capacity_kW": 4800,
+        "redundancy": "N+1",
+        "coolant": "dielectric_liquid"
+      },
+  
+      "summary": {
+        "total_racks": 32,
+        "total_nodes": 256,
+        "total_devices": 8192,
+        "total_sms": 884736,
+        "total_tensor_cores": 3538944,
+        "total_memory_TB": 640,
+        "total_bandwidth_TBps": 16700,
+        "peak_fp16_PFLOPS": 2553,
+        "peak_fp32_PFLOPS": 159.0,
+        "peak_int8_POPS": 5126,
+        "aggregate_nvlink_bandwidth_TBps": 4915.2
+      },
+  
+      "visualization_hints": {
+        "layout": { "rows": 4, "cols": 8, "spacing": 10 },
+        "color_map": { "rack": "#3b82f6", "fabric": "#f59e0b", "node": "#10b981" },
+        "cluster_glow": { "color": "#60a5fa", "intensity": 0.35 }
+      },
+
+      "bottleneck_analysis": {
+      "bottleneck_type": "network",
+      "bottleneck": "Inter-rack InfiniBand HDR bandwidth and latency (~150 ns, 25.6 TB/s bisection).",
+      "description": "At large scale, the HDR InfiniBand fabric becomes latency-bound during global collective operations like all-reduce or broadcast. Even though total bandwidth is high, synchronization latency across racks limits end-to-end throughput.",
+      "workload_characteristic": "Large-scale data-parallel or model-parallel LLM training (e.g., GPT-3, LLaMA-65B) performing frequent all-reduce and parameter synchronization across racks, causing cross-pod communication stalls."
+    },
+
+  
+      "sources": [
+        "NVIDIA A100 Tensor Core GPU Architecture Whitepaper (2020)",
+        "NVIDIA DGX A100 System Architecture Guide (2021)",
+        "NVIDIA NVSwitch and NVLink3 Technical Brief (2020)"
+      ]
+
+    }
+  }
+  

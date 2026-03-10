@@ -1,0 +1,50 @@
+[Unit]
+Description=Omniference GPU Telemetry Agent
+Documentation=https://omniference.com/docs/agent
+After=network-online.target docker.service nvidia-persistenced.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+
+# Environment configuration - secrets should be set here or in /etc/omniference/agent.env
+EnvironmentFile=-/etc/omniference/agent.env
+
+# Hardcoded environment
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="HOME=/root"
+
+# Main process
+ExecStart=/usr/local/bin/omniference-agent
+
+# Restart configuration
+Restart=on-failure
+RestartSec=10s
+RestartPreventExitStatus=0
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Security hardening (while still allowing necessary operations)
+NoNewPrivileges=no
+ProtectSystem=false
+ProtectHome=read-only
+PrivateTmp=true
+ReadWritePaths=/var/lib/omniference /var/lock /tmp
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=omniference-agent
+
+# Watchdog (optional)
+WatchdogSec=120s
+
+[Install]
+WantedBy=multi-user.target
+
+

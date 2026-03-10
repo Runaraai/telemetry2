@@ -1,0 +1,1 @@
+1. https://docs.nebius.com/cli/install

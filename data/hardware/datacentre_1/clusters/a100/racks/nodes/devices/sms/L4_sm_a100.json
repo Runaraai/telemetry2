@@ -1,0 +1,88 @@
+{
+    "level": 4,
+    "sm": {
+      "id": "sm-a100-00",
+      "device_id": "gpu-a100-01",
+      "architecture": "Ampere",
+      "description": "A100 SM with 4 Tensor Cores, 64 FP32 cores, and unified L1/shared memory design.",
+  
+      "compute_units": {
+        "tensor_cores": 4,
+        "fp32_cores": 64,
+        "int32_cores": 64,
+        "load_store_units": 32,
+        "special_function_units": 16,
+        "warp_schedulers": 4,
+        "dispatch_units_per_scheduler": 1
+      },
+  
+      "memory": {
+        "l1_cache_KB": 192,
+        "shared_memory_KB": 164,
+        "register_file_KB": 256,
+        "total_registers": 65536,
+        "max_registers_per_thread": 255
+      },
+  
+      "warp_config": {
+        "warp_size": 32,
+        "max_warps": 64,
+        "max_threads": 2048,
+        "max_blocks": 32
+      },
+  
+      "performance": {
+        "clock_hz": 1410000000,
+        "throughput_fp32_ops_per_cycle": 128,
+        "throughput_int32_ops_per_cycle": 64,
+        "throughput_tensor_fp16_ops_per_cycle": 256,
+        "latency_cycles_fp32": 6,
+        "latency_cycles_tensor": 8
+      },
+  
+      "power": {
+        "sm_power_W": 3.65,
+        "thermal_limit_C": 90
+      },
+  
+      "connections": {
+        "l2_partition_id": 0,
+        "crossbar_bandwidth_GBps": 500,
+        "memory_controller_affinity": [0, 1]
+      },
+  
+      "subunits": [
+        { "id": "tc0", "type": "Tensor Core", "precision": ["fp16", "tf32"], "throughput_TFLOPS": 0.78 },
+        { "id": "tc1", "type": "Tensor Core", "precision": ["fp16", "tf32"], "throughput_TFLOPS": 0.78 },
+        { "id": "tc2", "type": "Tensor Core", "precision": ["fp16", "tf32"], "throughput_TFLOPS": 0.78 },
+        { "id": "tc3", "type": "Tensor Core", "precision": ["fp16", "tf32"], "throughput_TFLOPS": 0.78 }
+      ],
+  
+      "visualization_hints": {
+        "grid": { "rows": 2, "cols": 2 },
+        "color_map": {
+          "tensor_core": "#f59e0b",
+          "fp32_core": "#10b981",
+          "l1_shared": "#3b82f6"
+        },
+        "glow_intensity": 0.3
+      },
+  
+      "links_to": {
+        "tensor_core_schema": "L5_tensor_core_a100.json"
+      },
+  
+    "bottleneck_analysis": {
+      "bottleneck_type": "compute",
+      "bottleneck": "Shared-memory and register-file pressure within each SM (164 KB shared + 65 K registers).",
+      "description": "When kernels use many registers or large shared-memory buffers, warp occupancy drops. This leads to fewer active warps per SM and lower throughput, especially in complex fused or parallel kernels.",
+      "workload_characteristic": "Kernels with high thread-level parallelism (e.g., fused GEMM + activation or multi-head attention) leading to register spilling and reduced warp occupancy."
+    },
+
+
+      "sources": [
+        "NVIDIA Ampere Architecture Whitepaper (2020)"
+      ]
+    }
+  }
+  

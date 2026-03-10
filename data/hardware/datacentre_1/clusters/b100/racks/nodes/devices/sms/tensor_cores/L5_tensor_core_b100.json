@@ -1,0 +1,68 @@
+{
+    "level": 5,
+    "tensor_core": {
+      "id": "tc-b100-00",
+      "sm_id": "sm-b100-00",
+      "architecture": "Blackwell",
+      "generation": "5th Gen Tensor Core",
+      "description": "Blackwell Tensor Core supporting FP4, FP8, BF16, FP16, and TF32 precision with adaptive transformer engine.",
+  
+      "supported_precisions": ["fp4", "fp8", "bf16", "fp16", "tf32"],
+      "matrix_dimensions": {
+        "fp4": { "m": 16, "n": 16, "k": 32 },
+        "fp8": { "m": 16, "n": 16, "k": 32 },
+        "fp16": { "m": 16, "n": 16, "k": 16 },
+        "tf32": { "m": 16, "n": 16, "k": 8 }
+      },
+      "operations_per_cycle": {
+        "fp4": 1024,
+        "fp8": 512,
+        "fp16": 256,
+        "tf32": 128
+      },
+      "peak_throughput_TFLOPS": {
+        "fp4": 2.58,
+        "fp8": 1.29,
+        "fp16": 1.0,
+        "tf32": 0.5
+      },
+      "latency_cycles": {
+        "fp4": 5,
+        "fp8": 6,
+        "fp16": 8
+      },
+  
+      "energy": {
+        "energy_per_op_pJ": 0.5,
+        "power_W": 1.2,
+        "efficiency_TFLOPS_per_W": 2.15
+      },
+  
+      "connections": {
+        "shared_memory_bandwidth_GBps": 12000,
+        "l1_to_tc_latency_ns": 0.9
+      },
+  
+      "visualization_hints": {
+        "grid": { "rows": 2, "cols": 2 },
+        "color_map": {
+          "fp4": "#fde047",
+          "fp8": "#fb923c",
+          "tf32": "#f43f5e"
+        },
+        "glow_intensity": 0.4
+      },
+      "bottleneck_analysis": {
+      "bottleneck_type": "compute_precision",
+      "bottleneck": "FP4/FP8 quantization scaling and adaptive Transformer Engine overhead.",
+      "description": "Blackwell’s 5th-gen Tensor Cores dynamically switch between FP4, FP8, and BF16. The on-chip scaling metadata and precision adaptation logic introduce pipeline bubbles when precision boundaries shift between layers, slightly reducing sustained TFLOPS efficiency despite high peak throughput.",
+      "workload_characteristic": "Mixed-precision Transformer workloads with per-layer FP4↔FP8 transitions or adaptive quantization during training and inference."
+    },
+
+  
+      "sources": [
+        "NVIDIA Blackwell Architecture Deep Dive (2024)"
+      ]
+    }
+  }
+  

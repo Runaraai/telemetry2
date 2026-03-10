@@ -1,0 +1,88 @@
+{
+    "level": 4,
+    "sm": {
+      "id": "sm-h100-00",
+      "device_id": "gpu-h100-01",
+      "architecture": "Hopper",
+      "description": "H100 SM with FP8 Transformer Engine, 4 Tensor Cores, and expanded shared memory bandwidth.",
+  
+      "compute_units": {
+        "tensor_cores": 4,
+        "fp32_cores": 64,
+        "int32_cores": 64,
+        "load_store_units": 32,
+        "special_function_units": 32,
+        "warp_schedulers": 4,
+        "dispatch_units_per_scheduler": 1
+      },
+  
+      "memory": {
+        "l1_cache_KB": 256,
+        "shared_memory_KB": 228,
+        "register_file_KB": 256,
+        "total_registers": 65536,
+        "max_registers_per_thread": 255
+      },
+  
+      "warp_config": {
+        "warp_size": 32,
+        "max_warps": 64,
+        "max_threads": 2048,
+        "max_blocks": 32
+      },
+  
+      "performance": {
+        "clock_hz": 1890000000,
+        "throughput_fp32_ops_per_cycle": 128,
+        "throughput_int32_ops_per_cycle": 128,
+        "throughput_tensor_fp8_ops_per_cycle": 512,
+        "latency_cycles_fp32": 5,
+        "latency_cycles_tensor": 6
+      },
+  
+      "power": {
+        "sm_power_W": 4.25,
+        "thermal_limit_C": 90
+      },
+  
+      "connections": {
+        "l2_partition_id": 0,
+        "crossbar_bandwidth_GBps": 1000,
+        "memory_controller_affinity": [0, 1]
+      },
+  
+      "subunits": [
+        { "id": "tc0", "type": "Tensor Core", "precision": ["fp8", "bf16", "tf32"], "throughput_TFLOPS": 1.2 },
+        { "id": "tc1", "type": "Tensor Core", "precision": ["fp8", "bf16", "tf32"], "throughput_TFLOPS": 1.2 },
+        { "id": "tc2", "type": "Tensor Core", "precision": ["fp8", "bf16", "tf32"], "throughput_TFLOPS": 1.2 },
+        { "id": "tc3", "type": "Tensor Core", "precision": ["fp8", "bf16", "tf32"], "throughput_TFLOPS": 1.2 }
+      ],
+  
+      "visualization_hints": {
+        "grid": { "rows": 2, "cols": 2 },
+        "color_map": {
+          "tensor_core": "#facc15",
+          "fp32_core": "#0ea5e9",
+          "l1_shared": "#22c55e"
+        },
+        "glow_intensity": 0.35
+      },
+  
+      "links_to": {
+        "tensor_core_schema": "L5_tensor_core_h100.json"
+      },
+
+      "bottleneck_analysis": {
+      "bottleneck_type": "compute",
+      "bottleneck": "Shared-memory and register bandwidth pressure within SMs.",
+      "description": "Each SM has 228 KB shared memory and 65K registers. High warp occupancy and large fused kernels (e.g., GEMM + activation) increase register pressure, leading to spilling and reduced warp scheduling efficiency.",
+      "workload_characteristic": "Transformer FP8 kernels or fused matrix operations with high thread-level parallelism stressing shared-memory and register usage."
+    },
+
+  
+      "sources": [
+        "NVIDIA Hopper Architecture Technical Brief (2022)"
+      ]
+    }
+  }
+  

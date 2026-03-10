@@ -1,0 +1,7299 @@
+{
+  "model_info": {
+    "name": "LLaMA3_70B",
+    "num_layers": 80,
+    "phase": "prefill",
+    "notes": "70B GQA architecture",
+    "scaling_rule": "linear(0.8\u21921.2) + random(\u00b15%), per-op \u00b110%"
+  },
+  "summary": {
+    "total_flops_g": {
+      "min": 217778.473,
+      "max": 349981.766,
+      "avg": 282994.58,
+      "sum": 22639566.386
+    }
+  },
+  "layers": [
+    {
+      "layer_index": 0,
+      "metrics": {
+        "total_flops_g": 228647.078,
+        "attention_flops_g": 28818.659,
+        "mlp_flops_g": 199828.419,
+        "memory_mb": 15677.462,
+        "scaling_factor": 0.811,
+        "depth_ratio": 0.0
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 349.466,
+          "memory_mb": 529.137
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 2918.185,
+          "memory_mb": 890.849
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3198.368,
+          "memory_mb": 1012.905
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 2833.99,
+          "memory_mb": 644.282
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 6297.045,
+          "memory_mb": 484.934
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 1932.815,
+          "memory_mb": 334.35
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 6532.034,
+          "memory_mb": 822.976
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3116.962,
+          "memory_mb": 486.347
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 786.087,
+          "memory_mb": 948.04
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 6113.65,
+          "memory_mb": 1228.316
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 105779.253,
+          "memory_mb": 790.38
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 78947.021,
+          "memory_mb": 1370.724
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 9842.201,
+          "memory_mb": 557.565
+        }
+      ]
+    },
+    {
+      "layer_index": 1,
+      "metrics": {
+        "total_flops_g": 217778.473,
+        "attention_flops_g": 27448.781,
+        "mlp_flops_g": 190329.692,
+        "memory_mb": 14932.243,
+        "scaling_factor": 0.773,
+        "depth_ratio": 0.013
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 385.678,
+          "memory_mb": 749.394
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3062.129,
+          "memory_mb": 843.472
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 2905.824,
+          "memory_mb": 1025.185
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 2814.838,
+          "memory_mb": 710.805
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 6918.711,
+          "memory_mb": 760.439
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 1933.513,
+          "memory_mb": 729.703
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 6756.652,
+          "memory_mb": 332.858
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 2727.923,
+          "memory_mb": 514.705
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 660.617,
+          "memory_mb": 472.449
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 5829.109,
+          "memory_mb": 697.013
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 97597.663,
+          "memory_mb": 774.833
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 77126.734,
+          "memory_mb": 635.672
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 9059.082,
+          "memory_mb": 1287.149
+        }
+      ]
+    },
+    {
+      "layer_index": 2,
+      "metrics": {
+        "total_flops_g": 231737.928,
+        "attention_flops_g": 29208.23,
+        "mlp_flops_g": 202529.698,
+        "memory_mb": 15889.39,
+        "scaling_factor": 0.822,
+        "depth_ratio": 0.025
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 399.203,
+          "memory_mb": 453.752
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3268.632,
+          "memory_mb": 447.606
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3050.058,
+          "memory_mb": 1103.934
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3212.92,
+          "memory_mb": 760.267
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7291.818,
+          "memory_mb": 987.408
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2061.207,
+          "memory_mb": 499.76
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 6374.1,
+          "memory_mb": 568.406
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 2980.228,
+          "memory_mb": 485.407
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 850.566,
+          "memory_mb": 1014.035
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 6608.302,
+          "memory_mb": 1101.553
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 100791.217,
+          "memory_mb": 1348.578
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 85077.325,
+          "memory_mb": 729.209
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 9772.351,
+          "memory_mb": 1011.87
+        }
+      ]
+    },
+    {
+      "layer_index": 3,
+      "metrics": {
+        "total_flops_g": 224332.83,
+        "attention_flops_g": 28274.892,
+        "mlp_flops_g": 196057.938,
+        "memory_mb": 15381.651,
+        "scaling_factor": 0.796,
+        "depth_ratio": 0.038
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 382.219,
+          "memory_mb": 998.133
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 2946.385,
+          "memory_mb": 476.309
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3306.091,
+          "memory_mb": 699.501
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 2760.866,
+          "memory_mb": 343.869
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 6237.306,
+          "memory_mb": 790.191
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 1989.084,
+          "memory_mb": 632.309
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 6174.898,
+          "memory_mb": 601.13
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3305.24,
+          "memory_mb": 714.566
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 822.545,
+          "memory_mb": 969.644
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 5957.329,
+          "memory_mb": 1126.603
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 102635.326,
+          "memory_mb": 957.019
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 78681.334,
+          "memory_mb": 1052.993
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 9134.207,
+          "memory_mb": 862.694
+        }
+      ]
+    },
+    {
+      "layer_index": 4,
+      "metrics": {
+        "total_flops_g": 230141.935,
+        "attention_flops_g": 29007.071,
+        "mlp_flops_g": 201134.864,
+        "memory_mb": 15779.959,
+        "scaling_factor": 0.816,
+        "depth_ratio": 0.051
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 414.944,
+          "memory_mb": 1006.645
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 2899.309,
+          "memory_mb": 710.561
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 2847.733,
+          "memory_mb": 1035.661
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3268.848,
+          "memory_mb": 551.072
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7037.775,
+          "memory_mb": 796.075
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 1770.013,
+          "memory_mb": 917.219
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 6901.413,
+          "memory_mb": 929.934
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3061.801,
+          "memory_mb": 316.05
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 734.074,
+          "memory_mb": 330.966
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7255.913,
+          "memory_mb": 1305.37
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 106885.428,
+          "memory_mb": 764.552
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 76145.028,
+          "memory_mb": 1304.696
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 10919.655,
+          "memory_mb": 554.495
+        }
+      ]
+    },
+    {
+      "layer_index": 5,
+      "metrics": {
+        "total_flops_g": 232313.215,
+        "attention_flops_g": 29280.739,
+        "mlp_flops_g": 203032.477,
+        "memory_mb": 15928.836,
+        "scaling_factor": 0.824,
+        "depth_ratio": 0.063
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 367.053,
+          "memory_mb": 924.352
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3384.11,
+          "memory_mb": 420.833
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3197.385,
+          "memory_mb": 756.463
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3062.283,
+          "memory_mb": 1013.419
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7118.718,
+          "memory_mb": 487.262
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2024.077,
+          "memory_mb": 899.924
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 6797.732,
+          "memory_mb": 566.841
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3531.48,
+          "memory_mb": 836.167
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 793.372,
+          "memory_mb": 730.796
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 6520.779,
+          "memory_mb": 692.615
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 102406.587,
+          "memory_mb": 1040.129
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 83434.329,
+          "memory_mb": 688.333
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 9675.31,
+          "memory_mb": 1081.029
+        }
+      ]
+    },
+    {
+      "layer_index": 6,
+      "metrics": {
+        "total_flops_g": 227721.805,
+        "attention_flops_g": 28702.038,
+        "mlp_flops_g": 199019.767,
+        "memory_mb": 15614.02,
+        "scaling_factor": 0.808,
+        "depth_ratio": 0.076
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 430.074,
+          "memory_mb": 983.399
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 2909.39,
+          "memory_mb": 498.091
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3290.1,
+          "memory_mb": 479.535
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 2948.507,
+          "memory_mb": 1042.637
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7262.467,
+          "memory_mb": 681.295
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2102.317,
+          "memory_mb": 942.694
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 6717.346,
+          "memory_mb": 387.954
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3138.658,
+          "memory_mb": 642.969
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 790.388,
+          "memory_mb": 881.471
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7230.416,
+          "memory_mb": 1390.427
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 96402.853,
+          "memory_mb": 845.613
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 84544.039,
+          "memory_mb": 1275.671
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 9955.251,
+          "memory_mb": 646.616
+        }
+      ]
+    },
+    {
+      "layer_index": 7,
+      "metrics": {
+        "total_flops_g": 234283.482,
+        "attention_flops_g": 29529.071,
+        "mlp_flops_g": 204754.411,
+        "memory_mb": 16063.929,
+        "scaling_factor": 0.831,
+        "depth_ratio": 0.089
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 388.482,
+          "memory_mb": 545.005
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 2999.202,
+          "memory_mb": 1062.842
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3121.274,
+          "memory_mb": 1013.111
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3188.961,
+          "memory_mb": 361.911
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7813.009,
+          "memory_mb": 992.773
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2158.328,
+          "memory_mb": 1065.333
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7599.066,
+          "memory_mb": 454.859
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3148.117,
+          "memory_mb": 492.96
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 773.674,
+          "memory_mb": 368.374
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 6764.63,
+          "memory_mb": 1431.594
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 99103.342,
+          "memory_mb": 1237.633
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 85875.65,
+          "memory_mb": 889.628
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11349.746,
+          "memory_mb": 1441.342
+        }
+      ]
+    },
+    {
+      "layer_index": 8,
+      "metrics": {
+        "total_flops_g": 238242.102,
+        "attention_flops_g": 30028.015,
+        "mlp_flops_g": 208214.086,
+        "memory_mb": 16335.357,
+        "scaling_factor": 0.845,
+        "depth_ratio": 0.101
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 417.139,
+          "memory_mb": 453.14
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3067.44,
+          "memory_mb": 1117.918
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3248.078,
+          "memory_mb": 769.555
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3356.02,
+          "memory_mb": 373.398
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7315.366,
+          "memory_mb": 737.419
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2139.377,
+          "memory_mb": 455.293
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7857.238,
+          "memory_mb": 392.14
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 2996.532,
+          "memory_mb": 812.713
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 827.372,
+          "memory_mb": 518.814
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 6487.09,
+          "memory_mb": 1362.65
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 99967.157,
+          "memory_mb": 1072.762
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 89855.808,
+          "memory_mb": 900.952
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 10707.485,
+          "memory_mb": 1002.451
+        }
+      ]
+    },
+    {
+      "layer_index": 9,
+      "metrics": {
+        "total_flops_g": 248709.208,
+        "attention_flops_g": 31347.288,
+        "mlp_flops_g": 217361.919,
+        "memory_mb": 17053.047,
+        "scaling_factor": 0.882,
+        "depth_ratio": 0.114
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 375.882,
+          "memory_mb": 951.724
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3029.061,
+          "memory_mb": 678.529
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3305.845,
+          "memory_mb": 596.854
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3078.595,
+          "memory_mb": 982.14
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 6576.433,
+          "memory_mb": 731.819
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2196.7,
+          "memory_mb": 1190.385
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 6577.465,
+          "memory_mb": 522.807
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3046.009,
+          "memory_mb": 1136.807
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 859.889,
+          "memory_mb": 1090.773
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 6834.751,
+          "memory_mb": 672.995
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 112294.737,
+          "memory_mb": 1231.441
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 89682.846,
+          "memory_mb": 1521.711
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 10850.995,
+          "memory_mb": 519.596
+        }
+      ]
+    },
+    {
+      "layer_index": 10,
+      "metrics": {
+        "total_flops_g": 247378.676,
+        "attention_flops_g": 31179.588,
+        "mlp_flops_g": 216199.087,
+        "memory_mb": 16961.817,
+        "scaling_factor": 0.878,
+        "depth_ratio": 0.127
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 391.736,
+          "memory_mb": 901.85
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3551.508,
+          "memory_mb": 453.127
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3013.779,
+          "memory_mb": 430.013
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3299.65,
+          "memory_mb": 570.212
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7500.032,
+          "memory_mb": 947.837
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 1919.594,
+          "memory_mb": 877.128
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 6999.261,
+          "memory_mb": 753.556
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3529.573,
+          "memory_mb": 1056.809
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 749.668,
+          "memory_mb": 698.467
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 6848.75,
+          "memory_mb": 512.463
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 113365.079,
+          "memory_mb": 1157.251
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 85345.479,
+          "memory_mb": 1263.212
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 10864.564,
+          "memory_mb": 944.115
+        }
+      ]
+    },
+    {
+      "layer_index": 11,
+      "metrics": {
+        "total_flops_g": 229375.645,
+        "attention_flops_g": 28910.488,
+        "mlp_flops_g": 200465.157,
+        "memory_mb": 15727.418,
+        "scaling_factor": 0.814,
+        "depth_ratio": 0.139
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 347.854,
+          "memory_mb": 1008.997
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3286.86,
+          "memory_mb": 743.585
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3244.689,
+          "memory_mb": 772.617
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 2827.134,
+          "memory_mb": 414.768
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 6580.243,
+          "memory_mb": 1021.481
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2013.305,
+          "memory_mb": 991.38
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7388.588,
+          "memory_mb": 479.746
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 2888.832,
+          "memory_mb": 395.382
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 802.888,
+          "memory_mb": 1009.806
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 6552.671,
+          "memory_mb": 1057.507
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 93245.255,
+          "memory_mb": 1349.3
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 89558.187,
+          "memory_mb": 1393.015
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 10639.136,
+          "memory_mb": 1303.567
+        }
+      ]
+    },
+    {
+      "layer_index": 12,
+      "metrics": {
+        "total_flops_g": 231099.672,
+        "attention_flops_g": 29127.784,
+        "mlp_flops_g": 201971.888,
+        "memory_mb": 15845.628,
+        "scaling_factor": 0.82,
+        "depth_ratio": 0.152
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 395.809,
+          "memory_mb": 580.097
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3283.935,
+          "memory_mb": 952.509
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3243.572,
+          "memory_mb": 959.254
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 2882.418,
+          "memory_mb": 940.735
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 6269.509,
+          "memory_mb": 1007.914
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2025.165,
+          "memory_mb": 493.143
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7233.441,
+          "memory_mb": 681.602
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 2905.629,
+          "memory_mb": 947.05
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 714.677,
+          "memory_mb": 335.661
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 6231.29,
+          "memory_mb": 787.46
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 106837.56,
+          "memory_mb": 1394.627
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 79318.366,
+          "memory_mb": 1085.25
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 9758.301,
+          "memory_mb": 1408.185
+        }
+      ]
+    },
+    {
+      "layer_index": 13,
+      "metrics": {
+        "total_flops_g": 244940.874,
+        "attention_flops_g": 30872.328,
+        "mlp_flops_g": 214068.546,
+        "memory_mb": 16794.666,
+        "scaling_factor": 0.869,
+        "depth_ratio": 0.165
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 435.639,
+          "memory_mb": 432.75
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3505.078,
+          "memory_mb": 485.843
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3500.037,
+          "memory_mb": 558.814
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 2952.765,
+          "memory_mb": 700.811
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7537.752,
+          "memory_mb": 599.299
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2044.83,
+          "memory_mb": 765.352
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7042.761,
+          "memory_mb": 820.074
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3046.517,
+          "memory_mb": 931.084
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 721.098,
+          "memory_mb": 1113.13
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7088.616,
+          "memory_mb": 1228.795
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 110623.773,
+          "memory_mb": 1179.619
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 85543.631,
+          "memory_mb": 574.351
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 10898.377,
+          "memory_mb": 836.576
+        }
+      ]
+    },
+    {
+      "layer_index": 14,
+      "metrics": {
+        "total_flops_g": 240916.16,
+        "attention_flops_g": 30365.053,
+        "mlp_flops_g": 210551.107,
+        "memory_mb": 16518.707,
+        "scaling_factor": 0.855,
+        "depth_ratio": 0.177
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 436.357,
+          "memory_mb": 924.845
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3133.36,
+          "memory_mb": 585.823
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3203.901,
+          "memory_mb": 662.731
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3130.313,
+          "memory_mb": 435.506
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7226.481,
+          "memory_mb": 1107.054
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2112.15,
+          "memory_mb": 1076.033
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7512.97,
+          "memory_mb": 578.939
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3294.987,
+          "memory_mb": 330.709
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 781.152,
+          "memory_mb": 685.434
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7280.95,
+          "memory_mb": 1144.455
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 106741.949,
+          "memory_mb": 933.796
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 84449.626,
+          "memory_mb": 964.547
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11611.963,
+          "memory_mb": 1284.519
+        }
+      ]
+    },
+    {
+      "layer_index": 15,
+      "metrics": {
+        "total_flops_g": 238755.773,
+        "attention_flops_g": 30092.758,
+        "mlp_flops_g": 208663.015,
+        "memory_mb": 16370.577,
+        "scaling_factor": 0.847,
+        "depth_ratio": 0.19
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 352.706,
+          "memory_mb": 749.324
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3158.997,
+          "memory_mb": 601.773
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3273.15,
+          "memory_mb": 942.24
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3183.525,
+          "memory_mb": 511.286
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 6507.032,
+          "memory_mb": 347.404
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 1825.092,
+          "memory_mb": 716.324
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7407.95,
+          "memory_mb": 387.024
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3024.524,
+          "memory_mb": 842.893
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 722.281,
+          "memory_mb": 897.398
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 6749.167,
+          "memory_mb": 730.767
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 104514.822,
+          "memory_mb": 496.564
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 88698.837,
+          "memory_mb": 1247.483
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 9337.689,
+          "memory_mb": 908.711
+        }
+      ]
+    },
+    {
+      "layer_index": 16,
+      "metrics": {
+        "total_flops_g": 240289.717,
+        "attention_flops_g": 30286.097,
+        "mlp_flops_g": 210003.621,
+        "memory_mb": 16475.754,
+        "scaling_factor": 0.852,
+        "depth_ratio": 0.203
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 436.904,
+          "memory_mb": 756.202
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 2913.919,
+          "memory_mb": 534.802
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3425.027,
+          "memory_mb": 705.543
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3394.98,
+          "memory_mb": 879.457
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7907.395,
+          "memory_mb": 820.041
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2181.348,
+          "memory_mb": 1063.861
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7366.718,
+          "memory_mb": 922.044
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3205.016,
+          "memory_mb": 1013.728
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 808.153,
+          "memory_mb": 1068.624
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7373.357,
+          "memory_mb": 963.51
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 100381.938,
+          "memory_mb": 738.68
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 90303.924,
+          "memory_mb": 1251.314
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 10591.038,
+          "memory_mb": 1113.842
+        }
+      ]
+    },
+    {
+      "layer_index": 17,
+      "metrics": {
+        "total_flops_g": 244136.151,
+        "attention_flops_g": 30770.901,
+        "mlp_flops_g": 213365.25,
+        "memory_mb": 16739.489,
+        "scaling_factor": 0.866,
+        "depth_ratio": 0.215
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 377.083,
+          "memory_mb": 573.937
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3144.665,
+          "memory_mb": 602.379
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3321.571,
+          "memory_mb": 450.605
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3118.005,
+          "memory_mb": 915.608
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7720.075,
+          "memory_mb": 388.548
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2021.385,
+          "memory_mb": 788.941
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7289.107,
+          "memory_mb": 507.905
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3242.482,
+          "memory_mb": 1092.116
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 837.63,
+          "memory_mb": 916.925
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7751.498,
+          "memory_mb": 1271.124
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 105932.866,
+          "memory_mb": 508.107
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 87759.663,
+          "memory_mb": 1258.952
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11620.119,
+          "memory_mb": 1459.781
+        }
+      ]
+    },
+    {
+      "layer_index": 18,
+      "metrics": {
+        "total_flops_g": 249159.043,
+        "attention_flops_g": 31403.986,
+        "mlp_flops_g": 217755.057,
+        "memory_mb": 17083.89,
+        "scaling_factor": 0.884,
+        "depth_ratio": 0.228
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 441.343,
+          "memory_mb": 808.181
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3433.671,
+          "memory_mb": 530.061
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3175.414,
+          "memory_mb": 713.966
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3047.308,
+          "memory_mb": 628.798
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7840.647,
+          "memory_mb": 687.043
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 1961.767,
+          "memory_mb": 740.92
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7005.716,
+          "memory_mb": 873.206
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3045.923,
+          "memory_mb": 678.248
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 851.881,
+          "memory_mb": 364.828
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7597.887,
+          "memory_mb": 651.613
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 109956.024,
+          "memory_mb": 564.06
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 90104.707,
+          "memory_mb": 729.476
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 10696.756,
+          "memory_mb": 1292.803
+        }
+      ]
+    },
+    {
+      "layer_index": 19,
+      "metrics": {
+        "total_flops_g": 249566.889,
+        "attention_flops_g": 31455.391,
+        "mlp_flops_g": 218111.498,
+        "memory_mb": 17111.855,
+        "scaling_factor": 0.885,
+        "depth_ratio": 0.241
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 435.808,
+          "memory_mb": 1054.025
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3154.721,
+          "memory_mb": 412.315
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3000.122,
+          "memory_mb": 803.76
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3651.028,
+          "memory_mb": 641.661
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7692.396,
+          "memory_mb": 1010.654
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2137.445,
+          "memory_mb": 987.554
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8139.689,
+          "memory_mb": 512.809
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3000.783,
+          "memory_mb": 472.614
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 767.762,
+          "memory_mb": 915.021
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7381.365,
+          "memory_mb": 737.142
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 113682.988,
+          "memory_mb": 1300.739
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 85048.529,
+          "memory_mb": 1136.823
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11474.255,
+          "memory_mb": 630.948
+        }
+      ]
+    },
+    {
+      "layer_index": 20,
+      "metrics": {
+        "total_flops_g": 262159.412,
+        "attention_flops_g": 33042.551,
+        "mlp_flops_g": 229116.861,
+        "memory_mb": 17975.276,
+        "scaling_factor": 0.93,
+        "depth_ratio": 0.253
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 485.85,
+          "memory_mb": 456.661
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3218.904,
+          "memory_mb": 639.881
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3682.406,
+          "memory_mb": 1220.677
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3482.762,
+          "memory_mb": 1002.135
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7323.059,
+          "memory_mb": 980.205
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2279.23,
+          "memory_mb": 451.091
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8437.657,
+          "memory_mb": 1123.718
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3627.685,
+          "memory_mb": 468.305
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 975.1,
+          "memory_mb": 1062.91
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7570.097,
+          "memory_mb": 1001.271
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 114098.857,
+          "memory_mb": 1084.945
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 94509.617,
+          "memory_mb": 1455.54
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 12468.187,
+          "memory_mb": 653.084
+        }
+      ]
+    },
+    {
+      "layer_index": 21,
+      "metrics": {
+        "total_flops_g": 267246.84,
+        "attention_flops_g": 33683.77,
+        "mlp_flops_g": 233563.07,
+        "memory_mb": 18324.102,
+        "scaling_factor": 0.948,
+        "depth_ratio": 0.266
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 449.501,
+          "memory_mb": 1125.748
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3646.227,
+          "memory_mb": 765.478
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3664.774,
+          "memory_mb": 1251.054
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3340.076,
+          "memory_mb": 1106.958
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7937.543,
+          "memory_mb": 809.465
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2159.973,
+          "memory_mb": 1036.252
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7512.513,
+          "memory_mb": 1146.826
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3732.65,
+          "memory_mb": 445.883
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 942.073,
+          "memory_mb": 589.911
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7633.26,
+          "memory_mb": 1220.75
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 112521.994,
+          "memory_mb": 581.277
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 102838.901,
+          "memory_mb": 749.646
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 10867.356,
+          "memory_mb": 1426.897
+        }
+      ]
+    },
+    {
+      "layer_index": 22,
+      "metrics": {
+        "total_flops_g": 252800.38,
+        "attention_flops_g": 31862.94,
+        "mlp_flops_g": 220937.441,
+        "memory_mb": 17333.563,
+        "scaling_factor": 0.897,
+        "depth_ratio": 0.278
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 458.951,
+          "memory_mb": 954.372
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3259.396,
+          "memory_mb": 355.469
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3717.837,
+          "memory_mb": 420.87
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3562.255,
+          "memory_mb": 770.111
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8073.559,
+          "memory_mb": 945.207
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2194.775,
+          "memory_mb": 772.055
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8126.943,
+          "memory_mb": 427.319
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3222.087,
+          "memory_mb": 946.228
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 819.956,
+          "memory_mb": 850.693
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7452.043,
+          "memory_mb": 1072.173
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 110707.255,
+          "memory_mb": 1295.79
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 90482.054,
+          "memory_mb": 1250.986
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 10723.27,
+          "memory_mb": 781.47
+        }
+      ]
+    },
+    {
+      "layer_index": 23,
+      "metrics": {
+        "total_flops_g": 248529.771,
+        "attention_flops_g": 31324.672,
+        "mlp_flops_g": 217205.099,
+        "memory_mb": 17040.743,
+        "scaling_factor": 0.882,
+        "depth_ratio": 0.291
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 368.736,
+          "memory_mb": 442.68
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3165.687,
+          "memory_mb": 990.229
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 2945.218,
+          "memory_mb": 525.183
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3133.208,
+          "memory_mb": 958.188
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7746.189,
+          "memory_mb": 787.825
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 1879.205,
+          "memory_mb": 426.467
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 6639.425,
+          "memory_mb": 534.639
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 2941.63,
+          "memory_mb": 352.87
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 791.15,
+          "memory_mb": 574.538
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7556.279,
+          "memory_mb": 1077.001
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 107611.497,
+          "memory_mb": 640.336
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 92627.437,
+          "memory_mb": 1013.119
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11124.109,
+          "memory_mb": 1098.171
+        }
+      ]
+    },
+    {
+      "layer_index": 24,
+      "metrics": {
+        "total_flops_g": 258961.642,
+        "attention_flops_g": 32639.505,
+        "mlp_flops_g": 226322.138,
+        "memory_mb": 17756.017,
+        "scaling_factor": 0.919,
+        "depth_ratio": 0.304
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 418.02,
+          "memory_mb": 518.799
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3080.786,
+          "memory_mb": 1190.597
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3369.38,
+          "memory_mb": 1084.995
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3317.245,
+          "memory_mb": 420.891
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7812.171,
+          "memory_mb": 402.715
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 1966.875,
+          "memory_mb": 854.81
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7316.265,
+          "memory_mb": 1237.522
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3126.188,
+          "memory_mb": 1033.794
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 864.105,
+          "memory_mb": 1057.141
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7023.758,
+          "memory_mb": 1089.409
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 110368.77,
+          "memory_mb": 1004.338
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 99584.768,
+          "memory_mb": 1587.421
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 10713.309,
+          "memory_mb": 1194.299
+        }
+      ]
+    },
+    {
+      "layer_index": 25,
+      "metrics": {
+        "total_flops_g": 264047.193,
+        "attention_flops_g": 33280.487,
+        "mlp_flops_g": 230766.706,
+        "memory_mb": 18104.714,
+        "scaling_factor": 0.937,
+        "depth_ratio": 0.316
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 455.868,
+          "memory_mb": 1219.887
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3276.48,
+          "memory_mb": 553.122
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3591.504,
+          "memory_mb": 504.268
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3252.834,
+          "memory_mb": 430.046
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7050.888,
+          "memory_mb": 769.906
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2215.713,
+          "memory_mb": 625.753
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7409.174,
+          "memory_mb": 1002.056
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3621.124,
+          "memory_mb": 773.1
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 902.567,
+          "memory_mb": 1198.452
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8080.789,
+          "memory_mb": 1222.131
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 118308.776,
+          "memory_mb": 1557.369
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 94081.654,
+          "memory_mb": 1134.69
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11799.821,
+          "memory_mb": 1529.933
+        }
+      ]
+    },
+    {
+      "layer_index": 26,
+      "metrics": {
+        "total_flops_g": 271188.74,
+        "attention_flops_g": 34180.607,
+        "mlp_flops_g": 237008.133,
+        "memory_mb": 18594.383,
+        "scaling_factor": 0.962,
+        "depth_ratio": 0.329
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 395.185,
+          "memory_mb": 526.149
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3324.831,
+          "memory_mb": 1068.208
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3505.743,
+          "memory_mb": 640.214
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3198.094,
+          "memory_mb": 1012.165
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8091.029,
+          "memory_mb": 1248.312
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2161.38,
+          "memory_mb": 830.979
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7127.381,
+          "memory_mb": 408.947
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3410.874,
+          "memory_mb": 671.556
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 821.31,
+          "memory_mb": 456.796
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8294.125,
+          "memory_mb": 1490.48
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 115603.316,
+          "memory_mb": 1618.589
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 104391.439,
+          "memory_mb": 1307.871
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 10864.033,
+          "memory_mb": 602.716
+        }
+      ]
+    },
+    {
+      "layer_index": 27,
+      "metrics": {
+        "total_flops_g": 270804.757,
+        "attention_flops_g": 34132.21,
+        "mlp_flops_g": 236672.547,
+        "memory_mb": 18568.055,
+        "scaling_factor": 0.961,
+        "depth_ratio": 0.342
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 455.16,
+          "memory_mb": 976.224
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3967.698,
+          "memory_mb": 539.856
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3725.403,
+          "memory_mb": 960.697
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3656.831,
+          "memory_mb": 456.071
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7990.902,
+          "memory_mb": 680.806
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2367.205,
+          "memory_mb": 1167.683
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7960.973,
+          "memory_mb": 1015.37
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3507.745,
+          "memory_mb": 1248.881
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 973.151,
+          "memory_mb": 882.072
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7970.184,
+          "memory_mb": 907.44
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 116378.605,
+          "memory_mb": 1637.908
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 98608.863,
+          "memory_mb": 1130.345
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13242.037,
+          "memory_mb": 1289.73
+        }
+      ]
+    },
+    {
+      "layer_index": 28,
+      "metrics": {
+        "total_flops_g": 266596.226,
+        "attention_flops_g": 33601.767,
+        "mlp_flops_g": 232994.459,
+        "memory_mb": 18279.492,
+        "scaling_factor": 0.946,
+        "depth_ratio": 0.354
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 430.137,
+          "memory_mb": 537.036
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3405.051,
+          "memory_mb": 1056.96
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3589.689,
+          "memory_mb": 1060.202
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3294.238,
+          "memory_mb": 867.563
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8553.119,
+          "memory_mb": 766.017
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2275.441,
+          "memory_mb": 476.57
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8624.778,
+          "memory_mb": 922.083
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3319.268,
+          "memory_mb": 510.343
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 884.366,
+          "memory_mb": 870.334
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7063.67,
+          "memory_mb": 1636.662
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 124864.168,
+          "memory_mb": 1054.487
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 88762.168,
+          "memory_mb": 1461.054
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11530.133,
+          "memory_mb": 1334.333
+        }
+      ]
+    },
+    {
+      "layer_index": 29,
+      "metrics": {
+        "total_flops_g": 267129.534,
+        "attention_flops_g": 33668.985,
+        "mlp_flops_g": 233460.549,
+        "memory_mb": 18316.058,
+        "scaling_factor": 0.948,
+        "depth_ratio": 0.367
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 420.173,
+          "memory_mb": 1130.764
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3859.112,
+          "memory_mb": 589.531
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3557.03,
+          "memory_mb": 717.61
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3818.004,
+          "memory_mb": 831.77
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8523.104,
+          "memory_mb": 1157.6
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2102.104,
+          "memory_mb": 1089.811
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7787.326,
+          "memory_mb": 1221.909
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3526.379,
+          "memory_mb": 1117.783
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 842.002,
+          "memory_mb": 639.739
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7865.561,
+          "memory_mb": 1647.239
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 115726.753,
+          "memory_mb": 712.783
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 97384.869,
+          "memory_mb": 928.76
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11717.117,
+          "memory_mb": 1146.692
+        }
+      ]
+    },
+    {
+      "layer_index": 30,
+      "metrics": {
+        "total_flops_g": 267121.787,
+        "attention_flops_g": 33668.009,
+        "mlp_flops_g": 233453.779,
+        "memory_mb": 18315.527,
+        "scaling_factor": 0.948,
+        "depth_ratio": 0.38
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 429.572,
+          "memory_mb": 539.074
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3704.359,
+          "memory_mb": 889.949
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3373.703,
+          "memory_mb": 1076.536
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3238.346,
+          "memory_mb": 1048.294
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8347.203,
+          "memory_mb": 1109.38
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2176.502,
+          "memory_mb": 974.101
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8532.452,
+          "memory_mb": 1264.521
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3560.269,
+          "memory_mb": 400.212
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 891.307,
+          "memory_mb": 906.784
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8403.391,
+          "memory_mb": 1510.141
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 115971.061,
+          "memory_mb": 1127.45
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 96967.709,
+          "memory_mb": 1343.382
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11525.914,
+          "memory_mb": 1269.026
+        }
+      ]
+    },
+    {
+      "layer_index": 31,
+      "metrics": {
+        "total_flops_g": 260423.705,
+        "attention_flops_g": 32823.783,
+        "mlp_flops_g": 227599.922,
+        "memory_mb": 17856.265,
+        "scaling_factor": 0.924,
+        "depth_ratio": 0.392
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 430.518,
+          "memory_mb": 1222.443
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3353.397,
+          "memory_mb": 975.581
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3569.129,
+          "memory_mb": 1117.593
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3709.476,
+          "memory_mb": 1124.357
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7609.777,
+          "memory_mb": 639.845
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2260.542,
+          "memory_mb": 1035.129
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8377.574,
+          "memory_mb": 389.176
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3166.174,
+          "memory_mb": 920.634
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 939.253,
+          "memory_mb": 1247.64
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7984.474,
+          "memory_mb": 1000.635
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 104967.94,
+          "memory_mb": 1214.67
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 102199.186,
+          "memory_mb": 1011.034
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11856.265,
+          "memory_mb": 1503.595
+        }
+      ]
+    },
+    {
+      "layer_index": 32,
+      "metrics": {
+        "total_flops_g": 258862.884,
+        "attention_flops_g": 32627.057,
+        "mlp_flops_g": 226235.827,
+        "memory_mb": 17749.246,
+        "scaling_factor": 0.918,
+        "depth_ratio": 0.405
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 448.307,
+          "memory_mb": 615.338
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3301.158,
+          "memory_mb": 484.173
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3407.019,
+          "memory_mb": 857.225
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3584.002,
+          "memory_mb": 505.839
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 6976.796,
+          "memory_mb": 1127.822
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2166.862,
+          "memory_mb": 568.712
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8247.317,
+          "memory_mb": 481.996
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3359.604,
+          "memory_mb": 580.38
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 805.056,
+          "memory_mb": 363.325
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7887.639,
+          "memory_mb": 1492.225
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 115481.479,
+          "memory_mb": 700.714
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 91850.32,
+          "memory_mb": 900.489
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11347.325,
+          "memory_mb": 1212.918
+        }
+      ]
+    },
+    {
+      "layer_index": 33,
+      "metrics": {
+        "total_flops_g": 270538.331,
+        "attention_flops_g": 34098.629,
+        "mlp_flops_g": 236439.702,
+        "memory_mb": 18549.787,
+        "scaling_factor": 0.96,
+        "depth_ratio": 0.418
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 429.622,
+          "memory_mb": 1155.006
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3400.155,
+          "memory_mb": 727.795
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3605.639,
+          "memory_mb": 591.001
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3669.828,
+          "memory_mb": 904.128
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8942.13,
+          "memory_mb": 644.819
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2477.255,
+          "memory_mb": 981.497
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7772.877,
+          "memory_mb": 895.889
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3752.226,
+          "memory_mb": 1061.668
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 822.874,
+          "memory_mb": 933.431
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7938.614,
+          "memory_mb": 1562.807
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 114061.892,
+          "memory_mb": 1445.615
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 101423.921,
+          "memory_mb": 948.622
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 12241.299,
+          "memory_mb": 1247.538
+        }
+      ]
+    },
+    {
+      "layer_index": 34,
+      "metrics": {
+        "total_flops_g": 278900.177,
+        "attention_flops_g": 35152.556,
+        "mlp_flops_g": 243747.621,
+        "memory_mb": 19123.127,
+        "scaling_factor": 0.989,
+        "depth_ratio": 0.43
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 490.751,
+          "memory_mb": 1012.743
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4014.299,
+          "memory_mb": 983.166
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4063.227,
+          "memory_mb": 1000.465
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3616.2,
+          "memory_mb": 803.958
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8594.358,
+          "memory_mb": 1082.713
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2157.292,
+          "memory_mb": 664.634
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8878.448,
+          "memory_mb": 550.402
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3483.27,
+          "memory_mb": 898.221
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1028.606,
+          "memory_mb": 890.04
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8938.54,
+          "memory_mb": 1526.568
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 117817.878,
+          "memory_mb": 1519.933
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 102822.932,
+          "memory_mb": 1499.049
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 12994.374,
+          "memory_mb": 962.331
+        }
+      ]
+    },
+    {
+      "layer_index": 35,
+      "metrics": {
+        "total_flops_g": 264855.763,
+        "attention_flops_g": 33382.399,
+        "mlp_flops_g": 231473.364,
+        "memory_mb": 18160.155,
+        "scaling_factor": 0.94,
+        "depth_ratio": 0.443
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 499.766,
+          "memory_mb": 491.012
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4000.76,
+          "memory_mb": 1144.217
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3823.44,
+          "memory_mb": 1252.998
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4001.324,
+          "memory_mb": 1093.775
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8012.494,
+          "memory_mb": 1081.148
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2064.747,
+          "memory_mb": 850.415
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8159.069,
+          "memory_mb": 974.136
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3785.475,
+          "memory_mb": 893.988
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 973.828,
+          "memory_mb": 1216.995
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7405.666,
+          "memory_mb": 799.579
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 109076.505,
+          "memory_mb": 1508.275
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 101671.753,
+          "memory_mb": 1542.076
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11380.937,
+          "memory_mb": 613.687
+        }
+      ]
+    },
+    {
+      "layer_index": 36,
+      "metrics": {
+        "total_flops_g": 285850.401,
+        "attention_flops_g": 36028.561,
+        "mlp_flops_g": 249821.839,
+        "memory_mb": 19599.677,
+        "scaling_factor": 1.014,
+        "depth_ratio": 0.456
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 534.575,
+          "memory_mb": 688.135
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3880.444,
+          "memory_mb": 528.973
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4305.754,
+          "memory_mb": 690.266
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3947.114,
+          "memory_mb": 487.24
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9582.991,
+          "memory_mb": 524.942
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2447.684,
+          "memory_mb": 1049.059
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9326.628,
+          "memory_mb": 1319.033
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3889.007,
+          "memory_mb": 1119.405
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 919.953,
+          "memory_mb": 798.574
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7983.659,
+          "memory_mb": 1163.453
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 127803.456,
+          "memory_mb": 1706.961
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 98356.956,
+          "memory_mb": 1023.726
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 12872.179,
+          "memory_mb": 1705.825
+        }
+      ]
+    },
+    {
+      "layer_index": 37,
+      "metrics": {
+        "total_flops_g": 288203.174,
+        "attention_flops_g": 36325.105,
+        "mlp_flops_g": 251878.07,
+        "memory_mb": 19760.998,
+        "scaling_factor": 1.022,
+        "depth_ratio": 0.468
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 440.559,
+          "memory_mb": 1072.706
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3865.564,
+          "memory_mb": 1361.377
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3723.192,
+          "memory_mb": 788.602
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3593.791,
+          "memory_mb": 515.92
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9220.921,
+          "memory_mb": 844.503
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2472.637,
+          "memory_mb": 1029.256
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8788.349,
+          "memory_mb": 416.322
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4051.26,
+          "memory_mb": 635.878
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 886.209,
+          "memory_mb": 953.051
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7687.19,
+          "memory_mb": 1500.046
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 118804.665,
+          "memory_mb": 848.875
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 112938.804,
+          "memory_mb": 982.39
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11730.033,
+          "memory_mb": 1660.553
+        }
+      ]
+    },
+    {
+      "layer_index": 38,
+      "metrics": {
+        "total_flops_g": 265830.281,
+        "attention_flops_g": 33505.227,
+        "mlp_flops_g": 232325.053,
+        "memory_mb": 18226.974,
+        "scaling_factor": 0.943,
+        "depth_ratio": 0.481
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 488.989,
+          "memory_mb": 496.401
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3380.126,
+          "memory_mb": 592.973
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3412.617,
+          "memory_mb": 966.993
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3304.046,
+          "memory_mb": 378.082
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8689.396,
+          "memory_mb": 581.378
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2200.996,
+          "memory_mb": 523.339
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7477.829,
+          "memory_mb": 1040.503
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3669.294,
+          "memory_mb": 1044.101
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 908.228,
+          "memory_mb": 1073.584
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8036.313,
+          "memory_mb": 666.073
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 120318.677,
+          "memory_mb": 1580.733
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 91038.718,
+          "memory_mb": 1403.361
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 12905.053,
+          "memory_mb": 1117.078
+        }
+      ]
+    },
+    {
+      "layer_index": 39,
+      "metrics": {
+        "total_flops_g": 279985.388,
+        "attention_flops_g": 35289.336,
+        "mlp_flops_g": 244696.052,
+        "memory_mb": 19197.536,
+        "scaling_factor": 0.993,
+        "depth_ratio": 0.494
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 492.658,
+          "memory_mb": 442.336
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3591.392,
+          "memory_mb": 769.454
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3740.787,
+          "memory_mb": 854.548
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3902.074,
+          "memory_mb": 454.493
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7434.388,
+          "memory_mb": 967.841
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2058.297,
+          "memory_mb": 647.932
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8330.72,
+          "memory_mb": 910.305
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3480.457,
+          "memory_mb": 1338.671
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 907.148,
+          "memory_mb": 819.462
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8086.12,
+          "memory_mb": 690.165
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 123580.882,
+          "memory_mb": 1558.217
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 101977.095,
+          "memory_mb": 1461.657
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 12403.371,
+          "memory_mb": 823.601
+        }
+      ]
+    },
+    {
+      "layer_index": 40,
+      "metrics": {
+        "total_flops_g": 281223.299,
+        "attention_flops_g": 35445.362,
+        "mlp_flops_g": 245777.937,
+        "memory_mb": 19282.414,
+        "scaling_factor": 0.998,
+        "depth_ratio": 0.506
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 451.35,
+          "memory_mb": 712.419
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3782.623,
+          "memory_mb": 786.713
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3508.929,
+          "memory_mb": 797.1
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3944.213,
+          "memory_mb": 746.52
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 7993.976,
+          "memory_mb": 1275.517
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2179.74,
+          "memory_mb": 1187.577
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7891.902,
+          "memory_mb": 478.748
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4000.484,
+          "memory_mb": 1168.292
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 965.295,
+          "memory_mb": 951.071
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8486.985,
+          "memory_mb": 959.855
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 116254.492,
+          "memory_mb": 987.566
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 108261.934,
+          "memory_mb": 1446.51
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13501.376,
+          "memory_mb": 1412.7
+        }
+      ]
+    },
+    {
+      "layer_index": 41,
+      "metrics": {
+        "total_flops_g": 297322.991,
+        "attention_flops_g": 37474.566,
+        "mlp_flops_g": 259848.425,
+        "memory_mb": 20386.309,
+        "scaling_factor": 1.055,
+        "depth_ratio": 0.519
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 504.256,
+          "memory_mb": 766.165
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4016.255,
+          "memory_mb": 624.574
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4078.594,
+          "memory_mb": 636.302
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3644.758,
+          "memory_mb": 1269.428
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8662.226,
+          "memory_mb": 1185.062
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2508.272,
+          "memory_mb": 1230.539
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9512.144,
+          "memory_mb": 1401.097
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4206.479,
+          "memory_mb": 1033.151
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1016.873,
+          "memory_mb": 434.487
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9428.617,
+          "memory_mb": 1626.168
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 124193.426,
+          "memory_mb": 832.27
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 112943.204,
+          "memory_mb": 989.533
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 12607.887,
+          "memory_mb": 619.058
+        }
+      ]
+    },
+    {
+      "layer_index": 42,
+      "metrics": {
+        "total_flops_g": 296004.4,
+        "attention_flops_g": 37308.371,
+        "mlp_flops_g": 258696.029,
+        "memory_mb": 20295.898,
+        "scaling_factor": 1.05,
+        "depth_ratio": 0.532
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 511.053,
+          "memory_mb": 812.632
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3745.903,
+          "memory_mb": 1048.458
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3656.153,
+          "memory_mb": 1163.068
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3805.021,
+          "memory_mb": 831.962
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8789.646,
+          "memory_mb": 781.446
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2633.579,
+          "memory_mb": 1194.247
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9201.262,
+          "memory_mb": 492.132
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3673.867,
+          "memory_mb": 565.657
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1032.499,
+          "memory_mb": 1089.858
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8455.878,
+          "memory_mb": 1414.955
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 132514.381,
+          "memory_mb": 1147.178
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 105722.049,
+          "memory_mb": 1528.212
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 12263.11,
+          "memory_mb": 1132.406
+        }
+      ]
+    },
+    {
+      "layer_index": 43,
+      "metrics": {
+        "total_flops_g": 280655.926,
+        "attention_flops_g": 35373.85,
+        "mlp_flops_g": 245282.076,
+        "memory_mb": 19243.512,
+        "scaling_factor": 0.996,
+        "depth_ratio": 0.544
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 519.454,
+          "memory_mb": 853.096
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4146.518,
+          "memory_mb": 428.57
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3928.349,
+          "memory_mb": 961.526
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3617.327,
+          "memory_mb": 674.889
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8506.504,
+          "memory_mb": 516.914
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2385.13,
+          "memory_mb": 700.582
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8139.062,
+          "memory_mb": 1103.629
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3752.149,
+          "memory_mb": 750.697
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1043.96,
+          "memory_mb": 866.21
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9397.67,
+          "memory_mb": 1508.153
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 120843.812,
+          "memory_mb": 1572.308
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 100047.4,
+          "memory_mb": 598.945
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 14328.59,
+          "memory_mb": 1572.707
+        }
+      ]
+    },
+    {
+      "layer_index": 44,
+      "metrics": {
+        "total_flops_g": 290485.402,
+        "attention_flops_g": 36612.757,
+        "mlp_flops_g": 253872.645,
+        "memory_mb": 19917.482,
+        "scaling_factor": 1.031,
+        "depth_ratio": 0.557
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 489.607,
+          "memory_mb": 1104.921
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3796.643,
+          "memory_mb": 513.048
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3490.27,
+          "memory_mb": 721.778
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4092.819,
+          "memory_mb": 1013.925
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9262.178,
+          "memory_mb": 1314.324
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2213.88,
+          "memory_mb": 1239.35
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8239.54,
+          "memory_mb": 984.791
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3878.687,
+          "memory_mb": 792.483
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 928.428,
+          "memory_mb": 736.462
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8193.079,
+          "memory_mb": 798.451
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 127407.515,
+          "memory_mb": 733.792
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 106161.672,
+          "memory_mb": 1680.146
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 12331.083,
+          "memory_mb": 1466.778
+        }
+      ]
+    },
+    {
+      "layer_index": 45,
+      "metrics": {
+        "total_flops_g": 298969.339,
+        "attention_flops_g": 37682.071,
+        "mlp_flops_g": 261287.268,
+        "memory_mb": 20499.193,
+        "scaling_factor": 1.061,
+        "depth_ratio": 0.57
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 556.777,
+          "memory_mb": 652.15
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3893.905,
+          "memory_mb": 612.18
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4276.013,
+          "memory_mb": 1189.174
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4320.521,
+          "memory_mb": 591.551
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9942.425,
+          "memory_mb": 916.434
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2752.146,
+          "memory_mb": 1188.827
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9331.602,
+          "memory_mb": 1357.205
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4244.245,
+          "memory_mb": 1061.139
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1073.638,
+          "memory_mb": 1295.802
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9434.788,
+          "memory_mb": 800.646
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 126094.153,
+          "memory_mb": 1158.87
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 110473.15,
+          "memory_mb": 952.811
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 12575.978,
+          "memory_mb": 1238.976
+        }
+      ]
+    },
+    {
+      "layer_index": 46,
+      "metrics": {
+        "total_flops_g": 285635.64,
+        "attention_flops_g": 36001.493,
+        "mlp_flops_g": 249634.147,
+        "memory_mb": 19584.952,
+        "scaling_factor": 1.013,
+        "depth_ratio": 0.582
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 447.848,
+          "memory_mb": 447.408
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3857.566,
+          "memory_mb": 466.838
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3881.118,
+          "memory_mb": 1229.243
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3700.789,
+          "memory_mb": 888.244
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8078.849,
+          "memory_mb": 934.512
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2392.945,
+          "memory_mb": 1268.984
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8057.723,
+          "memory_mb": 1184.709
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3727.435,
+          "memory_mb": 706.553
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 899.987,
+          "memory_mb": 539.429
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7247.313,
+          "memory_mb": 709.173
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 128661.484,
+          "memory_mb": 991.121
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 103547.851,
+          "memory_mb": 1180.443
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11134.734,
+          "memory_mb": 878.671
+        }
+      ]
+    },
+    {
+      "layer_index": 47,
+      "metrics": {
+        "total_flops_g": 290761.871,
+        "attention_flops_g": 36647.603,
+        "mlp_flops_g": 254114.268,
+        "memory_mb": 19936.438,
+        "scaling_factor": 1.032,
+        "depth_ratio": 0.595
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 475.5,
+          "memory_mb": 919.815
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3587.847,
+          "memory_mb": 770.396
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3683.457,
+          "memory_mb": 806.199
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3726.179,
+          "memory_mb": 994.714
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9165.151,
+          "memory_mb": 1043.977
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2197.72,
+          "memory_mb": 492.934
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8973.074,
+          "memory_mb": 681.973
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4022.961,
+          "memory_mb": 1053.206
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1040.899,
+          "memory_mb": 1269.233
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8173.349,
+          "memory_mb": 1295.158
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 117731.755,
+          "memory_mb": 1016.544
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 115575.324,
+          "memory_mb": 1433.605
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 12408.654,
+          "memory_mb": 1309.873
+        }
+      ]
+    },
+    {
+      "layer_index": 48,
+      "metrics": {
+        "total_flops_g": 306887.903,
+        "attention_flops_g": 38680.126,
+        "mlp_flops_g": 268207.776,
+        "memory_mb": 21042.139,
+        "scaling_factor": 1.089,
+        "depth_ratio": 0.608
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 465.673,
+          "memory_mb": 817.15
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4098.791,
+          "memory_mb": 1276.4
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4004.645,
+          "memory_mb": 1292.996
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4057.826,
+          "memory_mb": 1141.972
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8759.971,
+          "memory_mb": 1100.53
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2383.468,
+          "memory_mb": 801.525
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8474.509,
+          "memory_mb": 610.499
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3651.498,
+          "memory_mb": 1417.891
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 965.561,
+          "memory_mb": 659.19
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7887.503,
+          "memory_mb": 728.687
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 136345.888,
+          "memory_mb": 758.957
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 112057.837,
+          "memory_mb": 1685.627
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13734.732,
+          "memory_mb": 678.921
+        }
+      ]
+    },
+    {
+      "layer_index": 49,
+      "metrics": {
+        "total_flops_g": 290614.834,
+        "attention_flops_g": 36629.07,
+        "mlp_flops_g": 253985.764,
+        "memory_mb": 19926.356,
+        "scaling_factor": 1.031,
+        "depth_ratio": 0.62
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 476.629,
+          "memory_mb": 529.094
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3530.955,
+          "memory_mb": 560.177
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3860.122,
+          "memory_mb": 1166.786
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3843.975,
+          "memory_mb": 563.457
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8043.947,
+          "memory_mb": 807.873
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2342.443,
+          "memory_mb": 635.183
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8054.577,
+          "memory_mb": 682.406
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3800.166,
+          "memory_mb": 845.802
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 911.21,
+          "memory_mb": 706.856
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8439.799,
+          "memory_mb": 1158.537
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 127228.687,
+          "memory_mb": 1037.574
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 108249.998,
+          "memory_mb": 1774.769
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11832.327,
+          "memory_mb": 934.672
+        }
+      ]
+    },
+    {
+      "layer_index": 50,
+      "metrics": {
+        "total_flops_g": 293357.869,
+        "attention_flops_g": 36974.802,
+        "mlp_flops_g": 256383.067,
+        "memory_mb": 20114.436,
+        "scaling_factor": 1.041,
+        "depth_ratio": 0.633
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 508.02,
+          "memory_mb": 1374.086
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4298.137,
+          "memory_mb": 1208.133
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3749.649,
+          "memory_mb": 653.722
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4156.093,
+          "memory_mb": 1281.407
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9193.624,
+          "memory_mb": 505.465
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2700.988,
+          "memory_mb": 1258.325
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8703.475,
+          "memory_mb": 1169.772
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3858.29,
+          "memory_mb": 1312.775
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 939.221,
+          "memory_mb": 842.264
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9667.606,
+          "memory_mb": 871.403
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 131826.812,
+          "memory_mb": 1025.335
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 100437.803,
+          "memory_mb": 667.707
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13318.15,
+          "memory_mb": 887.986
+        }
+      ]
+    },
+    {
+      "layer_index": 51,
+      "metrics": {
+        "total_flops_g": 313043.184,
+        "attention_flops_g": 39455.938,
+        "mlp_flops_g": 273587.246,
+        "memory_mb": 21464.183,
+        "scaling_factor": 1.111,
+        "depth_ratio": 0.646
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 531.206,
+          "memory_mb": 459.535
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4734.263,
+          "memory_mb": 1329.895
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4489.422,
+          "memory_mb": 1278.601
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4042.776,
+          "memory_mb": 737.165
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 10453.862,
+          "memory_mb": 1176.314
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2527.385,
+          "memory_mb": 1186.472
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9706.25,
+          "memory_mb": 434.919
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3991.89,
+          "memory_mb": 703.944
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1162.674,
+          "memory_mb": 1018.265
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 10005.628,
+          "memory_mb": 1323.617
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 132396.438,
+          "memory_mb": 1014.957
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 114875.58,
+          "memory_mb": 705.42
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 14125.807,
+          "memory_mb": 1666.349
+        }
+      ]
+    },
+    {
+      "layer_index": 52,
+      "metrics": {
+        "total_flops_g": 298433.74,
+        "attention_flops_g": 37614.565,
+        "mlp_flops_g": 260819.176,
+        "memory_mb": 20462.469,
+        "scaling_factor": 1.059,
+        "depth_ratio": 0.658
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 445.423,
+          "memory_mb": 1335.326
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3938.881,
+          "memory_mb": 426.065
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3876.002,
+          "memory_mb": 656.782
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3588.666,
+          "memory_mb": 848.414
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8893.905,
+          "memory_mb": 655.376
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2374.775,
+          "memory_mb": 1088.983
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 7973.71,
+          "memory_mb": 1406.441
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3530.011,
+          "memory_mb": 947.473
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 967.446,
+          "memory_mb": 1420.435
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8576.589,
+          "memory_mb": 1093.253
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 126510.261,
+          "memory_mb": 1394.318
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 116262.388,
+          "memory_mb": 925.293
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 11495.683,
+          "memory_mb": 1581.978
+        }
+      ]
+    },
+    {
+      "layer_index": 53,
+      "metrics": {
+        "total_flops_g": 296472.645,
+        "attention_flops_g": 37367.388,
+        "mlp_flops_g": 259105.256,
+        "memory_mb": 20328.004,
+        "scaling_factor": 1.052,
+        "depth_ratio": 0.671
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 537.771,
+          "memory_mb": 1045.121
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4333.875,
+          "memory_mb": 1153.804
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3972.974,
+          "memory_mb": 451.623
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4148.495,
+          "memory_mb": 1233.411
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8647.978,
+          "memory_mb": 1198.481
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2550.988,
+          "memory_mb": 1113.354
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9492.683,
+          "memory_mb": 1231.366
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3751.476,
+          "memory_mb": 1195.48
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1018.968,
+          "memory_mb": 704.815
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8202.529,
+          "memory_mb": 853.13
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 122986.481,
+          "memory_mb": 1748.254
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 113172.824,
+          "memory_mb": 1816.254
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13655.602,
+          "memory_mb": 918.802
+        }
+      ]
+    },
+    {
+      "layer_index": 54,
+      "metrics": {
+        "total_flops_g": 310237.51,
+        "attention_flops_g": 39102.311,
+        "mlp_flops_g": 271135.199,
+        "memory_mb": 21271.809,
+        "scaling_factor": 1.101,
+        "depth_ratio": 0.684
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 474.874,
+          "memory_mb": 805.11
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4276.585,
+          "memory_mb": 1346.291
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3913.039,
+          "memory_mb": 557.827
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3942.269,
+          "memory_mb": 1371.486
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9553.926,
+          "memory_mb": 1376.964
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2473.346,
+          "memory_mb": 1461.079
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9103.672,
+          "memory_mb": 954.597
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4392.771,
+          "memory_mb": 977.733
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1073.258,
+          "memory_mb": 1198.753
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8142.234,
+          "memory_mb": 1407.071
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 141962.555,
+          "memory_mb": 1334.348
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 107163.285,
+          "memory_mb": 740.347
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13765.696,
+          "memory_mb": 1029.338
+        }
+      ]
+    },
+    {
+      "layer_index": 55,
+      "metrics": {
+        "total_flops_g": 307120.535,
+        "attention_flops_g": 38709.447,
+        "mlp_flops_g": 268411.088,
+        "memory_mb": 21058.09,
+        "scaling_factor": 1.09,
+        "depth_ratio": 0.696
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 523.733,
+          "memory_mb": 1147.418
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4126.437,
+          "memory_mb": 465.758
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4567.433,
+          "memory_mb": 792.373
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4676.399,
+          "memory_mb": 710.242
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 10487.215,
+          "memory_mb": 1419.215
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2432.036,
+          "memory_mb": 1092.402
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9306.996,
+          "memory_mb": 1264.639
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4405.298,
+          "memory_mb": 1424.358
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 987.218,
+          "memory_mb": 1060.878
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9863.308,
+          "memory_mb": 675.711
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 127945.56,
+          "memory_mb": 1615.385
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 113603.626,
+          "memory_mb": 1115.474
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 14195.277,
+          "memory_mb": 1396.271
+        }
+      ]
+    },
+    {
+      "layer_index": 56,
+      "metrics": {
+        "total_flops_g": 310897.121,
+        "attention_flops_g": 39185.448,
+        "mlp_flops_g": 271711.673,
+        "memory_mb": 21317.036,
+        "scaling_factor": 1.103,
+        "depth_ratio": 0.709
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 582.533,
+          "memory_mb": 822.852
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4501.4,
+          "memory_mb": 1038.056
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4301.586,
+          "memory_mb": 850.586
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4404.306,
+          "memory_mb": 692.39
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8878.008,
+          "memory_mb": 1210.461
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2672.233,
+          "memory_mb": 838.812
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9740.559,
+          "memory_mb": 705.356
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4071.371,
+          "memory_mb": 902.002
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1175.23,
+          "memory_mb": 730.723
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 10172.09,
+          "memory_mb": 1267.767
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 130218.961,
+          "memory_mb": 1730.295
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 116248.545,
+          "memory_mb": 1788.941
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13930.299,
+          "memory_mb": 751.797
+        }
+      ]
+    },
+    {
+      "layer_index": 57,
+      "metrics": {
+        "total_flops_g": 312437.893,
+        "attention_flops_g": 39379.647,
+        "mlp_flops_g": 273058.246,
+        "memory_mb": 21422.681,
+        "scaling_factor": 1.108,
+        "depth_ratio": 0.722
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 566.283,
+          "memory_mb": 770.775
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4108.13,
+          "memory_mb": 498.012
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4273.174,
+          "memory_mb": 1383.189
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4535.209,
+          "memory_mb": 1190.897
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 10349.069,
+          "memory_mb": 1111.516
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2803.961,
+          "memory_mb": 973.399
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8812.224,
+          "memory_mb": 643.731
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3931.388,
+          "memory_mb": 1275.049
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 958.992,
+          "memory_mb": 1021.885
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9060.469,
+          "memory_mb": 1675.676
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 141007.778,
+          "memory_mb": 1429.255
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 106680.069,
+          "memory_mb": 1040.231
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 15351.146,
+          "memory_mb": 1566.687
+        }
+      ]
+    },
+    {
+      "layer_index": 58,
+      "metrics": {
+        "total_flops_g": 309074.683,
+        "attention_flops_g": 38955.748,
+        "mlp_flops_g": 270118.935,
+        "memory_mb": 21192.078,
+        "scaling_factor": 1.096,
+        "depth_ratio": 0.734
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 510.846,
+          "memory_mb": 1296.255
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3547.402,
+          "memory_mb": 1454.179
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3988.399,
+          "memory_mb": 900.636
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4017.693,
+          "memory_mb": 788.891
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9385.081,
+          "memory_mb": 1250.611
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2491.516,
+          "memory_mb": 616.65
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9539.181,
+          "memory_mb": 882.246
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4196.55,
+          "memory_mb": 482.557
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 896.625,
+          "memory_mb": 585.977
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 7944.077,
+          "memory_mb": 1046.033
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 133075.174,
+          "memory_mb": 1075.739
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 115825.668,
+          "memory_mb": 1773.683
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13656.473,
+          "memory_mb": 954.413
+        }
+      ]
+    },
+    {
+      "layer_index": 59,
+      "metrics": {
+        "total_flops_g": 313892.615,
+        "attention_flops_g": 39563.0,
+        "mlp_flops_g": 274329.615,
+        "memory_mb": 21522.425,
+        "scaling_factor": 1.114,
+        "depth_ratio": 0.747
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 529.765,
+          "memory_mb": 565.147
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4030.015,
+          "memory_mb": 1004.536
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4197.622,
+          "memory_mb": 611.921
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4566.013,
+          "memory_mb": 596.38
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9739.474,
+          "memory_mb": 1205.937
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2677.303,
+          "memory_mb": 1337.113
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9559.901,
+          "memory_mb": 1318.503
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3799.725,
+          "memory_mb": 479.371
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1078.539,
+          "memory_mb": 1051.124
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9490.701,
+          "memory_mb": 1636.082
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 135878.5,
+          "memory_mb": 1470.831
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 115107.958,
+          "memory_mb": 1455.558
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13237.098,
+          "memory_mb": 1881.039
+        }
+      ]
+    },
+    {
+      "layer_index": 60,
+      "metrics": {
+        "total_flops_g": 310606.349,
+        "attention_flops_g": 39148.799,
+        "mlp_flops_g": 271457.55,
+        "memory_mb": 21297.099,
+        "scaling_factor": 1.102,
+        "depth_ratio": 0.759
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 566.873,
+          "memory_mb": 1155.358
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4101.329,
+          "memory_mb": 503.648
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3898.273,
+          "memory_mb": 894.058
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4261.04,
+          "memory_mb": 643.197
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9822.797,
+          "memory_mb": 758.797
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2788.239,
+          "memory_mb": 1207.758
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 10311.598,
+          "memory_mb": 1464.574
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3958.845,
+          "memory_mb": 820.514
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1081.803,
+          "memory_mb": 765.754
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9322.868,
+          "memory_mb": 980.695
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 133689.118,
+          "memory_mb": 762.621
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 112399.985,
+          "memory_mb": 1129.79
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 14403.58,
+          "memory_mb": 956.159
+        }
+      ]
+    },
+    {
+      "layer_index": 61,
+      "metrics": {
+        "total_flops_g": 323982.439,
+        "attention_flops_g": 40834.72,
+        "mlp_flops_g": 283147.718,
+        "memory_mb": 22214.246,
+        "scaling_factor": 1.149,
+        "depth_ratio": 0.772
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 498.794,
+          "memory_mb": 807.972
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4348.299,
+          "memory_mb": 791.621
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4507.096,
+          "memory_mb": 997.715
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4294.381,
+          "memory_mb": 998.263
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9265.083,
+          "memory_mb": 470.027
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2914.406,
+          "memory_mb": 1005.688
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 10533.197,
+          "memory_mb": 683.248
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4155.798,
+          "memory_mb": 500.421
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1069.35,
+          "memory_mb": 1424.31
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9691.826,
+          "memory_mb": 1293.651
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 142061.327,
+          "memory_mb": 1795.585
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 115898.543,
+          "memory_mb": 1842.613
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 14744.339,
+          "memory_mb": 1684.538
+        }
+      ]
+    },
+    {
+      "layer_index": 62,
+      "metrics": {
+        "total_flops_g": 309782.014,
+        "attention_flops_g": 39044.9,
+        "mlp_flops_g": 270737.114,
+        "memory_mb": 21240.577,
+        "scaling_factor": 1.099,
+        "depth_ratio": 0.785
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 531.208,
+          "memory_mb": 1030.467
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4071.092,
+          "memory_mb": 1012.35
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3966.055,
+          "memory_mb": 960.345
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4565.164,
+          "memory_mb": 721.883
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 10710.014,
+          "memory_mb": 1147.415
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2503.326,
+          "memory_mb": 1460.378
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9548.719,
+          "memory_mb": 1269.015
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4196.338,
+          "memory_mb": 1422.002
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1139.245,
+          "memory_mb": 636.217
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9537.941,
+          "memory_mb": 1274.534
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 129821.643,
+          "memory_mb": 811.861
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 115033.262,
+          "memory_mb": 1240.973
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 14158.008,
+          "memory_mb": 1409.857
+        }
+      ]
+    },
+    {
+      "layer_index": 63,
+      "metrics": {
+        "total_flops_g": 315907.78,
+        "attention_flops_g": 39816.991,
+        "mlp_flops_g": 276090.789,
+        "memory_mb": 21660.598,
+        "scaling_factor": 1.121,
+        "depth_ratio": 0.797
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 495.987,
+          "memory_mb": 1097.183
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 3831.904,
+          "memory_mb": 1506.078
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4305.964,
+          "memory_mb": 757.292
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3974.801,
+          "memory_mb": 1330.274
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9305.678,
+          "memory_mb": 1200.798
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2465.46,
+          "memory_mb": 1316.692
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9002.447,
+          "memory_mb": 1162.964
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4503.685,
+          "memory_mb": 1065.379
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1088.292,
+          "memory_mb": 1218.76
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9362.353,
+          "memory_mb": 684.45
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 134657.319,
+          "memory_mb": 1906.658
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 119169.228,
+          "memory_mb": 1658.546
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13744.663,
+          "memory_mb": 1587.375
+        }
+      ]
+    },
+    {
+      "layer_index": 64,
+      "metrics": {
+        "total_flops_g": 319492.336,
+        "attention_flops_g": 40268.788,
+        "mlp_flops_g": 279223.547,
+        "memory_mb": 21906.377,
+        "scaling_factor": 1.133,
+        "depth_ratio": 0.81
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 505.26,
+          "memory_mb": 1127.111
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4430.864,
+          "memory_mb": 1359.474
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4022.407,
+          "memory_mb": 1183.741
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3921.837,
+          "memory_mb": 1476.715
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8976.653,
+          "memory_mb": 458.87
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2603.75,
+          "memory_mb": 603.993
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 10107.241,
+          "memory_mb": 887.622
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4565.213,
+          "memory_mb": 1446.391
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1162.473,
+          "memory_mb": 1244.104
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8669.793,
+          "memory_mb": 838.685
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 134181.819,
+          "memory_mb": 1084.431
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 122623.522,
+          "memory_mb": 1347.869
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13721.504,
+          "memory_mb": 884.819
+        }
+      ]
+    },
+    {
+      "layer_index": 65,
+      "metrics": {
+        "total_flops_g": 331389.975,
+        "attention_flops_g": 41768.366,
+        "mlp_flops_g": 289621.609,
+        "memory_mb": 22722.153,
+        "scaling_factor": 1.176,
+        "depth_ratio": 0.823
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 533.826,
+          "memory_mb": 856.951
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4649.54,
+          "memory_mb": 1273.491
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4536.052,
+          "memory_mb": 1242.122
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4506.743,
+          "memory_mb": 672.876
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9418.747,
+          "memory_mb": 1088.49
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2604.384,
+          "memory_mb": 1559.774
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9520.139,
+          "memory_mb": 782.783
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4151.501,
+          "memory_mb": 1255.386
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1062.076,
+          "memory_mb": 850.721
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 10522.451,
+          "memory_mb": 1766.064
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 138658.196,
+          "memory_mb": 847.819
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 125307.687,
+          "memory_mb": 1199.313
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 15918.633,
+          "memory_mb": 1797.382
+        }
+      ]
+    },
+    {
+      "layer_index": 66,
+      "metrics": {
+        "total_flops_g": 334234.266,
+        "attention_flops_g": 42126.86,
+        "mlp_flops_g": 292107.406,
+        "memory_mb": 22917.175,
+        "scaling_factor": 1.186,
+        "depth_ratio": 0.835
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 615.517,
+          "memory_mb": 791.161
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4444.227,
+          "memory_mb": 1276.649
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4498.747,
+          "memory_mb": 965.244
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4415.277,
+          "memory_mb": 1007.301
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9820.804,
+          "memory_mb": 1075.478
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 3152.08,
+          "memory_mb": 1256.057
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9685.472,
+          "memory_mb": 1163.822
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4721.966,
+          "memory_mb": 736.166
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1199.754,
+          "memory_mb": 1066.842
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 10472.511,
+          "memory_mb": 759.692
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 150219.424,
+          "memory_mb": 1673.904
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 117214.332,
+          "memory_mb": 1747.342
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13774.156,
+          "memory_mb": 1444.267
+        }
+      ]
+    },
+    {
+      "layer_index": 67,
+      "metrics": {
+        "total_flops_g": 334907.213,
+        "attention_flops_g": 42211.678,
+        "mlp_flops_g": 292695.535,
+        "memory_mb": 22963.317,
+        "scaling_factor": 1.188,
+        "depth_ratio": 0.848
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 527.201,
+          "memory_mb": 1532.838
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4622.863,
+          "memory_mb": 1007.456
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4039.294,
+          "memory_mb": 1566.0
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4143.908,
+          "memory_mb": 1200.864
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 10458.564,
+          "memory_mb": 561.982
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2725.836,
+          "memory_mb": 1073.71
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 10101.137,
+          "memory_mb": 1534.718
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4652.8,
+          "memory_mb": 660.27
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1156.542,
+          "memory_mb": 661.101
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 10228.543,
+          "memory_mb": 2062.802
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 138632.36,
+          "memory_mb": 1371.439
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 128257.22,
+          "memory_mb": 2014.523
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 15360.946,
+          "memory_mb": 1896.875
+        }
+      ]
+    },
+    {
+      "layer_index": 68,
+      "metrics": {
+        "total_flops_g": 306726.044,
+        "attention_flops_g": 38659.726,
+        "mlp_flops_g": 268066.318,
+        "memory_mb": 21031.041,
+        "scaling_factor": 1.088,
+        "depth_ratio": 0.861
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 514.179,
+          "memory_mb": 533.453
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4450.288,
+          "memory_mb": 719.852
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4455.244,
+          "memory_mb": 991.93
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4053.324,
+          "memory_mb": 1407.566
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9772.209,
+          "memory_mb": 912.769
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2380.584,
+          "memory_mb": 539.075
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8514.737,
+          "memory_mb": 903.193
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3861.248,
+          "memory_mb": 616.419
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1062.579,
+          "memory_mb": 1252.154
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9031.795,
+          "memory_mb": 1586.518
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 124989.949,
+          "memory_mb": 1711.27
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 120232.566,
+          "memory_mb": 1674.479
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13407.343,
+          "memory_mb": 740.382
+        }
+      ]
+    },
+    {
+      "layer_index": 69,
+      "metrics": {
+        "total_flops_g": 329465.691,
+        "attention_flops_g": 41525.829,
+        "mlp_flops_g": 287939.862,
+        "memory_mb": 22590.212,
+        "scaling_factor": 1.169,
+        "depth_ratio": 0.873
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 504.56,
+          "memory_mb": 610.627
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4156.086,
+          "memory_mb": 731.976
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4101.962,
+          "memory_mb": 717.828
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4526.713,
+          "memory_mb": 1529.397
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9309.21,
+          "memory_mb": 1268.308
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2429.45,
+          "memory_mb": 1190.147
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 10066.871,
+          "memory_mb": 521.974
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3979.129,
+          "memory_mb": 798.345
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1056.644,
+          "memory_mb": 1019.406
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 10207.04,
+          "memory_mb": 1631.317
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 136528.551,
+          "memory_mb": 836.853
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 128084.913,
+          "memory_mb": 1077.604
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 14514.562,
+          "memory_mb": 974.716
+        }
+      ]
+    },
+    {
+      "layer_index": 70,
+      "metrics": {
+        "total_flops_g": 313485.324,
+        "attention_flops_g": 39511.665,
+        "mlp_flops_g": 273973.659,
+        "memory_mb": 21494.499,
+        "scaling_factor": 1.112,
+        "depth_ratio": 0.886
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 489.714,
+          "memory_mb": 1233.499
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4298.736,
+          "memory_mb": 876.81
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4251.162,
+          "memory_mb": 935.901
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4241.297,
+          "memory_mb": 1143.609
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 8938.414,
+          "memory_mb": 695.847
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2765.116,
+          "memory_mb": 1368.27
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 8679.754,
+          "memory_mb": 910.021
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4381.268,
+          "memory_mb": 513.829
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1065.934,
+          "memory_mb": 496.263
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9331.622,
+          "memory_mb": 1296.746
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 140669.045,
+          "memory_mb": 838.095
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 111572.153,
+          "memory_mb": 1315.904
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 12801.109,
+          "memory_mb": 909.735
+        }
+      ]
+    },
+    {
+      "layer_index": 71,
+      "metrics": {
+        "total_flops_g": 329554.142,
+        "attention_flops_g": 41536.978,
+        "mlp_flops_g": 288017.165,
+        "memory_mb": 22596.277,
+        "scaling_factor": 1.169,
+        "depth_ratio": 0.899
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 483.779,
+          "memory_mb": 1028.555
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4475.303,
+          "memory_mb": 964.22
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4226.239,
+          "memory_mb": 968.023
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 3842.237,
+          "memory_mb": 974.327
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 10066.062,
+          "memory_mb": 1269.097
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2579.597,
+          "memory_mb": 1374.366
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9950.148,
+          "memory_mb": 1105.31
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 3831.744,
+          "memory_mb": 841.179
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 961.828,
+          "memory_mb": 1575.1
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 10059.745,
+          "memory_mb": 771.463
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 150873.754,
+          "memory_mb": 720.914
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 113582.654,
+          "memory_mb": 1720.443
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 14621.053,
+          "memory_mb": 2004.29
+        }
+      ]
+    },
+    {
+      "layer_index": 72,
+      "metrics": {
+        "total_flops_g": 333052.545,
+        "attention_flops_g": 41977.916,
+        "mlp_flops_g": 291074.629,
+        "memory_mb": 22836.149,
+        "scaling_factor": 1.182,
+        "depth_ratio": 0.911
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 529.449,
+          "memory_mb": 1590.374
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4202.982,
+          "memory_mb": 1449.662
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4654.304,
+          "memory_mb": 885.638
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4461.446,
+          "memory_mb": 1212.363
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9760.449,
+          "memory_mb": 1202.933
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2608.189,
+          "memory_mb": 660.506
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9756.495,
+          "memory_mb": 1060.559
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4500.294,
+          "memory_mb": 710.992
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 969.18,
+          "memory_mb": 482.682
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9069.764,
+          "memory_mb": 1607.893
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 143023.549,
+          "memory_mb": 1413.923
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 125776.283,
+          "memory_mb": 1024.218
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13740.162,
+          "memory_mb": 1062.771
+        }
+      ]
+    },
+    {
+      "layer_index": 73,
+      "metrics": {
+        "total_flops_g": 344112.068,
+        "attention_flops_g": 43371.857,
+        "mlp_flops_g": 300740.21,
+        "memory_mb": 23594.459,
+        "scaling_factor": 1.221,
+        "depth_ratio": 0.924
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 601.376,
+          "memory_mb": 605.015
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4888.765,
+          "memory_mb": 966.477
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4848.781,
+          "memory_mb": 1514.477
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4157.834,
+          "memory_mb": 715.008
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9531.743,
+          "memory_mb": 511.5
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2933.654,
+          "memory_mb": 1301.572
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9423.557,
+          "memory_mb": 1345.522
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4513.819,
+          "memory_mb": 748.345
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1085.87,
+          "memory_mb": 1490.852
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 9212.111,
+          "memory_mb": 1421.183
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 145242.3,
+          "memory_mb": 1862.716
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 132211.984,
+          "memory_mb": 1159.295
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 15460.274,
+          "memory_mb": 1659.915
+        }
+      ]
+    },
+    {
+      "layer_index": 74,
+      "metrics": {
+        "total_flops_g": 325180.168,
+        "attention_flops_g": 40985.682,
+        "mlp_flops_g": 284194.486,
+        "memory_mb": 22296.37,
+        "scaling_factor": 1.154,
+        "depth_ratio": 0.937
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 491.389,
+          "memory_mb": 605.637
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4224.571,
+          "memory_mb": 692.35
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 3930.081,
+          "memory_mb": 513.884
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4460.603,
+          "memory_mb": 1426.649
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9968.307,
+          "memory_mb": 1143.796
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2521.13,
+          "memory_mb": 998.455
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 10080.142,
+          "memory_mb": 1495.625
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4233.683,
+          "memory_mb": 1321.957
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 986.252,
+          "memory_mb": 910.054
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8357.584,
+          "memory_mb": 1172.513
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 141682.617,
+          "memory_mb": 1302.356
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 120201.846,
+          "memory_mb": 1071.211
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 14041.962,
+          "memory_mb": 1746.844
+        }
+      ]
+    },
+    {
+      "layer_index": 75,
+      "metrics": {
+        "total_flops_g": 346337.539,
+        "attention_flops_g": 43652.356,
+        "mlp_flops_g": 302685.184,
+        "memory_mb": 23747.051,
+        "scaling_factor": 1.229,
+        "depth_ratio": 0.949
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 590.928,
+          "memory_mb": 1624.044
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4722.657,
+          "memory_mb": 634.156
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4429.035,
+          "memory_mb": 716.373
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4806.16,
+          "memory_mb": 1569.949
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 11234.982,
+          "memory_mb": 584.728
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 3049.304,
+          "memory_mb": 701.11
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 10019.123,
+          "memory_mb": 1274.827
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4765.273,
+          "memory_mb": 1512.236
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1094.49,
+          "memory_mb": 1379.343
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 10712.313,
+          "memory_mb": 1508.675
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 153151.929,
+          "memory_mb": 1951.258
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 123873.471,
+          "memory_mb": 2075.995
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13887.875,
+          "memory_mb": 2047.698
+        }
+      ]
+    },
+    {
+      "layer_index": 76,
+      "metrics": {
+        "total_flops_g": 349404.873,
+        "attention_flops_g": 44038.962,
+        "mlp_flops_g": 305365.911,
+        "memory_mb": 23957.366,
+        "scaling_factor": 1.24,
+        "depth_ratio": 0.962
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 538.381,
+          "memory_mb": 1676.503
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4644.358,
+          "memory_mb": 769.742
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4761.407,
+          "memory_mb": 724.127
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 5051.252,
+          "memory_mb": 1140.466
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 11072.297,
+          "memory_mb": 935.13
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2934.631,
+          "memory_mb": 909.493
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9993.61,
+          "memory_mb": 1093.434
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4661.481,
+          "memory_mb": 597.267
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1278.249,
+          "memory_mb": 1041.535
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 10936.936,
+          "memory_mb": 2033.018
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 149644.016,
+          "memory_mb": 1313.722
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 129614.458,
+          "memory_mb": 1036.79
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 14273.797,
+          "memory_mb": 1093.569
+        }
+      ]
+    },
+    {
+      "layer_index": 77,
+      "metrics": {
+        "total_flops_g": 349981.766,
+        "attention_flops_g": 44111.674,
+        "mlp_flops_g": 305870.093,
+        "memory_mb": 23996.922,
+        "scaling_factor": 1.242,
+        "depth_ratio": 0.975
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 604.925,
+          "memory_mb": 980.968
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4432.808,
+          "memory_mb": 875.726
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4649.501,
+          "memory_mb": 1479.845
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4763.324,
+          "memory_mb": 1265.367
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 11115.251,
+          "memory_mb": 788.691
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 3169.001,
+          "memory_mb": 1639.6
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 11022.741,
+          "memory_mb": 1068.578
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4447.884,
+          "memory_mb": 1433.787
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1112.217,
+          "memory_mb": 1344.204
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 10436.158,
+          "memory_mb": 2040.073
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 158231.356,
+          "memory_mb": 1643.995
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 119217.7,
+          "memory_mb": 768.608
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 16778.901,
+          "memory_mb": 2080.804
+        }
+      ]
+    },
+    {
+      "layer_index": 78,
+      "metrics": {
+        "total_flops_g": 342493.167,
+        "attention_flops_g": 43167.811,
+        "mlp_flops_g": 299325.356,
+        "memory_mb": 23483.457,
+        "scaling_factor": 1.215,
+        "depth_ratio": 0.987
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 568.705,
+          "memory_mb": 953.889
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4617.234,
+          "memory_mb": 741.412
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4500.238,
+          "memory_mb": 480.403
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4326.148,
+          "memory_mb": 907.871
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 9951.821,
+          "memory_mb": 1252.554
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2763.684,
+          "memory_mb": 1037.034
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 9699.068,
+          "memory_mb": 477.433
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4365.826,
+          "memory_mb": 483.584
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1086.655,
+          "memory_mb": 792.262
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 10394.421,
+          "memory_mb": 728.658
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 151238.893,
+          "memory_mb": 1654.221
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 125866.613,
+          "memory_mb": 1986.381
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 13113.861,
+          "memory_mb": 840.211
+        }
+      ]
+    },
+    {
+      "layer_index": 79,
+      "metrics": {
+        "total_flops_g": 326378.245,
+        "attention_flops_g": 41136.688,
+        "mlp_flops_g": 285241.557,
+        "memory_mb": 22378.518,
+        "scaling_factor": 1.158,
+        "depth_ratio": 1.0
+      },
+      "operators": [
+        {
+          "name": "RMSNorm",
+          "type": "Norm",
+          "flops_g": 523.941,
+          "memory_mb": 1036.636
+        },
+        {
+          "name": "Q Linear",
+          "type": "MatMul",
+          "flops_g": 4748.34,
+          "memory_mb": 746.687
+        },
+        {
+          "name": "K Linear",
+          "type": "MatMul",
+          "flops_g": 4374.636,
+          "memory_mb": 864.987
+        },
+        {
+          "name": "V Linear",
+          "type": "MatMul",
+          "flops_g": 4382.793,
+          "memory_mb": 1079.766
+        },
+        {
+          "name": "QK^T",
+          "type": "MatMul",
+          "flops_g": 11035.558,
+          "memory_mb": 700.288
+        },
+        {
+          "name": "Softmax",
+          "type": "Activation",
+          "flops_g": 2894.473,
+          "memory_mb": 1396.271
+        },
+        {
+          "name": "AV",
+          "type": "MatMul",
+          "flops_g": 10359.187,
+          "memory_mb": 1407.854
+        },
+        {
+          "name": "Output Linear",
+          "type": "MatMul",
+          "flops_g": 4698.644,
+          "memory_mb": 552.19
+        },
+        {
+          "name": "Add (Residual-1)",
+          "type": "Elementwise",
+          "flops_g": 1089.721,
+          "memory_mb": 1066.002
+        },
+        {
+          "name": "RMSNorm-2",
+          "type": "Norm",
+          "flops_g": 8937.2,
+          "memory_mb": 684.044
+        },
+        {
+          "name": "SwiGLU",
+          "type": "Activation",
+          "flops_g": 137449.644,
+          "memory_mb": 1342.521
+        },
+        {
+          "name": "Projection",
+          "type": "MatMul",
+          "flops_g": 120978.456,
+          "memory_mb": 1724.546
+        },
+        {
+          "name": "Add (Residual-2)",
+          "type": "Elementwise",
+          "flops_g": 14905.652,
+          "memory_mb": 1823.348
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+# Use CPU-only PyTorch wheels to avoid downloading massive CUDA runtimes
+# when building the backend image.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+fastapi
+uvicorn
+pydantic
+python-dotenv
+openai
+numpy
+pyyaml
+pytest
+httpx
+toml
+grpcio
+PyJWT
+# Note: Nebius protobuf files are included in backend/nebius/ directory
+
+# Telemetry persistence and migrations
+sqlalchemy[asyncio]
+asyncpg
+alembic
+
+# Redis for real-time pub/sub and caching
+redis
+
+# Pydantic settings (v2)
+pydantic-settings
+
+# ML and AI dependencies
+torch==2.8.0+cpu
+torchvision==0.23.0+cpu
+torchaudio==2.8.0+cpu
+transformers
+accelerate
+huggingface-hub
+tokenizers
+safetensors
+peft
+paramiko
+PyPDF2==3.0.1
+pandas
+langchain
+einops
+psutil
+pynvml
+vllm
+multipart
+cryptography
+python-snappy
+protobuf
+
+# Google Cloud Platform
+google-cloud-compute
+google-auth
+google-api-python-client
+
+# Authentication
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart

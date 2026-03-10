@@ -1,0 +1,65 @@
+{
+  "name": "omniference-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for Omniference - Hardware Performance Modeling and TCO Analysis",
+  "main": "index.js",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "keywords": [
+    "react",
+    "omniference",
+    "hardware",
+    "performance",
+    "analysis"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.15.0",
+    "@mui/material": "^5.15.0",
+    "@mui/x-charts": "^6.18.0",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "@tweenjs/tween.js": "^25.0.0",
+    "axios": "^1.6.2",
+    "d3": "^7.9.0",
+    "dagre": "^0.8.5",
+    "framer-motion": "^12.23.24",
+    "js-yaml": "^4.1.0",
+    "lucide-react": "^0.542.0",
+    "mermaid": "^11.10.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-force-graph": "^1.48.1",
+    "react-markdown": "^9.0.0",
+    "react-force-graph-2d": "^1.29.0",
+    "react-force-graph-3d": "^1.29.0",
+    "react-router-dom": "^6.20.1",
+    "react-scripts": "5.0.1",
+    "reactflow": "^11.11.4",
+    "recharts": "^2.15.4",
+    "three": "^0.180.0"
+  },
+  "proxy": "http://localhost:8000",
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "eslint-plugin-react-hooks": "^5.2.0"
+  }
+}

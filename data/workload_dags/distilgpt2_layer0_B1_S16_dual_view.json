@@ -1,0 +1,4240 @@
+{
+  "model": "distilgpt2",
+  "layer": 0,
+  "batch_size": 1,
+  "seq_len": 16,
+  "view_modes": {
+    "intern_friendly": "data/workload_dags/distilgpt2_layer0_B1_S16_intern_friendly.json",
+    "detailed": "data/workload_dags/distilgpt2_layer0_B1_S16_detailed.json"
+  },
+  "intern_friendly": {
+    "layer": "Transformer Block 0",
+    "model": "unknown",
+    "batch_size": 1,
+    "seq_len": 16,
+    "stages": [
+      {
+        "stage": "Normalization",
+        "flops_m": 0.29,
+        "memory_mb": 0.22,
+        "examples": [
+          "aten.layer_norm",
+          "aten.native_layer_norm"
+        ],
+        "total_ops": 4
+      },
+      {
+        "stage": "Self-Attention",
+        "flops_m": 0.79,
+        "memory_mb": 0.15,
+        "examples": [
+          "aten.scaled_dot_product_attention"
+        ],
+        "total_ops": 1
+      },
+      {
+        "stage": "FeedForward",
+        "flops_m": 226.49,
+        "memory_mb": 56.99,
+        "examples": [
+          "aten.addmm"
+        ],
+        "total_ops": 4
+      },
+      {
+        "stage": "Activation",
+        "flops_m": 0.2,
+        "memory_mb": 0.2,
+        "examples": [
+          "aten.tanh"
+        ],
+        "total_ops": 1
+      },
+      {
+        "stage": "Tensor Layout",
+        "flops_m": 0.0,
+        "memory_mb": 1.67,
+        "examples": [
+          "aten.transpose",
+          "aten.view",
+          "aten.contiguous"
+        ],
+        "total_ops": 32
+      },
+      {
+        "stage": "Utility",
+        "flops_m": 0.0,
+        "memory_mb": 33.43,
+        "examples": [
+          "aten._to_copy",
+          "aten._scaled_dot_product_flash_attention_for_cpu",
+          "aten.where"
+        ],
+        "total_ops": 103
+      },
+      {
+        "stage": "Other",
+        "flops_m": 0.37,
+        "memory_mb": 1.97,
+        "examples": [
+          "aten.add",
+          "aten.pow",
+          "aten.mul"
+        ],
+        "total_ops": 9
+      }
+    ],
+    "total_flops_m": 228.14,
+    "total_memory_mb": 94.63
+  },
+  "detailed": {
+    "layer": "Transformer Block 0",
+    "model": "unknown",
+    "batch_size": 1,
+    "seq_len": 16,
+    "nodes": [
+      {
+        "id": "aten_0",
+        "name": "aten.ones",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 109,
+          "end_us": 118
+        }
+      },
+      {
+        "id": "aten_1",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 111,
+          "end_us": 114
+        }
+      },
+      {
+        "id": "aten_2",
+        "name": "aten.fill_",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 117,
+          "end_us": 118
+        }
+      },
+      {
+        "id": "aten_3",
+        "name": "aten.layer_norm",
+        "category": "norm",
+        "flops": 0.074,
+        "memory_mb": 0.055,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            768
+          ],
+          [],
+          [
+            768
+          ],
+          [
+            768
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 130,
+          "end_us": 153
+        }
+      },
+      {
+        "id": "aten_4",
+        "name": "aten.native_layer_norm",
+        "category": "norm",
+        "flops": 0.074,
+        "memory_mb": 0.055,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            768
+          ],
+          [],
+          [
+            768
+          ],
+          [
+            768
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 131,
+          "end_us": 151
+        }
+      },
+      {
+        "id": "aten_5",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 133,
+          "end_us": 133
+        }
+      },
+      {
+        "id": "aten_6",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 134,
+          "end_us": 134
+        }
+      },
+      {
+        "id": "aten_7",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 134,
+          "end_us": 135
+        }
+      },
+      {
+        "id": "aten_8",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 150,
+          "end_us": 150
+        }
+      },
+      {
+        "id": "aten_9",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 151,
+          "end_us": 151
+        }
+      },
+      {
+        "id": "aten_10",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            768
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 163,
+          "end_us": 164
+        }
+      },
+      {
+        "id": "aten_11",
+        "name": "aten.addmm",
+        "category": "gemm",
+        "flops": 56.623,
+        "memory_mb": 14.214,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            2304
+          ],
+          [
+            16,
+            768
+          ],
+          [
+            768,
+            2304
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 166,
+          "end_us": 378
+        }
+      },
+      {
+        "id": "aten_12",
+        "name": "aten.expand",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.009,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            2304
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 167,
+          "end_us": 169
+        }
+      },
+      {
+        "id": "aten_13",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.009,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            2304
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 168,
+          "end_us": 169
+        }
+      },
+      {
+        "id": "aten_14",
+        "name": "aten.copy_",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.295,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            2304
+          ],
+          [
+            16,
+            2304
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 170,
+          "end_us": 179
+        }
+      },
+      {
+        "id": "aten_15",
+        "name": "aten.resolve_conj",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.147,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            2304
+          ]
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 182,
+          "end_us": 182
+        }
+      },
+      {
+        "id": "aten_16",
+        "name": "aten.resolve_conj",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 7.078,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            768,
+            2304
+          ]
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 182,
+          "end_us": 182
+        }
+      },
+      {
+        "id": "aten_17",
+        "name": "aten.resolve_conj",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            768
+          ]
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 182,
+          "end_us": 182
+        }
+      },
+      {
+        "id": "aten_18",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.147,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            2304
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 386,
+          "end_us": 388
+        }
+      },
+      {
+        "id": "aten_19",
+        "name": "aten.split",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.147,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            2304
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 397,
+          "end_us": 410
+        }
+      },
+      {
+        "id": "aten_20",
+        "name": "aten.narrow",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.147,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            2304
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 399,
+          "end_us": 405
+        }
+      },
+      {
+        "id": "aten_21",
+        "name": "aten.slice",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.147,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            2304
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 402,
+          "end_us": 405
+        }
+      },
+      {
+        "id": "aten_22",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.147,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            2304
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 404,
+          "end_us": 405
+        }
+      },
+      {
+        "id": "aten_23",
+        "name": "aten.narrow",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.147,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            2304
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 406,
+          "end_us": 407
+        }
+      },
+      {
+        "id": "aten_24",
+        "name": "aten.slice",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.147,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            2304
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 406,
+          "end_us": 407
+        }
+      },
+      {
+        "id": "aten_25",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.147,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            2304
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 406,
+          "end_us": 407
+        }
+      },
+      {
+        "id": "aten_26",
+        "name": "aten.narrow",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.147,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            2304
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 407,
+          "end_us": 408
+        }
+      },
+      {
+        "id": "aten_27",
+        "name": "aten.slice",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.147,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            2304
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 407,
+          "end_us": 408
+        }
+      },
+      {
+        "id": "aten_28",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.147,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            2304
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 408,
+          "end_us": 408
+        }
+      },
+      {
+        "id": "aten_29",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            768
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 414,
+          "end_us": 415
+        }
+      },
+      {
+        "id": "aten_30",
+        "name": "aten.transpose",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 417,
+          "end_us": 420
+        }
+      },
+      {
+        "id": "aten_31",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 419,
+          "end_us": 419
+        }
+      },
+      {
+        "id": "aten_32",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            768
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 421,
+          "end_us": 421
+        }
+      },
+      {
+        "id": "aten_33",
+        "name": "aten.transpose",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 422,
+          "end_us": 423
+        }
+      },
+      {
+        "id": "aten_34",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 422,
+          "end_us": 422
+        }
+      },
+      {
+        "id": "aten_35",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            768
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 424,
+          "end_us": 425
+        }
+      },
+      {
+        "id": "aten_36",
+        "name": "aten.transpose",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 425,
+          "end_us": 426
+        }
+      },
+      {
+        "id": "aten_37",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 426,
+          "end_us": 426
+        }
+      },
+      {
+        "id": "aten_38",
+        "name": "aten.contiguous",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 439,
+          "end_us": 451
+        }
+      },
+      {
+        "id": "aten_39",
+        "name": "aten.clone",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 440,
+          "end_us": 451
+        }
+      },
+      {
+        "id": "aten_40",
+        "name": "aten.empty_like",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 441,
+          "end_us": 446
+        }
+      },
+      {
+        "id": "aten_41",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 441,
+          "end_us": 446
+        }
+      },
+      {
+        "id": "aten_42",
+        "name": "aten.copy_",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.098,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 447,
+          "end_us": 451
+        }
+      },
+      {
+        "id": "aten_43",
+        "name": "aten.contiguous",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 452,
+          "end_us": 466
+        }
+      },
+      {
+        "id": "aten_44",
+        "name": "aten.clone",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 452,
+          "end_us": 466
+        }
+      },
+      {
+        "id": "aten_45",
+        "name": "aten.empty_like",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 453,
+          "end_us": 454
+        }
+      },
+      {
+        "id": "aten_46",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 453,
+          "end_us": 454
+        }
+      },
+      {
+        "id": "aten_47",
+        "name": "aten.copy_",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.098,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 454,
+          "end_us": 466
+        }
+      },
+      {
+        "id": "aten_48",
+        "name": "aten.contiguous",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 467,
+          "end_us": 476
+        }
+      },
+      {
+        "id": "aten_49",
+        "name": "aten.clone",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 467,
+          "end_us": 475
+        }
+      },
+      {
+        "id": "aten_50",
+        "name": "aten.empty_like",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 467,
+          "end_us": 468
+        }
+      },
+      {
+        "id": "aten_51",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 468,
+          "end_us": 468
+        }
+      },
+      {
+        "id": "aten_52",
+        "name": "aten.copy_",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.098,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 468,
+          "end_us": 475
+        }
+      },
+      {
+        "id": "aten_53",
+        "name": "aten.scaled_dot_product_attention",
+        "category": "attention.sdp",
+        "flops": 0.786,
+        "memory_mb": 0.148,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [
+            1,
+            16
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 482,
+          "end_us": 539
+        }
+      },
+      {
+        "id": "aten_54",
+        "name": "aten.scalar_tensor",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 486,
+          "end_us": 488
+        }
+      },
+      {
+        "id": "aten_55",
+        "name": "aten.where",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 489,
+          "end_us": 496
+        }
+      },
+      {
+        "id": "aten_56",
+        "name": "aten.scalar_tensor",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 489,
+          "end_us": 490
+        }
+      },
+      {
+        "id": "aten_57",
+        "name": "aten.to",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 490,
+          "end_us": 490
+        }
+      },
+      {
+        "id": "aten_58",
+        "name": "aten.where",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 491,
+          "end_us": 496
+        }
+      },
+      {
+        "id": "aten_59",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 492,
+          "end_us": 493
+        }
+      },
+      {
+        "id": "aten_60",
+        "name": "aten._scaled_dot_product_flash_attention_for_cpu",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.148,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          [],
+          [
+            1,
+            16
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 498,
+          "end_us": 538
+        }
+      },
+      {
+        "id": "aten_61",
+        "name": "aten.empty_like",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 499,
+          "end_us": 502
+        }
+      },
+      {
+        "id": "aten_62",
+        "name": "aten.empty_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 500,
+          "end_us": 501
+        }
+      },
+      {
+        "id": "aten_63",
+        "name": "aten.transpose",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 502,
+          "end_us": 505
+        }
+      },
+      {
+        "id": "aten_64",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 504,
+          "end_us": 504
+        }
+      },
+      {
+        "id": "aten_65",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 505,
+          "end_us": 506
+        }
+      },
+      {
+        "id": "aten_66",
+        "name": "aten.transpose",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 507,
+          "end_us": 507
+        }
+      },
+      {
+        "id": "aten_67",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 507,
+          "end_us": 507
+        }
+      },
+      {
+        "id": "aten_68",
+        "name": "aten.transpose",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 507,
+          "end_us": 508
+        }
+      },
+      {
+        "id": "aten_69",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 508,
+          "end_us": 508
+        }
+      },
+      {
+        "id": "aten_70",
+        "name": "aten.transpose",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 508,
+          "end_us": 508
+        }
+      },
+      {
+        "id": "aten_71",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 508,
+          "end_us": 508
+        }
+      },
+      {
+        "id": "aten_72",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 509,
+          "end_us": 509
+        }
+      },
+      {
+        "id": "aten_73",
+        "name": "aten.expand",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            1,
+            1,
+            16
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 510,
+          "end_us": 511
+        }
+      },
+      {
+        "id": "aten_74",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            1,
+            1,
+            16
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 510,
+          "end_us": 511
+        }
+      },
+      {
+        "id": "aten_75",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 512,
+          "end_us": 512
+        }
+      },
+      {
+        "id": "aten_76",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 512,
+          "end_us": 513
+        }
+      },
+      {
+        "id": "aten_77",
+        "name": "aten.transpose",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 535,
+          "end_us": 537
+        }
+      },
+      {
+        "id": "aten_78",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 536,
+          "end_us": 536
+        }
+      },
+      {
+        "id": "aten_79",
+        "name": "aten.transpose",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.001,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 537,
+          "end_us": 538
+        }
+      },
+      {
+        "id": "aten_80",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.001,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 537,
+          "end_us": 538
+        }
+      },
+      {
+        "id": "aten_81",
+        "name": "aten.transpose",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 540,
+          "end_us": 541
+        }
+      },
+      {
+        "id": "aten_82",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            12,
+            16,
+            64
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 541,
+          "end_us": 541
+        }
+      },
+      {
+        "id": "aten_83",
+        "name": "aten.contiguous",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 542,
+          "end_us": 554
+        }
+      },
+      {
+        "id": "aten_84",
+        "name": "aten.clone",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 542,
+          "end_us": 554
+        }
+      },
+      {
+        "id": "aten_85",
+        "name": "aten.empty_like",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 543,
+          "end_us": 544
+        }
+      },
+      {
+        "id": "aten_86",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 543,
+          "end_us": 544
+        }
+      },
+      {
+        "id": "aten_87",
+        "name": "aten.copy_",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.098,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 544,
+          "end_us": 554
+        }
+      },
+      {
+        "id": "aten_88",
+        "name": "aten.reshape",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 559,
+          "end_us": 560
+        }
+      },
+      {
+        "id": "aten_89",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            12,
+            64
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 560,
+          "end_us": 560
+        }
+      },
+      {
+        "id": "aten_90",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            768
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 567,
+          "end_us": 567
+        }
+      },
+      {
+        "id": "aten_91",
+        "name": "aten.addmm",
+        "category": "gemm",
+        "flops": 18.874,
+        "memory_mb": 4.771,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            768
+          ],
+          [
+            16,
+            768
+          ],
+          [
+            768,
+            768
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 569,
+          "end_us": 634
+        }
+      },
+      {
+        "id": "aten_92",
+        "name": "aten.expand",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.003,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            768
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 570,
+          "end_us": 571
+        }
+      },
+      {
+        "id": "aten_93",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.003,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            768
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 571,
+          "end_us": 571
+        }
+      },
+      {
+        "id": "aten_94",
+        "name": "aten.copy_",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.098,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            768
+          ],
+          [
+            16,
+            768
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 572,
+          "end_us": 573
+        }
+      },
+      {
+        "id": "aten_95",
+        "name": "aten.resolve_conj",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            768
+          ]
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 573,
+          "end_us": 574
+        }
+      },
+      {
+        "id": "aten_96",
+        "name": "aten.resolve_conj",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 2.359,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            768,
+            768
+          ]
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 574,
+          "end_us": 574
+        }
+      },
+      {
+        "id": "aten_97",
+        "name": "aten.resolve_conj",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            768
+          ]
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 574,
+          "end_us": 574
+        }
+      },
+      {
+        "id": "aten_98",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            768
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 636,
+          "end_us": 637
+        }
+      },
+      {
+        "id": "aten_99",
+        "name": "aten.dropout",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            768
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 643,
+          "end_us": 644
+        }
+      },
+      {
+        "id": "aten_100",
+        "name": "aten.add",
+        "category": "eltwise",
+        "flops": 0.012,
+        "memory_mb": 0.098,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            768
+          ],
+          [
+            1,
+            16,
+            768
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 647,
+          "end_us": 651
+        }
+      },
+      {
+        "id": "aten_101",
+        "name": "aten.layer_norm",
+        "category": "norm",
+        "flops": 0.074,
+        "memory_mb": 0.055,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            768
+          ],
+          [],
+          [
+            768
+          ],
+          [
+            768
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 656,
+          "end_us": 671
+        }
+      },
+      {
+        "id": "aten_102",
+        "name": "aten.native_layer_norm",
+        "category": "norm",
+        "flops": 0.074,
+        "memory_mb": 0.055,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            768
+          ],
+          [],
+          [
+            768
+          ],
+          [
+            768
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 657,
+          "end_us": 670
+        }
+      },
+      {
+        "id": "aten_103",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 658,
+          "end_us": 658
+        }
+      },
+      {
+        "id": "aten_104",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 659,
+          "end_us": 659
+        }
+      },
+      {
+        "id": "aten_105",
+        "name": "aten.empty",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 659,
+          "end_us": 660
+        }
+      },
+      {
+        "id": "aten_106",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 669,
+          "end_us": 670
+        }
+      },
+      {
+        "id": "aten_107",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 670,
+          "end_us": 670
+        }
+      },
+      {
+        "id": "aten_108",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            768
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 677,
+          "end_us": 677
+        }
+      },
+      {
+        "id": "aten_109",
+        "name": "aten.addmm",
+        "category": "gemm",
+        "flops": 75.497,
+        "memory_mb": 18.936,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            3072
+          ],
+          [
+            16,
+            768
+          ],
+          [
+            768,
+            3072
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 678,
+          "end_us": 969
+        }
+      },
+      {
+        "id": "aten_110",
+        "name": "aten.expand",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.012,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            3072
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 679,
+          "end_us": 680
+        }
+      },
+      {
+        "id": "aten_111",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.012,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            3072
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 680,
+          "end_us": 680
+        }
+      },
+      {
+        "id": "aten_112",
+        "name": "aten.copy_",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.393,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            3072
+          ],
+          [
+            16,
+            3072
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 680,
+          "end_us": 701
+        }
+      },
+      {
+        "id": "aten_113",
+        "name": "aten.resolve_conj",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.197,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            3072
+          ]
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 702,
+          "end_us": 702
+        }
+      },
+      {
+        "id": "aten_114",
+        "name": "aten.resolve_conj",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 9.437,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            768,
+            3072
+          ]
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 702,
+          "end_us": 702
+        }
+      },
+      {
+        "id": "aten_115",
+        "name": "aten.resolve_conj",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            768
+          ]
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 702,
+          "end_us": 702
+        }
+      },
+      {
+        "id": "aten_116",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.197,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            3072
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 972,
+          "end_us": 972
+        }
+      },
+      {
+        "id": "aten_117",
+        "name": "aten.mul",
+        "category": "eltwise",
+        "flops": 0.049,
+        "memory_mb": 0.197,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            3072
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 979,
+          "end_us": 1011
+        }
+      },
+      {
+        "id": "aten_118",
+        "name": "aten.to",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 981,
+          "end_us": 985
+        }
+      },
+      {
+        "id": "aten_119",
+        "name": "aten._to_copy",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 982,
+          "end_us": 985
+        }
+      },
+      {
+        "id": "aten_120",
+        "name": "aten.empty_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 983,
+          "end_us": 984
+        }
+      },
+      {
+        "id": "aten_121",
+        "name": "aten.copy_",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 984,
+          "end_us": 985
+        }
+      },
+      {
+        "id": "aten_122",
+        "name": "aten.pow",
+        "category": "eltwise",
+        "flops": 0.049,
+        "memory_mb": 0.197,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            3072
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1020,
+          "end_us": 1046
+        }
+      },
+      {
+        "id": "aten_123",
+        "name": "aten.result_type",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.197,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            3072
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1021,
+          "end_us": 1021
+        }
+      },
+      {
+        "id": "aten_124",
+        "name": "aten.to",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.197,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            3072
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1022,
+          "end_us": 1022
+        }
+      },
+      {
+        "id": "aten_125",
+        "name": "aten.mul",
+        "category": "eltwise",
+        "flops": 0.049,
+        "memory_mb": 0.197,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            3072
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1049,
+          "end_us": 1077
+        }
+      },
+      {
+        "id": "aten_126",
+        "name": "aten.to",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1050,
+          "end_us": 1054
+        }
+      },
+      {
+        "id": "aten_127",
+        "name": "aten._to_copy",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1051,
+          "end_us": 1054
+        }
+      },
+      {
+        "id": "aten_128",
+        "name": "aten.empty_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1052,
+          "end_us": 1053
+        }
+      },
+      {
+        "id": "aten_129",
+        "name": "aten.copy_",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1053,
+          "end_us": 1054
+        }
+      },
+      {
+        "id": "aten_130",
+        "name": "aten.add",
+        "category": "eltwise",
+        "flops": 0.049,
+        "memory_mb": 0.393,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            3072
+          ],
+          [
+            1,
+            16,
+            3072
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1080,
+          "end_us": 1092
+        }
+      },
+      {
+        "id": "aten_131",
+        "name": "aten.mul",
+        "category": "eltwise",
+        "flops": 0.049,
+        "memory_mb": 0.197,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            3072
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1094,
+          "end_us": 1106
+        }
+      },
+      {
+        "id": "aten_132",
+        "name": "aten.to",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1095,
+          "end_us": 1097
+        }
+      },
+      {
+        "id": "aten_133",
+        "name": "aten._to_copy",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1095,
+          "end_us": 1097
+        }
+      },
+      {
+        "id": "aten_134",
+        "name": "aten.empty_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1096,
+          "end_us": 1096
+        }
+      },
+      {
+        "id": "aten_135",
+        "name": "aten.copy_",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1096,
+          "end_us": 1097
+        }
+      },
+      {
+        "id": "aten_136",
+        "name": "aten.tanh",
+        "category": "activation",
+        "flops": 0.197,
+        "memory_mb": 0.197,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            3072
+          ]
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1108,
+          "end_us": 1152
+        }
+      },
+      {
+        "id": "aten_137",
+        "name": "aten.add",
+        "category": "eltwise",
+        "flops": 0.049,
+        "memory_mb": 0.197,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            3072
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1154,
+          "end_us": 1166
+        }
+      },
+      {
+        "id": "aten_138",
+        "name": "aten.to",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1154,
+          "end_us": 1157
+        }
+      },
+      {
+        "id": "aten_139",
+        "name": "aten._to_copy",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1155,
+          "end_us": 1156
+        }
+      },
+      {
+        "id": "aten_140",
+        "name": "aten.empty_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1155,
+          "end_us": 1156
+        }
+      },
+      {
+        "id": "aten_141",
+        "name": "aten.copy_",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.0,
+        "dtype": "torch.float32",
+        "shapes": [],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1156,
+          "end_us": 1156
+        }
+      },
+      {
+        "id": "aten_142",
+        "name": "aten.mul",
+        "category": "eltwise",
+        "flops": 0.049,
+        "memory_mb": 0.393,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            3072
+          ],
+          [
+            1,
+            16,
+            3072
+          ]
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1167,
+          "end_us": 1177
+        }
+      },
+      {
+        "id": "aten_143",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.197,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            3072
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1185,
+          "end_us": 1186
+        }
+      },
+      {
+        "id": "aten_144",
+        "name": "aten.addmm",
+        "category": "gemm",
+        "flops": 75.497,
+        "memory_mb": 19.074,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            768
+          ],
+          [
+            16,
+            3072
+          ],
+          [
+            3072,
+            768
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1187,
+          "end_us": 1464
+        }
+      },
+      {
+        "id": "aten_145",
+        "name": "aten.expand",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.003,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            768
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1189,
+          "end_us": 1190
+        }
+      },
+      {
+        "id": "aten_146",
+        "name": "aten.as_strided",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.003,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            768
+          ],
+          [],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1189,
+          "end_us": 1190
+        }
+      },
+      {
+        "id": "aten_147",
+        "name": "aten.copy_",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.098,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            768
+          ],
+          [
+            16,
+            768
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1190,
+          "end_us": 1192
+        }
+      },
+      {
+        "id": "aten_148",
+        "name": "aten.resolve_conj",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            768
+          ]
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1193,
+          "end_us": 1193
+        }
+      },
+      {
+        "id": "aten_149",
+        "name": "aten.resolve_conj",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 9.437,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            3072,
+            768
+          ]
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1193,
+          "end_us": 1193
+        }
+      },
+      {
+        "id": "aten_150",
+        "name": "aten.resolve_conj",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.197,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            3072
+          ]
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1193,
+          "end_us": 1193
+        }
+      },
+      {
+        "id": "aten_151",
+        "name": "aten.view",
+        "category": "layout",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            16,
+            768
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1468,
+          "end_us": 1469
+        }
+      },
+      {
+        "id": "aten_152",
+        "name": "aten.dropout",
+        "category": "other",
+        "flops": 0.0,
+        "memory_mb": 0.049,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            768
+          ],
+          [],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1479,
+          "end_us": 1479
+        }
+      },
+      {
+        "id": "aten_153",
+        "name": "aten.add",
+        "category": "eltwise",
+        "flops": 0.012,
+        "memory_mb": 0.098,
+        "dtype": "torch.float32",
+        "shapes": [
+          [
+            1,
+            16,
+            768
+          ],
+          [
+            1,
+            16,
+            768
+          ],
+          []
+        ],
+        "timing_us": {
+          "cpu_total": 0,
+          "device_total": 0,
+          "start_us": 1481,
+          "end_us": 1484
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "aten_0",
+        "to": "aten_1",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_1",
+        "to": "aten_2",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_2",
+        "to": "aten_3",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_3",
+        "to": "aten_4",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_4",
+        "to": "aten_5",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_5",
+        "to": "aten_6",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_6",
+        "to": "aten_7",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_7",
+        "to": "aten_8",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_8",
+        "to": "aten_9",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_9",
+        "to": "aten_10",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_10",
+        "to": "aten_11",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_11",
+        "to": "aten_12",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_12",
+        "to": "aten_13",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_13",
+        "to": "aten_14",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_14",
+        "to": "aten_15",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_15",
+        "to": "aten_16",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_16",
+        "to": "aten_17",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_17",
+        "to": "aten_18",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_18",
+        "to": "aten_19",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_19",
+        "to": "aten_20",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_20",
+        "to": "aten_21",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_21",
+        "to": "aten_22",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_22",
+        "to": "aten_23",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_23",
+        "to": "aten_24",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_24",
+        "to": "aten_25",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_25",
+        "to": "aten_26",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_26",
+        "to": "aten_27",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_27",
+        "to": "aten_28",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_28",
+        "to": "aten_29",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_29",
+        "to": "aten_30",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_30",
+        "to": "aten_31",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_31",
+        "to": "aten_32",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_32",
+        "to": "aten_33",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_33",
+        "to": "aten_34",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_34",
+        "to": "aten_35",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_35",
+        "to": "aten_36",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_36",
+        "to": "aten_37",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_37",
+        "to": "aten_38",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_38",
+        "to": "aten_39",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_39",
+        "to": "aten_40",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_40",
+        "to": "aten_41",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_41",
+        "to": "aten_42",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_42",
+        "to": "aten_43",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_43",
+        "to": "aten_44",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_44",
+        "to": "aten_45",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_45",
+        "to": "aten_46",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_46",
+        "to": "aten_47",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_47",
+        "to": "aten_48",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_48",
+        "to": "aten_49",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_49",
+        "to": "aten_50",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_50",
+        "to": "aten_51",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_51",
+        "to": "aten_52",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_52",
+        "to": "aten_53",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_53",
+        "to": "aten_54",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_54",
+        "to": "aten_55",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_55",
+        "to": "aten_56",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_56",
+        "to": "aten_57",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_57",
+        "to": "aten_58",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_58",
+        "to": "aten_59",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_59",
+        "to": "aten_60",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_60",
+        "to": "aten_61",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_61",
+        "to": "aten_62",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_62",
+        "to": "aten_63",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_63",
+        "to": "aten_64",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_64",
+        "to": "aten_65",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_65",
+        "to": "aten_66",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_66",
+        "to": "aten_67",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_67",
+        "to": "aten_68",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_68",
+        "to": "aten_69",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_69",
+        "to": "aten_70",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_70",
+        "to": "aten_71",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_71",
+        "to": "aten_72",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_72",
+        "to": "aten_73",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_73",
+        "to": "aten_74",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_74",
+        "to": "aten_75",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_75",
+        "to": "aten_76",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_76",
+        "to": "aten_77",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_77",
+        "to": "aten_78",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_78",
+        "to": "aten_79",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_79",
+        "to": "aten_80",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_80",
+        "to": "aten_81",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_81",
+        "to": "aten_82",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_82",
+        "to": "aten_83",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_83",
+        "to": "aten_84",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_84",
+        "to": "aten_85",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_85",
+        "to": "aten_86",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_86",
+        "to": "aten_87",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_87",
+        "to": "aten_88",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_88",
+        "to": "aten_89",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_89",
+        "to": "aten_90",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_90",
+        "to": "aten_91",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_91",
+        "to": "aten_92",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_92",
+        "to": "aten_93",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_93",
+        "to": "aten_94",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_94",
+        "to": "aten_95",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_95",
+        "to": "aten_96",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_96",
+        "to": "aten_97",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_97",
+        "to": "aten_98",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_98",
+        "to": "aten_99",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_99",
+        "to": "aten_100",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_100",
+        "to": "aten_101",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_101",
+        "to": "aten_102",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_102",
+        "to": "aten_103",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_103",
+        "to": "aten_104",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_104",
+        "to": "aten_105",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_105",
+        "to": "aten_106",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_106",
+        "to": "aten_107",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_107",
+        "to": "aten_108",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_108",
+        "to": "aten_109",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_109",
+        "to": "aten_110",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_110",
+        "to": "aten_111",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_111",
+        "to": "aten_112",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_112",
+        "to": "aten_113",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_113",
+        "to": "aten_114",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_114",
+        "to": "aten_115",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_115",
+        "to": "aten_116",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_116",
+        "to": "aten_117",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_117",
+        "to": "aten_118",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_118",
+        "to": "aten_119",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_119",
+        "to": "aten_120",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_120",
+        "to": "aten_121",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_121",
+        "to": "aten_122",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_122",
+        "to": "aten_123",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_123",
+        "to": "aten_124",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_124",
+        "to": "aten_125",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_125",
+        "to": "aten_126",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_126",
+        "to": "aten_127",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_127",
+        "to": "aten_128",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_128",
+        "to": "aten_129",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_129",
+        "to": "aten_130",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_130",
+        "to": "aten_131",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_131",
+        "to": "aten_132",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_132",
+        "to": "aten_133",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_133",
+        "to": "aten_134",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_134",
+        "to": "aten_135",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_135",
+        "to": "aten_136",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_136",
+        "to": "aten_137",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_137",
+        "to": "aten_138",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_138",
+        "to": "aten_139",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_139",
+        "to": "aten_140",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_140",
+        "to": "aten_141",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_141",
+        "to": "aten_142",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_142",
+        "to": "aten_143",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_143",
+        "to": "aten_144",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_144",
+        "to": "aten_145",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_145",
+        "to": "aten_146",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_146",
+        "to": "aten_147",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_147",
+        "to": "aten_148",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_148",
+        "to": "aten_149",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_149",
+        "to": "aten_150",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_150",
+        "to": "aten_151",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_151",
+        "to": "aten_152",
+        "type": "sequential"
+      },
+      {
+        "from": "aten_152",
+        "to": "aten_153",
+        "type": "sequential"
+      }
+    ],
+    "total_operations": 154,
+    "categories": [
+      "gemm",
+      "activation",
+      "layout",
+      "attention.sdp",
+      "norm",
+      "other",
+      "eltwise"
+    ]
+  }
+}

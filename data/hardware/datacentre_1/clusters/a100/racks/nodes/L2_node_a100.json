@@ -1,0 +1,103 @@
+{
+    "level": 2,
+    "node": {
+      "id": "node-a100-01",
+      "rack_id": "rack-a100-01",
+      "type": "DGX_A100",
+      "vendor": "NVIDIA",
+      "architecture": "Ampere",
+      "description": "NVIDIA DGX A100 node with 8×A100 80GB GPUs connected via NVSwitch 2.0 crossbar and InfiniBand HDR uplinks.",
+  
+      "cpu": {
+        "model": "AMD EPYC 7742",
+        "sockets": 2,
+        "cores": 128,
+        "threads": 256,
+        "base_clock_ghz": 2.25,
+        "boost_clock_ghz": 3.4,
+        "tdp_W": 280
+      },
+  
+      "memory": {
+        "type": "DDR4",
+        "capacity_gb": 1024,
+        "channels": 16,
+        "bandwidth_GBps": 204.8
+      },
+  
+      "storage": {
+        "type": "NVMe Gen4",
+        "capacity_TB": 15.36,
+        "bandwidth_GBps": 14
+      },
+  
+      "interconnect": {
+        "type": "NVSwitch 2.0",
+        "switches": 6,
+        "aggregate_bandwidth_GBps": 2400,
+        "latency_ns": 1.8
+      },
+  
+      "fabric": {
+        "type": "NVSwitch 2.0 + NVLink 3.0 + InfiniBand HDR",
+        "topology": "fully-connected crossbar",
+        "nvswitch_count": 6,
+        "nvlink_links_per_gpu": 12,
+        "nvlink_bandwidth_per_link_GBps": 50,
+        "nvlink_latency_ns": 2.0,
+        "intra_node_links": [
+          { "src": "gpu-a100-01", "dst": "gpu-a100-02", "bandwidth_GBps": 600 },
+          { "src": "gpu-a100-03", "dst": "gpu-a100-04", "bandwidth_GBps": 600 },
+          { "src": "gpu-a100-05", "dst": "gpu-a100-06", "bandwidth_GBps": 600 },
+          { "src": "gpu-a100-07", "dst": "gpu-a100-08", "bandwidth_GBps": 600 }
+        ],
+        "inter_node_uplinks": {
+          "fabric_type": "InfiniBand HDR",
+          "ports": 8,
+          "link_bandwidth_GBps": 25,
+          "bisection_bandwidth_TBps": 25.6,
+          "latency_ns": 120
+        },
+        "summary": {
+          "total_internal_bandwidth_TBps": 4.8,
+          "avg_link_latency_ns": 2.0
+        }
+      },
+  
+      "power": {
+        "total_kW": 6.5,
+        "utilization_percent": 80,
+        "cooling_type": "liquid"
+      },
+  
+      "devices": [
+        "gpu-a100-01", "gpu-a100-02", "gpu-a100-03", "gpu-a100-04",
+        "gpu-a100-05", "gpu-a100-06", "gpu-a100-07", "gpu-a100-08"
+      ],
+  
+      "summary": {
+        "total_gpus": 8,
+        "total_memory_TB": 0.64,
+        "total_fp16_PFLOPS": 2.5,
+        "total_fp32_PFLOPS": 0.16,
+        "aggregate_nvlink_bandwidth_TBps": 4.8
+      },
+  
+      "visualization_hints": {
+        "layout": { "rows": 2, "cols": 4, "spacing": 0.3 },
+        "color_map": {
+          "cpu": "#3b82f6",
+          "gpu": "#10b981",
+          "fabric": "#f59e0b"
+        },
+        "glow_intensity": 0.25
+      },
+      "bottleneck_analysis": {
+      "bottleneck_type": "I/O",
+      "bottleneck": "CPU↔GPU I/O and PCIe 4.0 data-feed limitation (~64 GB/s per GPU).",
+      "description": "Each GPU’s host interface runs on PCIe 4.0, significantly slower than NVLink 3.0. When CPU-based data preparation or loading is required, PCIe becomes the bottleneck, stalling GPUs while waiting for data batches.",
+      "workload_characteristic": "Pre-processing-heavy pipelines (tokenization, dataloader I/O) or inference workloads that rely on frequent CPU-side data staging instead of prefetching—GPUs idle waiting for input batches."
+    }
+    }
+  }
+  

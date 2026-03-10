@@ -1,0 +1,211 @@
+syntax = "proto3";
+
+package nebius.compute.v1;
+
+import "buf/validate/validate.proto";
+import "nebius/common/v1/metadata.proto";
+import "nebius/annotations.proto";
+import "nebius/compute/v1/network_interface.proto";
+
+option go_package = "github.com/nebius/gosdk/proto/nebius/compute/v1";
+option java_multiple_files = true;
+option java_outer_classname = "InstanceProto";
+option java_package = "ai.nebius.pub.compute.v1";
+
+message Instance {
+  common.v1.ResourceMetadata metadata = 1;
+
+  InstanceSpec spec = 2;
+
+  InstanceStatus status = 3;
+}
+
+message InstanceSpec {
+  // Unique identifier of the service account associated with this instance.
+  // For details, see https://docs.nebius.dev/en/iam/about-iam/concepts/service-accounts
+  string service_account_id = 1 [(field_behavior) = IMMUTABLE];
+
+  // Specification of compute resources allocated to the instance.
+  // For details, see https://docs.nebius.com/compute/virtual-machines/types
+  ResourcesSpec resources = 2 [(buf.validate.field).required = true];
+
+  // If you want to interconnect several instances in a GPU cluster via NVIDIA InfiniBand,
+  // set the ID of an existing GPU cluster.
+  // You can only add the VM to the cluster when creating the VM.
+  // For details, see https://docs.nebius.com/compute/clusters/gpu
+  InstanceGpuClusterSpec gpu_cluster = 3 [(field_behavior) = IMMUTABLE];
+
+  // List of network interfaces attached to the instance.
+  repeated NetworkInterfaceSpec network_interfaces = 4 [(buf.validate.field) = { repeated: { max_items: 8 }, required: true }];
+
+  // Specified boot disk attached to the instance.
+  AttachedDiskSpec boot_disk = 5 [(field_behavior) = IMMUTABLE];
+
+  // List of additional data disks attached to the instance beyond the boot disk.
+  repeated AttachedDiskSpec secondary_disks = 6;
+
+  // List of Shared Filesystems attached to the instance.
+  repeated AttachedFilesystemSpec filesystems = 7;
+
+  // Data in cloud-init format for customizing instance initialization.
+  // For details, see https://docs.nebius.com/compute/virtual-machines/manage#user-data
+  string cloud_init_user_data = 8 [(sensitive) = true, (buf.validate.field) = { string: { max_len: 32768 } }];
+
+  // Indicates whether the instance should be stopped.
+  bool stopped = 13;
+
+  // Recovery policy defines how the instance will be treated in case of a failure. Common source of failure is a host failure, but it can be any other failure.
+  // Instance undergoing a guest shutdown (poweroff, etc.) will be subject to recovery policy, meaning that it could be restarted and billed accordingly. Stop instance via API or UI to stop it to avoid recovering.
+  // If set to RECOVER, instance will be restarted, if possible. It could be restarted on the same host or on another host.
+  // If set to FAIL, instance will be stopped and not restarted.
+  InstanceRecoveryPolicy recovery_policy = 15 [(field_behavior) = IMMUTABLE];
+
+  // Include these parameters to create a Preemptible VM and omit them to create a Regular VM
+  // For details, see https://docs.nebius.com/compute/virtual-machines/preemptible
+  PreemptibleSpec preemptible = 19 [(field_behavior) = IMMUTABLE];
+
+  // Instance's hostname. Used to generate default DNS record in format `<hostname>.<network_id>.compute.internal.`
+  // or `<instance_id>.<network_id>.compute.internal.` if hostname is not specified.
+  string hostname = 20 [
+    (buf.validate.field) = {
+      cel: [
+        {
+          id: "hostname.valid",
+          message: "value must be a valid hostname",
+          expression: "this == '' || this.matches('^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$')"
+        }
+      ]
+    }
+  ];
+}
+
+message PreemptibleSpec {
+  enum PreemptionPolicy {
+    UNSPECIFIED = 0;
+
+    STOP = 1;
+  }
+
+  // Specifies what happens when the VM is preempted. The only supported value is STOP:
+  // Compute stops the VM without deleting or restarting it.
+  PreemptionPolicy on_preemption = 1 [(buf.validate.field).required = true, (field_behavior) = IMMUTABLE];
+
+  // The value can range from 1 to 5, where 5 indicates the highest priority.
+  // Affects the order in which Compute tries to preempt VMs, but does not guarantee the exact order.
+  int32 priority = 2 [(buf.validate.field).required = true, (field_behavior) = IMMUTABLE];
+}
+
+message ResourcesSpec {
+  string platform = 1 [(buf.validate.field).required = true, (field_behavior) = IMMUTABLE];
+
+  oneof size {
+    option (buf.validate.oneof).required = true;
+
+    string preset = 2;
+  }
+}
+
+message InstanceGpuClusterSpec {
+  // If you want to interconnect several instances in a GPU cluster via NVIDIA InfiniBand,
+  // set the ID of an existing GPU cluster.
+  // You can only add the VM to the cluster when creating the VM.
+  // For details, see https://docs.nebius.com/compute/clusters/gpu
+  string id = 1;
+}
+
+message AttachedDiskSpec {
+  enum AttachMode {
+    UNSPECIFIED = 0;
+
+    READ_ONLY = 1;
+
+    READ_WRITE = 2;
+  }
+
+  AttachMode attach_mode = 1 [(buf.validate.field).required = true];
+
+  oneof type {
+    option (buf.validate.oneof).required = true;
+
+    ExistingDisk existing_disk = 2;
+  }
+
+  // Specifies the user-defined identifier, allowing to use '/dev/disk/by-id/virtio-{device_id}' as a device path in mount command.
+  string device_id = 3 [(buf.validate.field) = { string: { max_len: 20 } }];
+}
+
+message ExistingDisk {
+  string id = 1 [(buf.validate.field).required = true];
+}
+
+message ExistingFilesystem {
+  string id = 1 [(buf.validate.field).required = true];
+}
+
+message AttachedFilesystemSpec {
+  enum AttachMode {
+    UNSPECIFIED = 0;
+
+    READ_ONLY = 1;
+
+    READ_WRITE = 2;
+  }
+
+  AttachMode attach_mode = 1 [(buf.validate.field).required = true];
+
+  // Specifies the user-defined identifier, allowing to use it as a device in mount command.
+  string mount_tag = 2 [(buf.validate.field) = { string: { max_len: 37 }, required: true }];
+
+  oneof type {
+    option (buf.validate.oneof).required = true;
+
+    ExistingFilesystem existing_filesystem = 3;
+  }
+}
+
+message InstanceStatus {
+  reserved 6;
+
+  enum InstanceState {
+    UNSPECIFIED = 0;
+
+    CREATING = 1;
+
+    UPDATING = 2;
+
+    STARTING = 3;
+
+    RUNNING = 4;
+
+    STOPPING = 5;
+
+    STOPPED = 6;
+
+    DELETING = 7;
+
+    ERROR = 8;
+  }
+
+  InstanceState state = 1;
+
+  repeated NetworkInterfaceStatus network_interfaces = 2;
+
+  // Indicates whether there is an ongoing operation
+  bool reconciling = 5;
+
+  string maintenance_event_id = 7;
+
+  oneof gpu_cluster_topology {
+    InstanceStatusInfinibandTopologyPath infiniband_topology_path = 10;
+  }
+}
+
+enum InstanceRecoveryPolicy {
+  RECOVER = 0;
+
+  FAIL = 1;
+}
+
+message InstanceStatusInfinibandTopologyPath {
+  repeated string path = 1;
+}

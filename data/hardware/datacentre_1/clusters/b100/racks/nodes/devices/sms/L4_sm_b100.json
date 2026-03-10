@@ -1,0 +1,88 @@
+{
+    "level": 4,
+    "sm": {
+      "id": "sm-b100-00",
+      "device_id": "gpu-b100-01",
+      "architecture": "Blackwell",
+      "description": "B100 SM with 4 Tensor Cores, 128 FP32 cores, and dynamic transformer engine for FP4/FP8 operations.",
+  
+      "compute_units": {
+        "tensor_cores": 4,
+        "fp32_cores": 128,
+        "int32_cores": 128,
+        "load_store_units": 32,
+        "special_function_units": 32,
+        "warp_schedulers": 4,
+        "dispatch_units_per_scheduler": 1
+      },
+  
+      "memory": {
+        "l1_cache_KB": 256,
+        "shared_memory_KB": 228,
+        "register_file_KB": 256,
+        "total_registers": 65536,
+        "max_registers_per_thread": 255
+      },
+  
+      "warp_config": {
+        "warp_size": 32,
+        "max_warps": 64,
+        "max_threads": 2048,
+        "max_blocks": 32
+      },
+  
+      "performance": {
+        "clock_hz": 1980000000,
+        "throughput_fp32_ops_per_cycle": 256,
+        "throughput_int32_ops_per_cycle": 256,
+        "throughput_tensor_fp4_ops_per_cycle": 1024,
+        "latency_cycles_fp32": 4,
+        "latency_cycles_tensor": 5
+      },
+  
+      "power": {
+        "sm_power_W": 5.2,
+        "thermal_limit_C": 90
+      },
+  
+      "connections": {
+        "l2_partition_id": 0,
+        "crossbar_bandwidth_GBps": 1500,
+        "memory_controller_affinity": [0, 1]
+      },
+  
+      "subunits": [
+        { "id": "tc0", "type": "Tensor Core", "precision": ["fp4", "fp8", "bf16"], "throughput_TFLOPS": 2.58 },
+        { "id": "tc1", "type": "Tensor Core", "precision": ["fp4", "fp8", "bf16"], "throughput_TFLOPS": 2.58 },
+        { "id": "tc2", "type": "Tensor Core", "precision": ["fp4", "fp8", "bf16"], "throughput_TFLOPS": 2.58 },
+        { "id": "tc3", "type": "Tensor Core", "precision": ["fp4", "fp8", "bf16"], "throughput_TFLOPS": 2.58 }
+      ],
+  
+      "visualization_hints": {
+        "grid": { "rows": 2, "cols": 2 },
+        "color_map": {
+          "tensor_core": "#fde047",
+          "fp32_core": "#fb923c",
+          "l1_shared": "#f43f5e"
+        },
+        "glow_intensity": 0.4
+      },
+  
+      "links_to": {
+        "tensor_core_schema": "L5_tensor_core_b100.json"
+      },
+
+      "bottleneck_analysis": {
+      "bottleneck_type": "compute",
+      "bottleneck": "Warp-scheduler pressure and shared-memory contention at high FP4/FP8 throughput.",
+      "description": "Each SM contains 4 Tensor Cores and 128 FP32 units. The jump to FP4 and FP8 doubles throughput but stresses shared-memory bandwidth (228 KB per SM) and register file limits. When running dense FP4 GEMMs, register spilling and shared-memory arbitration can reduce warp-level occupancy.",
+      "workload_characteristic": "High-throughput FP4 kernels or fused Transformer operations (matmul + activation + normalization) using dynamic precision scaling."
+    },
+
+  
+      "sources": [
+        "NVIDIA Blackwell Architecture Deep Dive (2024)"
+      ]
+    }
+  }
+  

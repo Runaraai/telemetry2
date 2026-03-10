@@ -1,0 +1,5 @@
+{
+    "objective": "min_cost_per_token",
+    "latency": { "p50_ms": 50, "p99_ms": 200 },
+    "throughput": { "min_tokens_per_sec": 30 }
+  }

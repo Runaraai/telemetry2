@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package nebius.compute.v1;
+
+import "nebius/annotations.proto";
+import "nebius/common/v1/metadata.proto";
+import "nebius/common/v1/operation.proto";
+import "nebius/common/v1/operation_service.proto";
+import "nebius/compute/v1/instance.proto";
+import "nebius/compute/v1/operation_service.proto";
+
+option go_package = "github.com/nebius/gosdk/proto/nebius/compute/v1";
+option java_multiple_files = true;
+option java_outer_classname = "InstanceServiceProto";
+option java_package = "ai.nebius.pub.compute.v1";
+
+service InstanceService {
+  option (api_service_name) = "compute";
+
+  // Retrieves detailed information about a specific VM instance by its ID.
+  rpc Get(GetInstanceRequest) returns (Instance);
+
+  // Retrieves detailed information about a specific VM instance by its parent and name.
+  rpc GetByName(common.v1.GetByNameRequest) returns (Instance);
+
+  // Lists all VM instances within a specified parent.
+  rpc List(ListInstancesRequest) returns (ListInstancesResponse);
+
+  // Creates a new VM instance based on the provided specification.
+  // For details, see https://docs.nebius.com/compute/virtual-machines/manage
+  rpc Create(CreateInstanceRequest) returns (common.v1.Operation);
+
+  // Updates an existing VM instance with new configuration parameters.
+  rpc Update(UpdateInstanceRequest) returns (common.v1.Operation);
+
+  // Deletes a VM instance by its ID.
+  rpc Delete(DeleteInstanceRequest) returns (common.v1.Operation);
+
+  // Starts a stopped VM instance.
+  rpc Start(StartInstanceRequest) returns (common.v1.Operation);
+
+  // Stops a running VM instance.
+  rpc Stop(StopInstanceRequest) returns (common.v1.Operation);
+
+  // Lists all operations that were performed within a specific parent resource.
+  rpc ListOperationsByParent(ListOperationsByParentRequest) returns (common.v1.ListOperationsResponse);
+}
+
+message GetInstanceRequest {
+  string id = 1;
+}
+
+message ListInstancesRequest {
+  string parent_id = 1;
+
+  int64 page_size = 2;
+
+  string page_token = 3;
+}
+
+message CreateInstanceRequest {
+  common.v1.ResourceMetadata metadata = 1;
+
+  InstanceSpec spec = 2;
+}
+
+message UpdateInstanceRequest {
+  common.v1.ResourceMetadata metadata = 1;
+
+  InstanceSpec spec = 2;
+}
+
+message DeleteInstanceRequest {
+  string id = 1;
+}
+
+message ListInstancesResponse {
+  repeated Instance items = 1;
+
+  string next_page_token = 2;
+}
+
+message StartInstanceRequest {
+  string id = 1;
+}
+
+message StopInstanceRequest {
+  string id = 1;
+}

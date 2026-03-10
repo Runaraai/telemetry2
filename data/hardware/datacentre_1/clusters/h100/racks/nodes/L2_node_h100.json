@@ -1,0 +1,105 @@
+{
+    "level": 2,
+    "node": {
+      "id": "node-h100-01",
+      "rack_id": "rack-h100-01",
+      "type": "DGX_H100",
+      "vendor": "NVIDIA",
+      "architecture": "Hopper",
+      "description": "NVIDIA DGX H100 node with 8×H100 GPUs using NVSwitch 3.0 and NVLink 4.0 fabric plus InfiniBand NDR400 uplinks.",
+  
+      "cpu": {
+        "model": "AMD EPYC 9654",
+        "sockets": 2,
+        "cores": 192,
+        "threads": 384,
+        "base_clock_ghz": 2.0,
+        "boost_clock_ghz": 3.7,
+        "tdp_W": 360
+      },
+  
+      "memory": {
+        "type": "DDR5",
+        "capacity_gb": 2048,
+        "channels": 16,
+        "bandwidth_GBps": 409.6
+      },
+  
+      "storage": {
+        "type": "NVMe Gen4",
+        "capacity_TB": 30.72,
+        "bandwidth_GBps": 28
+      },
+  
+      "interconnect": {
+        "type": "NVSwitch 3.0",
+        "switches": 6,
+        "aggregate_bandwidth_GBps": 3600,
+        "latency_ns": 1.2
+      },
+  
+      "fabric": {
+        "type": "NVSwitch 3.0 + NVLink 4.0 + InfiniBand NDR400",
+        "topology": "hybrid cube mesh",
+        "nvswitch_count": 6,
+        "nvlink_links_per_gpu": 18,
+        "nvlink_bandwidth_per_link_GBps": 100,
+        "nvlink_latency_ns": 1.2,
+        "intra_node_links": [
+          { "src": "gpu-h100-01", "dst": "gpu-h100-02", "bandwidth_GBps": 900 },
+          { "src": "gpu-h100-03", "dst": "gpu-h100-04", "bandwidth_GBps": 900 },
+          { "src": "gpu-h100-05", "dst": "gpu-h100-06", "bandwidth_GBps": 900 },
+          { "src": "gpu-h100-07", "dst": "gpu-h100-08", "bandwidth_GBps": 900 }
+        ],
+        "inter_node_uplinks": {
+          "fabric_type": "InfiniBand NDR400",
+          "ports": 8,
+          "link_bandwidth_GBps": 50,
+          "bisection_bandwidth_TBps": 51.2,
+          "latency_ns": 100
+        },
+        "summary": {
+          "total_internal_bandwidth_TBps": 7.2,
+          "avg_link_latency_ns": 1.2
+        }
+      },
+  
+      "power": {
+        "total_kW": 10.5,
+        "utilization_percent": 84,
+        "cooling_type": "liquid"
+      },
+  
+      "devices": [
+        "gpu-h100-01", "gpu-h100-02", "gpu-h100-03", "gpu-h100-04",
+        "gpu-h100-05", "gpu-h100-06", "gpu-h100-07", "gpu-h100-08"
+      ],
+  
+      "summary": {
+        "total_gpus": 8,
+        "total_memory_TB": 0.64,
+        "total_fp8_PFLOPS": 15.8,
+        "total_fp16_PFLOPS": 7.9,
+        "total_fp32_PFLOPS": 0.48,
+        "aggregate_nvlink_bandwidth_TBps": 7.2
+      },
+  
+      "visualization_hints": {
+        "layout": { "rows": 2, "cols": 4, "spacing": 0.3 },
+        "color_map": {
+          "cpu": "#22c55e",
+          "gpu": "#0ea5e9",
+          "fabric": "#facc15"
+        },
+        "glow_intensity": 0.3
+      },
+      "bottleneck_analysis": {
+      "bottleneck_type": "I/O",
+      "bottleneck": "CPU–GPU data transfer and host I/O throughput imbalance.",
+      "description": "PCIe 5.0 provides ~128 GB/s per GPU, while intra-node NVSwitch 3.0 delivers 7.2 TB/s aggregate bandwidth. CPU-based data preprocessing or slow storage streaming underutilizes GPUs, causing idle cycles while waiting on I/O.",
+      "workload_characteristic": "Data-heavy pipelines involving CPU preprocessing, tokenization, or real-time data streaming for LLM fine-tuning or large-scale inference."
+    }
+
+    }
+  }
+  

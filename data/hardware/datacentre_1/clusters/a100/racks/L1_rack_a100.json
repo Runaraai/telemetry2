@@ -1,0 +1,53 @@
+{
+    "level": 1,
+    "rack": {
+      "id": "rack-a100-01",
+      "cluster_id": "cluster-a100",
+      "position": { "row": 1, "col": 1 },
+      "rack_units": 42,
+      "nodes_per_rack": 8,
+      "height_m": 2.0,
+      "power_kW": 130,
+      "cooling_type": "liquid",
+      "fabric_connection": {
+        "type": "InfiniBand HDR",
+        "uplinks": 4,
+        "bandwidth_GBps": 200,
+        "latency_ns": 120
+      },
+      "nodes": [
+        "node-a100-01", "node-a100-02", "node-a100-03", "node-a100-04",
+        "node-a100-05", "node-a100-06", "node-a100-07", "node-a100-08"
+      ],
+      "summary": {
+        "total_nodes": 8,
+        "total_gpus": 64,
+        "total_memory_TB": 5.12,
+        "total_fp16_PFLOPS": 20.0,
+        "total_fp32_PFLOPS": 1.25,
+        "aggregate_nvlink_bandwidth_TBps": 38.4,
+        "power_utilization_percent": 82
+      },
+      "visualization_hints": {
+        "orientation": "vertical",
+        "spacing": 0.5,
+        "color_map": {
+          "node": "#3b82f6",
+          "fabric": "#f59e0b"
+        },
+        "glow_intensity": 0.3
+      },
+
+      "bottleneck_analysis": {
+      "bottleneck_type": "network",
+      "bottleneck": "InfiniBand uplink saturation (4 × 200 GB/s ≈ 0.8 TB/s shared across 64 GPUs).",
+      "description": "Each rack’s uplinks to the InfiniBand fabric are shared among multiple nodes. When all nodes initiate transfers concurrently, inter-rack links reach saturation, creating temporary congestion and delays in data exchange.",
+      "workload_characteristic": "Distributed training phases where multiple nodes within a rack simultaneously exchange gradients or activations with nodes in other racks—typical in pipeline or expert-parallel (MoE) workloads."
+    },
+
+      "sources": [
+        "NVIDIA DGX A100 System Architecture (2021)"
+      ]
+    }
+  }
+  

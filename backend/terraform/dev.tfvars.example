@@ -1,0 +1,6 @@
+# Copy to dev.tfvars and tweak as needed
+region_name        = "us-west-1"
+instance_type_name = "gpu_1x_h100"
+ssh_key_names      = ["your-ssh-key-name-in-lambda"]
+instance_name      = "omniference-dev"
+# api_key can be omitted here if you export LAMBDALABS_API_KEY and pass via scripts

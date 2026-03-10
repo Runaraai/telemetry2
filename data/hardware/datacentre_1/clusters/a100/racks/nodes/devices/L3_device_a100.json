@@ -1,0 +1,123 @@
+{
+    "level": 3,
+    "device": {
+      "id": "gpu-a100-01",
+      "node_id": "node-a100-01",
+      "model": "A100-80GB",
+      "vendor": "NVIDIA",
+      "architecture": "Ampere",
+      "process_nm": 7,
+      "tdp_W": 400,
+      "form_factor": "SXM4",
+  
+      "compute": {
+        "unit_kind": "SM",
+        "units": 108,
+        "warp_size": 32,
+        "tensor_cores_per_sm": 4,
+        "fp32_cores_per_sm": 64,
+        "clock_hz": 1410000000,
+        "boost_clock_hz": 1590000000,
+        "peak_flops": {
+          "fp16": 312,
+          "tf32": 156,
+          "fp32": 19.5,
+          "fp64": 9.7,
+          "int8": 624
+        }
+      },
+
+      "hierarchy": {
+        "gpcs": 8,
+        "tpcs_per_gpc": 8,
+        "sms_per_tpc": 2
+      },
+  
+      "memory": {
+        "hbm_type": "HBM2e",
+        "capacity_gb": 80,
+        "bandwidth_GBps": 2039,
+        "stacks": 6,
+        "bus_width_bits": 5120,
+        "l2_cache_MB": 40,
+        "l1_cache_KB": 192,
+        "shared_mem_per_sm_KB": 164
+      },
+  
+      "interconnects": {
+        "nvlink": {
+          "version": "3.0",
+          "links": 12,
+          "per_link_GBps": 50,
+          "aggregate_GBps": 600,
+          "latency_ns": 2.0
+        },
+        "pcie": {
+          "version": "4.0",
+          "lanes": 16,
+          "bandwidth_GBps": 64
+        },
+        "nvswitch": {
+          "version": "2.0",
+          "bandwidth_GBps": 2400,
+          "latency_ns": 1.8
+        }
+      },
+  
+      "power": {
+        "idle_W": 80,
+        "max_W": 400,
+        "avg_W": 300,
+        "thermal_limit_C": 90
+      },
+  
+      "precision_support": ["fp16", "tf32", "fp32", "fp64", "int8"],
+  
+      "subunits": {
+        "sms": 108,
+        "tensor_cores_total": 432,
+        "fp32_cores_total": 6912
+      },
+  
+      "connectivity": {
+        "nvlink_peers": 8,
+        "topology": "fully-connected crossbar"
+      },
+  
+      "links": {
+        "to_node": ["node-a100-01"],
+        "to_peer_gpus": [
+          "gpu-a100-02",
+          "gpu-a100-03",
+          "gpu-a100-04"
+        ]
+      },
+  
+      "visualization_hints": {
+        "grid": { "rows": 9, "cols": 12 },
+        "color_map": {
+          "sm": "#10b981",
+          "tensor_core": "#f59e0b",
+          "memory": "#3b82f6"
+        },
+        "glow_intensity": 0.25
+      },
+  
+      "links_to": {
+        "sm_schema": "L4_sm_a100.json",
+        "tensor_core_schema": "L5_tensor_core_a100.json"
+      },
+
+      "bottleneck_analysis": {
+      "bottleneck_type": "memory",
+      "bottleneck": "HBM2e memory bandwidth ceiling (≈ 2 TB/s effective).",
+      "description": "The A100’s HBM2e memory delivers up to 2 TB/s, but memory-intensive operations quickly saturate it. When arithmetic intensity is low, tensor cores spend cycles waiting for data to arrive from memory.",
+      "workload_characteristic": "Memory-bound kernels such as attention softmax, large embedding lookups, or layer-norms with low arithmetic intensity that saturate memory channels before compute units reach full utilization."
+    },
+  
+      "sources": [
+        "NVIDIA A100 Architecture Whitepaper (2020)"
+      ]
+    }
+  }
+  

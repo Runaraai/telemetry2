@@ -1,0 +1,145 @@
+syntax = "proto3";
+
+package nebius.compute.v1;
+
+import "buf/validate/validate.proto";
+import "nebius/common/v1/metadata.proto";
+import "nebius/annotations.proto";
+
+option go_package = "github.com/nebius/gosdk/proto/nebius/compute/v1";
+option java_multiple_files = true;
+option java_outer_classname = "DiskProto";
+option java_package = "ai.nebius.pub.compute.v1";
+
+message Disk {
+  common.v1.ResourceMetadata metadata = 1;
+
+  DiskSpec spec = 2;
+
+  DiskStatus status = 3;
+}
+
+message DiskSpec {
+  reserved 7, 9;
+
+  // the list of available types will be clarified later, it is not final version
+  enum DiskType {
+    UNSPECIFIED = 0;
+
+    NETWORK_SSD = 1;
+
+    NETWORK_HDD = 2;
+
+    NETWORK_SSD_NON_REPLICATED = 3;
+
+    NETWORK_SSD_IO_M3 = 4;
+  }
+
+  // Size of the disk. The size must be within the limits for the selected disk type.
+  // For current limits, see https://docs.nebius.com/compute/storage/types#disks-types-comparison
+  oneof size {
+    option (buf.validate.oneof).required = true;
+
+    int64 size_bytes = 1;
+
+    int64 size_kibibytes = 2;
+
+    int64 size_mebibytes = 3;
+
+    int64 size_gibibytes = 4;
+  }
+
+  // Block size in bytes.
+  // The block size must be a power of two between 4096 bytes (4 KiB) and 131072 bytes (128 KiB).
+  // The default value is 4096 bytes (4 KiB).
+  int64 block_size_bytes = 5 [(field_behavior) = IMMUTABLE];
+
+  // The type of disk defines the performance and reliability characteristics of the block device.
+  // For details, see https://docs.nebius.com/compute/storage/types#disks-types
+  DiskType type = 6 [(buf.validate.field).required = true, (field_behavior) = IMMUTABLE];
+
+  // Source for disk creation.
+  // Boot disk must be created from an image https://docs.nebius.com/compute/storage/manage#boot
+  // Additional disks can be created as an empty volume https://docs.nebius.com/compute/storage/manage#additional
+  oneof source {
+    string source_image_id = 8 [(field_behavior) = IMMUTABLE];
+
+    SourceImageFamily source_image_family = 10 [(field_behavior) = IMMUTABLE];
+  }
+
+  // Defines how data on the disk is encrypted. By default, no encryption is applied.
+  DiskEncryption disk_encryption = 11 [(field_behavior) = IMMUTABLE];
+}
+
+message SourceImageFamily {
+  string image_family = 1 [(buf.validate.field).required = true];
+
+  string parent_id = 2;
+}
+
+message DiskStatus {
+  enum State {
+    UNSPECIFIED = 0;
+
+    CREATING = 1;
+
+    READY = 2;
+
+    UPDATING = 3;
+
+    DELETING = 4;
+
+    // Indicates that error happened during disk creation, and the disk cannot be recovered.
+    ERROR = 5;
+
+    // Indicates that an error has occurred during the disk's life cycle, and the disk is broken or unhealthy, but can still be recovered.
+    BROKEN = 6;
+  }
+
+  enum SourceImageCPUArchitecture {
+    SOURCE_IMAGE_CPU_UNSPECIFIED = 0;
+
+    AMD64 = 1;
+
+    ARM64 = 2;
+  }
+
+  State state = 1;
+
+  string state_description = 2;
+
+  // Current read-write owner (instance ID).
+  // May refer to an instance in any state, including stopped
+  // (this semantics is preserved for backward compatibility).
+  // Reassigned on disk detach, instance deletion, or ownership transfer.
+  // Ownership transfer occurs when this disk is explicitly attached to another instance
+  // or when a VM with this disk attached starts while the current owner is stopped.
+  string read_write_attachment = 3;
+
+  repeated string read_only_attachments = 4;
+
+  string source_image_id = 5;
+
+  int64 size_bytes = 6;
+
+  // Indicates whether there is an ongoing operation
+  bool reconciling = 7;
+
+  int64 block_size_bytes = 8;
+
+  SourceImageCPUArchitecture source_image_cpu_architecture = 9;
+}
+
+message DiskEncryption {
+  enum DiskEncryptionType {
+    // No encryption is applied unless explicitly specified.
+    DISK_ENCRYPTION_UNSPECIFIED = 0;
+
+    // Enables encryption using the platform's default root key from KMS.
+    // Available for blank disks only.
+    // Available for disks with NETWORK_SSD_NON_REPLICATED and NETWORK_SSD_IO_M3 types only.
+    DISK_ENCRYPTION_MANAGED = 1;
+  }
+
+  DiskEncryptionType type = 1;
+}

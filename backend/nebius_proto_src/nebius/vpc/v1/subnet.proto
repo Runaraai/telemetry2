@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package nebius.vpc.v1;
+
+import "buf/validate/validate.proto";
+import "nebius/common/v1/metadata.proto";
+import "nebius/vpc/v1/pool.proto";
+import "nebius/annotations.proto";
+
+option go_package = "github.com/nebius/gosdk/proto/nebius/vpc/v1";
+option java_multiple_files = true;
+option java_outer_classname = "SubnetProto";
+option java_package = "ai.nebius.pub.vpc.v1";
+
+// Defines a Subnet, a segment of a network used for more granular control and management.
+// Subnet uses pools to organize address space.
+message Subnet {
+  // Metadata for the subnet resource.
+  // `metadata.parent_id` represents IAM container
+  common.v1.ResourceMetadata metadata = 1;
+
+  // Specification of the subnet.
+  SubnetSpec spec = 2;
+
+  // Status of the subnet.
+  SubnetStatus status = 3;
+}
+
+message SubnetSpec {
+  // ID of the network this subnet belongs to.
+  string network_id = 1 [(buf.validate.field).required = true];
+
+  // Private IPv4 address pools for this subnet.
+  // If unspecified, pools from the associated network are used.
+  IPv4PrivateSubnetPools ipv4_private_pools = 2 [(field_behavior) = NON_EMPTY_DEFAULT];
+
+  // Public IPv4 address pools for this subnet.
+  // If unspecified, pools from the associated network are used.
+  IPv4PublicSubnetPools ipv4_public_pools = 3 [(field_behavior) = NON_EMPTY_DEFAULT];
+
+  // ID of the route table to associate with the subnet.
+  // If unspecified, the network's default route table is used.
+  string route_table_id = 5;
+}
+
+message IPv4PrivateSubnetPools {
+  // List of private IPv4 CIDR blocks for this subnet.
+  // Must not overlap with other resources in the network
+  // Must be empty if `use_network_pools` is true.
+  repeated SubnetPool pools = 1;
+
+  // If true, inherit private IPv4 pools from the network. Defaults to true.
+  // Must be false if `pools` is specified.
+  bool use_network_pools = 2;
+}
+
+message IPv4PublicSubnetPools {
+  // List of public IPv4 CIDR blocks for this subnet.
+  // Must not overlap with other resources in the network.
+  // Must be empty if `use_network_pools` is true.
+  repeated SubnetPool pools = 1;
+
+  // If true, inherit public IPv4 pools from the network.
+  // Must be false if `pools` is specified.
+  bool use_network_pools = 2;
+}
+
+message SubnetPool {
+  repeated SubnetCidr cidrs = 2;
+}
+
+message SubnetCidr {
+  // A CIDR block (e.g., "10.1.2.0/24") or a prefix length (e.g., "/24").
+  // If prefix length is specified, the CIDR block will be auto-allocated
+  // from the network's available space.
+  string cidr = 1 [
+    (buf.validate.field) = {
+      cel: [
+        {
+          id: "string.valid_cidr",
+          message: "value must be a valid IP address, CIDR or mask",
+          expression: "this == '' || this.matches('^/([0-9]|[1-9][0-9]|1[0-2][0-8])$') || this.isIp() || this.isIpPrefix(true)"
+        },
+        {
+          id: "string.ip_empty",
+          message: "value is empty, which is not a valid IP address",
+          expression: "this != ''"
+        }
+      ],
+      required: true
+    }
+  ];
+
+  // Controls provisioning of IP addresses from the CIDR block . Defaults to AVAILABLE.
+  AddressBlockState state = 2 [(field_behavior) = NON_EMPTY_DEFAULT];
+
+  // Maximum mask length for an allocation from this block. Defaults to /32 for IPv4.
+  int64 max_mask_length = 3 [
+    (field_behavior) = NON_EMPTY_DEFAULT,
+    (buf.validate.field) = { int64: { lte: 128, gte: 0 } }
+  ];
+}
+
+message SubnetStatus {
+  // Enumeration of possible states of the subnet.
+  enum State {
+    STATE_UNSPECIFIED = 0; // Default state, unspecified.
+
+    CREATING = 1; // Subnet is being created.
+
+    READY = 2; // Subnet is ready for use.
+
+    DELETING = 3; // Subnet is being deleted.
+  }
+
+  // Current state of the subnet.
+  State state = 1;
+
+  // CIDR blocks.
+  repeated string ipv4_private_cidrs = 2;
+
+  // CIDR blocks.
+  repeated string ipv4_public_cidrs = 3;
+
+  // Information about the route table associated with this subnet.
+  // Can be either a custom route table or the network's default route table.
+  SubnetAssociatedRouteTable route_table = 5;
+}
+
+message SubnetAssociatedRouteTable {
+  // ID of the route table.
+  string id = 1;
+
+  // Indicates whether this is the network's default route table.
+  // If true, this is the default route table inherited from the network.
+  // If false, this is a custom route table explicitly associated with the subnet via spec.
+  bool default = 2;
+}

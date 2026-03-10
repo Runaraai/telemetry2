@@ -1,0 +1,8337 @@
+{
+  "generated_at": "2025-09-09 09:35:14",
+  "device": "cpu",
+  "model_name": "distilgpt2",
+  "layer_index": 0,
+  "run": {
+    "batch_size": 1,
+    "seq_len_input": 16,
+    "seq_len_output": 0,
+    "compute_dtype": "fp32",
+    "weight_dtype": "fp32"
+  },
+  "workload": {
+    "batching": {
+      "batch_size": 1,
+      "microbatch_size": 1,
+      "num_streams": 1
+    },
+    "sequence": {
+      "seq_len_input": 16,
+      "seq_len_output": 0,
+      "prefill_tokens": 16,
+      "decode_tokens": 0,
+      "kv_share_ratio": 0.0
+    },
+    "parallelism": {
+      "data_parallel_degree": 1,
+      "tensor_parallel_degree": 1,
+      "pipeline_stages": 0
+    },
+    "attention": {
+      "attention_kind": "flash",
+      "rope": true,
+      "sliding_window": null,
+      "causal": true
+    },
+    "precision": {
+      "compute_dtype": "fp32",
+      "acc_dtype": "fp32",
+      "kv_dtype": "fp32",
+      "weight_dtype": "fp32",
+      "sparsity": "dense",
+      "group_size": null
+    },
+    "layouts": {
+      "A_layout": "rowmajor",
+      "B_layout": "colmajor",
+      "C_layout": "rowmajor",
+      "A_ld": null,
+      "B_ld": null,
+      "C_ld": null
+    },
+    "checkpointing": {
+      "checkpoint_ratio": 0.0
+    },
+    "io_overlap": {
+      "host_preproc_ms": 0,
+      "h2d_bytes_per_req": 0,
+      "d2h_bytes_per_req": 0
+    }
+  },
+  "ops_count": 154,
+  "ops": [
+    {
+      "id": "aten_0",
+      "name": "aten.ones",
+      "pretty_name": "emerald-cool-aten.ones",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 109,
+        "end_us": 118
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_1",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 111,
+        "end_us": 114
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_2",
+      "name": "aten.fill_",
+      "pretty_name": "red-light-aten.fill_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 68.0,
+        "HBM_param": 0.0,
+        "HBM_act": 68.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 117,
+        "end_us": 118
+      },
+      "shapes": [
+        [
+          1,
+          16
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_3",
+      "name": "aten.layer_norm",
+      "pretty_name": "cyan-steel-layernorm",
+      "category": "norm",
+      "ops": 73728.0,
+      "bytes": {
+        "HBM": 55308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 55308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 130,
+        "end_us": 153
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [],
+        [
+          768
+        ],
+        [
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_4",
+      "name": "aten.native_layer_norm",
+      "pretty_name": "pink-charcoal-layernorm",
+      "category": "norm",
+      "ops": 73728.0,
+      "bytes": {
+        "HBM": 55304.0,
+        "HBM_param": 0.0,
+        "HBM_act": 55304.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 131,
+        "end_us": 151
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [],
+        [
+          768
+        ],
+        [
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_5",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 133,
+        "end_us": 133
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_6",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 134,
+        "end_us": 134
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_7",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 134,
+        "end_us": 135
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_8",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 68.0,
+        "HBM_param": 0.0,
+        "HBM_act": 68.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 150,
+        "end_us": 150
+      },
+      "shapes": [
+        [
+          16
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_9",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 68.0,
+        "HBM_param": 0.0,
+        "HBM_act": 68.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 151,
+        "end_us": 151
+      },
+      "shapes": [
+        [
+          16
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_10",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 163,
+        "end_us": 164
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_11",
+      "name": "aten.addmm",
+      "pretty_name": "indigo-bright-addmm",
+      "category": "gemm",
+      "ops": 56623104.0,
+      "bytes": {
+        "HBM": 14214152.0,
+        "HBM_param": 7077888.0,
+        "HBM_act": 7136264.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 166,
+        "end_us": 378
+      },
+      "shapes": [
+        [
+          2304
+        ],
+        [
+          16,
+          768
+        ],
+        [
+          768,
+          2304
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_12",
+      "name": "aten.expand",
+      "pretty_name": "slate-soft-aten.expand",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 9224.0,
+        "HBM_param": 0.0,
+        "HBM_act": 9224.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 167,
+        "end_us": 169
+      },
+      "shapes": [
+        [
+          2304
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_13",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 9228.0,
+        "HBM_param": 0.0,
+        "HBM_act": 9228.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 168,
+        "end_us": 169
+      },
+      "shapes": [
+        [
+          2304
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_14",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 294916.0,
+        "HBM_param": 0.0,
+        "HBM_act": 294916.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 170,
+        "end_us": 179
+      },
+      "shapes": [
+        [
+          16,
+          2304
+        ],
+        [
+          16,
+          2304
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_15",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147456.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147456.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 182,
+        "end_us": 182
+      },
+      "shapes": [
+        [
+          16,
+          2304
+        ]
+      ]
+    },
+    {
+      "id": "aten_16",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 7077888.0,
+        "HBM_param": 0.0,
+        "HBM_act": 7077888.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 182,
+        "end_us": 182
+      },
+      "shapes": [
+        [
+          768,
+          2304
+        ]
+      ]
+    },
+    {
+      "id": "aten_17",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49152.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49152.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 182,
+        "end_us": 182
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ]
+      ]
+    },
+    {
+      "id": "aten_18",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147460.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147460.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 386,
+        "end_us": 388
+      },
+      "shapes": [
+        [
+          16,
+          2304
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_19",
+      "name": "aten.split",
+      "pretty_name": "stone-charcoal-aten.split",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147464.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147464.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 397,
+        "end_us": 410
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_20",
+      "name": "aten.narrow",
+      "pretty_name": "yellow-sunset-aten.narrow",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147468.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147468.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 399,
+        "end_us": 405
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_21",
+      "name": "aten.slice",
+      "pretty_name": "teal-charcoal-aten.slice",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147472.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147472.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 402,
+        "end_us": 405
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_22",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147468.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147468.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 404,
+        "end_us": 405
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_23",
+      "name": "aten.narrow",
+      "pretty_name": "yellow-sunset-aten.narrow",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147468.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147468.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 406,
+        "end_us": 407
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_24",
+      "name": "aten.slice",
+      "pretty_name": "teal-charcoal-aten.slice",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147472.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147472.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 406,
+        "end_us": 407
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_25",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147468.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147468.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 406,
+        "end_us": 407
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_26",
+      "name": "aten.narrow",
+      "pretty_name": "yellow-sunset-aten.narrow",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147468.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147468.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 407,
+        "end_us": 408
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_27",
+      "name": "aten.slice",
+      "pretty_name": "teal-charcoal-aten.slice",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147472.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147472.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 407,
+        "end_us": 408
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_28",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147468.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147468.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 408,
+        "end_us": 408
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_29",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 414,
+        "end_us": 415
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_30",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 417,
+        "end_us": 420
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_31",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 419,
+        "end_us": 419
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_32",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 421,
+        "end_us": 421
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_33",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 422,
+        "end_us": 423
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_34",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 422,
+        "end_us": 422
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_35",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 424,
+        "end_us": 425
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_36",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 425,
+        "end_us": 426
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_37",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 426,
+        "end_us": 426
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_38",
+      "name": "aten.contiguous",
+      "pretty_name": "cyan-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 439,
+        "end_us": 451
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_39",
+      "name": "aten.clone",
+      "pretty_name": "zinc-clear-aten.clone",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 440,
+        "end_us": 451
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_40",
+      "name": "aten.empty_like",
+      "pretty_name": "pink-jade-aten.empty_like",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49172.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49172.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 441,
+        "end_us": 446
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_41",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 441,
+        "end_us": 446
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_42",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 447,
+        "end_us": 451
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_43",
+      "name": "aten.contiguous",
+      "pretty_name": "cyan-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 452,
+        "end_us": 466
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_44",
+      "name": "aten.clone",
+      "pretty_name": "zinc-clear-aten.clone",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 452,
+        "end_us": 466
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_45",
+      "name": "aten.empty_like",
+      "pretty_name": "pink-jade-aten.empty_like",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49172.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49172.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 453,
+        "end_us": 454
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_46",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 453,
+        "end_us": 454
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_47",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 454,
+        "end_us": 466
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_48",
+      "name": "aten.contiguous",
+      "pretty_name": "cyan-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 467,
+        "end_us": 476
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_49",
+      "name": "aten.clone",
+      "pretty_name": "zinc-clear-aten.clone",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 467,
+        "end_us": 475
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_50",
+      "name": "aten.empty_like",
+      "pretty_name": "pink-jade-aten.empty_like",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49172.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49172.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 467,
+        "end_us": 468
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_51",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 468,
+        "end_us": 468
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_52",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 468,
+        "end_us": 475
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_53",
+      "name": "aten.scaled_dot_product_attention",
+      "pretty_name": "orange-sunset-sdp-attention",
+      "category": "attention.sdp",
+      "ops": 786432.0,
+      "bytes": {
+        "HBM": 147536.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147536.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 482,
+        "end_us": 539
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          16
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_54",
+      "name": "aten.scalar_tensor",
+      "pretty_name": "amber-deep-aten.scalar_tensor",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 486,
+        "end_us": 488
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_55",
+      "name": "aten.where",
+      "pretty_name": "purple-bold-aten.where",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 72.0,
+        "HBM_param": 0.0,
+        "HBM_act": 72.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 489,
+        "end_us": 496
+      },
+      "shapes": [
+        [
+          1,
+          16
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_56",
+      "name": "aten.scalar_tensor",
+      "pretty_name": "amber-deep-aten.scalar_tensor",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 489,
+        "end_us": 490
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_57",
+      "name": "aten.to",
+      "pretty_name": "teal-muted-aten.to",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 490,
+        "end_us": 490
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_58",
+      "name": "aten.where",
+      "pretty_name": "purple-bold-aten.where",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 72.0,
+        "HBM_param": 0.0,
+        "HBM_act": 72.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 491,
+        "end_us": 496
+      },
+      "shapes": [
+        [
+          1,
+          16
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_59",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 492,
+        "end_us": 493
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_60",
+      "name": "aten._scaled_dot_product_flash_attention_for_cpu",
+      "pretty_name": "fuchsia-deep-aten._scaled_dot_product_flash_attention_for_cpu",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147532.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147532.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 498,
+        "end_us": 538
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        [
+          1,
+          16
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_61",
+      "name": "aten.empty_like",
+      "pretty_name": "pink-jade-aten.empty_like",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49172.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49172.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 499,
+        "end_us": 502
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_62",
+      "name": "aten.empty_strided",
+      "pretty_name": "yellow-bright-aten.empty_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 500,
+        "end_us": 501
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_63",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 502,
+        "end_us": 505
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_64",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 504,
+        "end_us": 504
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_65",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 505,
+        "end_us": 506
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_66",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 507,
+        "end_us": 507
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_67",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 507,
+        "end_us": 507
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_68",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 507,
+        "end_us": 508
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_69",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 508,
+        "end_us": 508
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_70",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 508,
+        "end_us": 508
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_71",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 508,
+        "end_us": 508
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_72",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 68.0,
+        "HBM_param": 0.0,
+        "HBM_act": 68.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 509,
+        "end_us": 509
+      },
+      "shapes": [
+        [
+          1,
+          16
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_73",
+      "name": "aten.expand",
+      "pretty_name": "slate-soft-aten.expand",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 72.0,
+        "HBM_param": 0.0,
+        "HBM_act": 72.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 510,
+        "end_us": 511
+      },
+      "shapes": [
+        [
+          1,
+          1,
+          1,
+          16
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_74",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 76.0,
+        "HBM_param": 0.0,
+        "HBM_act": 76.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 510,
+        "end_us": 511
+      },
+      "shapes": [
+        [
+          1,
+          1,
+          1,
+          16
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_75",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 512,
+        "end_us": 512
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_76",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 512,
+        "end_us": 513
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_77",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 535,
+        "end_us": 537
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_78",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 536,
+        "end_us": 536
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_79",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 776.0,
+        "HBM_param": 0.0,
+        "HBM_act": 776.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 537,
+        "end_us": 538
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_80",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 780.0,
+        "HBM_param": 0.0,
+        "HBM_act": 780.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 537,
+        "end_us": 538
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_81",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 540,
+        "end_us": 541
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_82",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 541,
+        "end_us": 541
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_83",
+      "name": "aten.contiguous",
+      "pretty_name": "cyan-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 542,
+        "end_us": 554
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_84",
+      "name": "aten.clone",
+      "pretty_name": "zinc-clear-aten.clone",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 542,
+        "end_us": 554
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_85",
+      "name": "aten.empty_like",
+      "pretty_name": "pink-jade-aten.empty_like",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49172.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49172.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 543,
+        "end_us": 544
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_86",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 543,
+        "end_us": 544
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_87",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 544,
+        "end_us": 554
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_88",
+      "name": "aten.reshape",
+      "pretty_name": "sky-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 559,
+        "end_us": 560
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_89",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 560,
+        "end_us": 560
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_90",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 567,
+        "end_us": 567
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_91",
+      "name": "aten.addmm",
+      "pretty_name": "indigo-bright-addmm",
+      "category": "gemm",
+      "ops": 18874368.0,
+      "bytes": {
+        "HBM": 4770824.0,
+        "HBM_param": 2359296.0,
+        "HBM_act": 2411528.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 569,
+        "end_us": 634
+      },
+      "shapes": [
+        [
+          768
+        ],
+        [
+          16,
+          768
+        ],
+        [
+          768,
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_92",
+      "name": "aten.expand",
+      "pretty_name": "slate-soft-aten.expand",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 3080.0,
+        "HBM_param": 0.0,
+        "HBM_act": 3080.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 570,
+        "end_us": 571
+      },
+      "shapes": [
+        [
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_93",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 3084.0,
+        "HBM_param": 0.0,
+        "HBM_act": 3084.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 571,
+        "end_us": 571
+      },
+      "shapes": [
+        [
+          768
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_94",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 572,
+        "end_us": 573
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ],
+        [
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_95",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49152.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49152.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 573,
+        "end_us": 574
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ]
+      ]
+    },
+    {
+      "id": "aten_96",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 2359296.0,
+        "HBM_param": 0.0,
+        "HBM_act": 2359296.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 574,
+        "end_us": 574
+      },
+      "shapes": [
+        [
+          768,
+          768
+        ]
+      ]
+    },
+    {
+      "id": "aten_97",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49152.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49152.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 574,
+        "end_us": 574
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ]
+      ]
+    },
+    {
+      "id": "aten_98",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 636,
+        "end_us": 637
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_99",
+      "name": "aten.dropout",
+      "pretty_name": "amber-dark-aten.dropout",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 643,
+        "end_us": 644
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_100",
+      "name": "aten.add",
+      "pretty_name": "grey-muted-eltwise",
+      "category": "eltwise",
+      "ops": 12288.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 647,
+        "end_us": 651
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_101",
+      "name": "aten.layer_norm",
+      "pretty_name": "cyan-steel-layernorm",
+      "category": "norm",
+      "ops": 73728.0,
+      "bytes": {
+        "HBM": 55308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 55308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 656,
+        "end_us": 671
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [],
+        [
+          768
+        ],
+        [
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_102",
+      "name": "aten.native_layer_norm",
+      "pretty_name": "pink-charcoal-layernorm",
+      "category": "norm",
+      "ops": 73728.0,
+      "bytes": {
+        "HBM": 55304.0,
+        "HBM_param": 0.0,
+        "HBM_act": 55304.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 657,
+        "end_us": 670
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [],
+        [
+          768
+        ],
+        [
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_103",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 658,
+        "end_us": 658
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_104",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 659,
+        "end_us": 659
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_105",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 659,
+        "end_us": 660
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_106",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 68.0,
+        "HBM_param": 0.0,
+        "HBM_act": 68.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 669,
+        "end_us": 670
+      },
+      "shapes": [
+        [
+          16
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_107",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 68.0,
+        "HBM_param": 0.0,
+        "HBM_act": 68.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 670,
+        "end_us": 670
+      },
+      "shapes": [
+        [
+          16
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_108",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 677,
+        "end_us": 677
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_109",
+      "name": "aten.addmm",
+      "pretty_name": "indigo-bright-addmm",
+      "category": "gemm",
+      "ops": 75497472.0,
+      "bytes": {
+        "HBM": 18935816.0,
+        "HBM_param": 9437184.0,
+        "HBM_act": 9498632.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 678,
+        "end_us": 969
+      },
+      "shapes": [
+        [
+          3072
+        ],
+        [
+          16,
+          768
+        ],
+        [
+          768,
+          3072
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_110",
+      "name": "aten.expand",
+      "pretty_name": "slate-soft-aten.expand",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 12296.0,
+        "HBM_param": 0.0,
+        "HBM_act": 12296.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 679,
+        "end_us": 680
+      },
+      "shapes": [
+        [
+          3072
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_111",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 12300.0,
+        "HBM_param": 0.0,
+        "HBM_act": 12300.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 680,
+        "end_us": 680
+      },
+      "shapes": [
+        [
+          3072
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_112",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 393220.0,
+        "HBM_param": 0.0,
+        "HBM_act": 393220.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 680,
+        "end_us": 701
+      },
+      "shapes": [
+        [
+          16,
+          3072
+        ],
+        [
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_113",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 196608.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196608.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 702,
+        "end_us": 702
+      },
+      "shapes": [
+        [
+          16,
+          3072
+        ]
+      ]
+    },
+    {
+      "id": "aten_114",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 9437184.0,
+        "HBM_param": 0.0,
+        "HBM_act": 9437184.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 702,
+        "end_us": 702
+      },
+      "shapes": [
+        [
+          768,
+          3072
+        ]
+      ]
+    },
+    {
+      "id": "aten_115",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49152.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49152.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 702,
+        "end_us": 702
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ]
+      ]
+    },
+    {
+      "id": "aten_116",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 196612.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196612.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 972,
+        "end_us": 972
+      },
+      "shapes": [
+        [
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_117",
+      "name": "aten.mul",
+      "pretty_name": "slate-bright-eltwise",
+      "category": "eltwise",
+      "ops": 49152.0,
+      "bytes": {
+        "HBM": 196612.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196612.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 979,
+        "end_us": 1011
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_118",
+      "name": "aten.to",
+      "pretty_name": "teal-muted-aten.to",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 981,
+        "end_us": 985
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_119",
+      "name": "aten._to_copy",
+      "pretty_name": "rose-peach-aten._to_copy",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 982,
+        "end_us": 985
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_120",
+      "name": "aten.empty_strided",
+      "pretty_name": "yellow-bright-aten.empty_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 983,
+        "end_us": 984
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_121",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 984,
+        "end_us": 985
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_122",
+      "name": "aten.pow",
+      "pretty_name": "pink-peach-eltwise",
+      "category": "eltwise",
+      "ops": 49152.0,
+      "bytes": {
+        "HBM": 196612.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196612.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1020,
+        "end_us": 1046
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_123",
+      "name": "aten.result_type",
+      "pretty_name": "pink-steel-aten.result_type",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 196612.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196612.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1021,
+        "end_us": 1021
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_124",
+      "name": "aten.to",
+      "pretty_name": "teal-muted-aten.to",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 196624.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196624.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1022,
+        "end_us": 1022
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_125",
+      "name": "aten.mul",
+      "pretty_name": "slate-bright-eltwise",
+      "category": "eltwise",
+      "ops": 49152.0,
+      "bytes": {
+        "HBM": 196612.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196612.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1049,
+        "end_us": 1077
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_126",
+      "name": "aten.to",
+      "pretty_name": "teal-muted-aten.to",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1050,
+        "end_us": 1054
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_127",
+      "name": "aten._to_copy",
+      "pretty_name": "rose-peach-aten._to_copy",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1051,
+        "end_us": 1054
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_128",
+      "name": "aten.empty_strided",
+      "pretty_name": "yellow-bright-aten.empty_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1052,
+        "end_us": 1053
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_129",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1053,
+        "end_us": 1054
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_130",
+      "name": "aten.add",
+      "pretty_name": "grey-muted-eltwise",
+      "category": "eltwise",
+      "ops": 49152.0,
+      "bytes": {
+        "HBM": 393220.0,
+        "HBM_param": 0.0,
+        "HBM_act": 393220.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1080,
+        "end_us": 1092
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        [
+          1,
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_131",
+      "name": "aten.mul",
+      "pretty_name": "slate-bright-eltwise",
+      "category": "eltwise",
+      "ops": 49152.0,
+      "bytes": {
+        "HBM": 196612.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196612.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1094,
+        "end_us": 1106
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_132",
+      "name": "aten.to",
+      "pretty_name": "teal-muted-aten.to",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1095,
+        "end_us": 1097
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_133",
+      "name": "aten._to_copy",
+      "pretty_name": "rose-peach-aten._to_copy",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1095,
+        "end_us": 1097
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_134",
+      "name": "aten.empty_strided",
+      "pretty_name": "yellow-bright-aten.empty_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1096,
+        "end_us": 1096
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_135",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1096,
+        "end_us": 1097
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_136",
+      "name": "aten.tanh",
+      "pretty_name": "blue-deep-aten.tanh",
+      "category": "activation",
+      "ops": 196608.0,
+      "bytes": {
+        "HBM": 196608.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196608.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1108,
+        "end_us": 1152
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ]
+      ]
+    },
+    {
+      "id": "aten_137",
+      "name": "aten.add",
+      "pretty_name": "grey-muted-eltwise",
+      "category": "eltwise",
+      "ops": 49152.0,
+      "bytes": {
+        "HBM": 196616.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196616.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1154,
+        "end_us": 1166
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_138",
+      "name": "aten.to",
+      "pretty_name": "teal-muted-aten.to",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1154,
+        "end_us": 1157
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_139",
+      "name": "aten._to_copy",
+      "pretty_name": "rose-peach-aten._to_copy",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1155,
+        "end_us": 1156
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_140",
+      "name": "aten.empty_strided",
+      "pretty_name": "yellow-bright-aten.empty_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1155,
+        "end_us": 1156
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_141",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1156,
+        "end_us": 1156
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_142",
+      "name": "aten.mul",
+      "pretty_name": "slate-bright-eltwise",
+      "category": "eltwise",
+      "ops": 49152.0,
+      "bytes": {
+        "HBM": 393216.0,
+        "HBM_param": 0.0,
+        "HBM_act": 393216.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1167,
+        "end_us": 1177
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        [
+          1,
+          16,
+          3072
+        ]
+      ]
+    },
+    {
+      "id": "aten_143",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 196612.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196612.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1185,
+        "end_us": 1186
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_144",
+      "name": "aten.addmm",
+      "pretty_name": "indigo-bright-addmm",
+      "category": "gemm",
+      "ops": 75497472.0,
+      "bytes": {
+        "HBM": 19074056.0,
+        "HBM_param": 9437184.0,
+        "HBM_act": 9636872.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1187,
+        "end_us": 1464
+      },
+      "shapes": [
+        [
+          768
+        ],
+        [
+          16,
+          3072
+        ],
+        [
+          3072,
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_145",
+      "name": "aten.expand",
+      "pretty_name": "slate-soft-aten.expand",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 3080.0,
+        "HBM_param": 0.0,
+        "HBM_act": 3080.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1189,
+        "end_us": 1190
+      },
+      "shapes": [
+        [
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_146",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 3084.0,
+        "HBM_param": 0.0,
+        "HBM_act": 3084.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1189,
+        "end_us": 1190
+      },
+      "shapes": [
+        [
+          768
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_147",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1190,
+        "end_us": 1192
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ],
+        [
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_148",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49152.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49152.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1193,
+        "end_us": 1193
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ]
+      ]
+    },
+    {
+      "id": "aten_149",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 9437184.0,
+        "HBM_param": 0.0,
+        "HBM_act": 9437184.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1193,
+        "end_us": 1193
+      },
+      "shapes": [
+        [
+          3072,
+          768
+        ]
+      ]
+    },
+    {
+      "id": "aten_150",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 196608.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196608.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1193,
+        "end_us": 1193
+      },
+      "shapes": [
+        [
+          16,
+          3072
+        ]
+      ]
+    },
+    {
+      "id": "aten_151",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1468,
+        "end_us": 1469
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_152",
+      "name": "aten.dropout",
+      "pretty_name": "amber-dark-aten.dropout",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1479,
+        "end_us": 1479
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_153",
+      "name": "aten.add",
+      "pretty_name": "grey-muted-eltwise",
+      "category": "eltwise",
+      "ops": 12288.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1481,
+        "end_us": 1484
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    }
+  ],
+  "layers": [
+    {
+      "id": "aten_0",
+      "name": "aten.ones",
+      "pretty_name": "emerald-cool-aten.ones",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 109,
+        "end_us": 118
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_1",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 111,
+        "end_us": 114
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_2",
+      "name": "aten.fill_",
+      "pretty_name": "red-light-aten.fill_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 68.0,
+        "HBM_param": 0.0,
+        "HBM_act": 68.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 117,
+        "end_us": 118
+      },
+      "shapes": [
+        [
+          1,
+          16
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_3",
+      "name": "aten.layer_norm",
+      "pretty_name": "cyan-steel-layernorm",
+      "category": "norm",
+      "ops": 73728.0,
+      "bytes": {
+        "HBM": 55308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 55308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 130,
+        "end_us": 153
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [],
+        [
+          768
+        ],
+        [
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_4",
+      "name": "aten.native_layer_norm",
+      "pretty_name": "pink-charcoal-layernorm",
+      "category": "norm",
+      "ops": 73728.0,
+      "bytes": {
+        "HBM": 55304.0,
+        "HBM_param": 0.0,
+        "HBM_act": 55304.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 131,
+        "end_us": 151
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [],
+        [
+          768
+        ],
+        [
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_5",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 133,
+        "end_us": 133
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_6",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 134,
+        "end_us": 134
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_7",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 134,
+        "end_us": 135
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_8",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 68.0,
+        "HBM_param": 0.0,
+        "HBM_act": 68.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 150,
+        "end_us": 150
+      },
+      "shapes": [
+        [
+          16
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_9",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 68.0,
+        "HBM_param": 0.0,
+        "HBM_act": 68.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 151,
+        "end_us": 151
+      },
+      "shapes": [
+        [
+          16
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_10",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 163,
+        "end_us": 164
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_11",
+      "name": "aten.addmm",
+      "pretty_name": "indigo-bright-addmm",
+      "category": "gemm",
+      "ops": 56623104.0,
+      "bytes": {
+        "HBM": 14214152.0,
+        "HBM_param": 7077888.0,
+        "HBM_act": 7136264.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 166,
+        "end_us": 378
+      },
+      "shapes": [
+        [
+          2304
+        ],
+        [
+          16,
+          768
+        ],
+        [
+          768,
+          2304
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_12",
+      "name": "aten.expand",
+      "pretty_name": "slate-soft-aten.expand",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 9224.0,
+        "HBM_param": 0.0,
+        "HBM_act": 9224.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 167,
+        "end_us": 169
+      },
+      "shapes": [
+        [
+          2304
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_13",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 9228.0,
+        "HBM_param": 0.0,
+        "HBM_act": 9228.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 168,
+        "end_us": 169
+      },
+      "shapes": [
+        [
+          2304
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_14",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 294916.0,
+        "HBM_param": 0.0,
+        "HBM_act": 294916.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 170,
+        "end_us": 179
+      },
+      "shapes": [
+        [
+          16,
+          2304
+        ],
+        [
+          16,
+          2304
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_15",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147456.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147456.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 182,
+        "end_us": 182
+      },
+      "shapes": [
+        [
+          16,
+          2304
+        ]
+      ]
+    },
+    {
+      "id": "aten_16",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 7077888.0,
+        "HBM_param": 0.0,
+        "HBM_act": 7077888.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 182,
+        "end_us": 182
+      },
+      "shapes": [
+        [
+          768,
+          2304
+        ]
+      ]
+    },
+    {
+      "id": "aten_17",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49152.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49152.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 182,
+        "end_us": 182
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ]
+      ]
+    },
+    {
+      "id": "aten_18",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147460.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147460.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 386,
+        "end_us": 388
+      },
+      "shapes": [
+        [
+          16,
+          2304
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_19",
+      "name": "aten.split",
+      "pretty_name": "stone-charcoal-aten.split",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147464.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147464.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 397,
+        "end_us": 410
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_20",
+      "name": "aten.narrow",
+      "pretty_name": "yellow-sunset-aten.narrow",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147468.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147468.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 399,
+        "end_us": 405
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_21",
+      "name": "aten.slice",
+      "pretty_name": "teal-charcoal-aten.slice",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147472.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147472.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 402,
+        "end_us": 405
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_22",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147468.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147468.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 404,
+        "end_us": 405
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_23",
+      "name": "aten.narrow",
+      "pretty_name": "yellow-sunset-aten.narrow",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147468.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147468.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 406,
+        "end_us": 407
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_24",
+      "name": "aten.slice",
+      "pretty_name": "teal-charcoal-aten.slice",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147472.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147472.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 406,
+        "end_us": 407
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_25",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147468.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147468.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 406,
+        "end_us": 407
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_26",
+      "name": "aten.narrow",
+      "pretty_name": "yellow-sunset-aten.narrow",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147468.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147468.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 407,
+        "end_us": 408
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_27",
+      "name": "aten.slice",
+      "pretty_name": "teal-charcoal-aten.slice",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147472.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147472.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 407,
+        "end_us": 408
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_28",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147468.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147468.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 408,
+        "end_us": 408
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          2304
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_29",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 414,
+        "end_us": 415
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_30",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 417,
+        "end_us": 420
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_31",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 419,
+        "end_us": 419
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_32",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 421,
+        "end_us": 421
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_33",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 422,
+        "end_us": 423
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_34",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 422,
+        "end_us": 422
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_35",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 424,
+        "end_us": 425
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_36",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 425,
+        "end_us": 426
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_37",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 426,
+        "end_us": 426
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_38",
+      "name": "aten.contiguous",
+      "pretty_name": "cyan-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 439,
+        "end_us": 451
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_39",
+      "name": "aten.clone",
+      "pretty_name": "zinc-clear-aten.clone",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 440,
+        "end_us": 451
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_40",
+      "name": "aten.empty_like",
+      "pretty_name": "pink-jade-aten.empty_like",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49172.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49172.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 441,
+        "end_us": 446
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_41",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 441,
+        "end_us": 446
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_42",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 447,
+        "end_us": 451
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_43",
+      "name": "aten.contiguous",
+      "pretty_name": "cyan-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 452,
+        "end_us": 466
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_44",
+      "name": "aten.clone",
+      "pretty_name": "zinc-clear-aten.clone",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 452,
+        "end_us": 466
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_45",
+      "name": "aten.empty_like",
+      "pretty_name": "pink-jade-aten.empty_like",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49172.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49172.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 453,
+        "end_us": 454
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_46",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 453,
+        "end_us": 454
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_47",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 454,
+        "end_us": 466
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_48",
+      "name": "aten.contiguous",
+      "pretty_name": "cyan-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 467,
+        "end_us": 476
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_49",
+      "name": "aten.clone",
+      "pretty_name": "zinc-clear-aten.clone",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 467,
+        "end_us": 475
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_50",
+      "name": "aten.empty_like",
+      "pretty_name": "pink-jade-aten.empty_like",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49172.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49172.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 467,
+        "end_us": 468
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_51",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 468,
+        "end_us": 468
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_52",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 468,
+        "end_us": 475
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_53",
+      "name": "aten.scaled_dot_product_attention",
+      "pretty_name": "orange-sunset-sdp-attention",
+      "category": "attention.sdp",
+      "ops": 786432.0,
+      "bytes": {
+        "HBM": 147536.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147536.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 482,
+        "end_us": 539
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          16
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_54",
+      "name": "aten.scalar_tensor",
+      "pretty_name": "amber-deep-aten.scalar_tensor",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 486,
+        "end_us": 488
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_55",
+      "name": "aten.where",
+      "pretty_name": "purple-bold-aten.where",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 72.0,
+        "HBM_param": 0.0,
+        "HBM_act": 72.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 489,
+        "end_us": 496
+      },
+      "shapes": [
+        [
+          1,
+          16
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_56",
+      "name": "aten.scalar_tensor",
+      "pretty_name": "amber-deep-aten.scalar_tensor",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 489,
+        "end_us": 490
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_57",
+      "name": "aten.to",
+      "pretty_name": "teal-muted-aten.to",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 490,
+        "end_us": 490
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_58",
+      "name": "aten.where",
+      "pretty_name": "purple-bold-aten.where",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 72.0,
+        "HBM_param": 0.0,
+        "HBM_act": 72.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 491,
+        "end_us": 496
+      },
+      "shapes": [
+        [
+          1,
+          16
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_59",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 492,
+        "end_us": 493
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_60",
+      "name": "aten._scaled_dot_product_flash_attention_for_cpu",
+      "pretty_name": "fuchsia-deep-aten._scaled_dot_product_flash_attention_for_cpu",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 147532.0,
+        "HBM_param": 0.0,
+        "HBM_act": 147532.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 498,
+        "end_us": 538
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        [
+          1,
+          16
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_61",
+      "name": "aten.empty_like",
+      "pretty_name": "pink-jade-aten.empty_like",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49172.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49172.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 499,
+        "end_us": 502
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_62",
+      "name": "aten.empty_strided",
+      "pretty_name": "yellow-bright-aten.empty_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 500,
+        "end_us": 501
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_63",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 502,
+        "end_us": 505
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_64",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 504,
+        "end_us": 504
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_65",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 505,
+        "end_us": 506
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_66",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 507,
+        "end_us": 507
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_67",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 507,
+        "end_us": 507
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_68",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 507,
+        "end_us": 508
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_69",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 508,
+        "end_us": 508
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_70",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 508,
+        "end_us": 508
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_71",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 508,
+        "end_us": 508
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_72",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 68.0,
+        "HBM_param": 0.0,
+        "HBM_act": 68.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 509,
+        "end_us": 509
+      },
+      "shapes": [
+        [
+          1,
+          16
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_73",
+      "name": "aten.expand",
+      "pretty_name": "slate-soft-aten.expand",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 72.0,
+        "HBM_param": 0.0,
+        "HBM_act": 72.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 510,
+        "end_us": 511
+      },
+      "shapes": [
+        [
+          1,
+          1,
+          1,
+          16
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_74",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 76.0,
+        "HBM_param": 0.0,
+        "HBM_act": 76.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 510,
+        "end_us": 511
+      },
+      "shapes": [
+        [
+          1,
+          1,
+          1,
+          16
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_75",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 512,
+        "end_us": 512
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_76",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 512,
+        "end_us": 513
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_77",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 535,
+        "end_us": 537
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_78",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 536,
+        "end_us": 536
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_79",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 776.0,
+        "HBM_param": 0.0,
+        "HBM_act": 776.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 537,
+        "end_us": 538
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_80",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 780.0,
+        "HBM_param": 0.0,
+        "HBM_act": 780.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 537,
+        "end_us": 538
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_81",
+      "name": "aten.transpose",
+      "pretty_name": "orange-steel-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 540,
+        "end_us": 541
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_82",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49164.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49164.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 541,
+        "end_us": 541
+      },
+      "shapes": [
+        [
+          1,
+          12,
+          16,
+          64
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_83",
+      "name": "aten.contiguous",
+      "pretty_name": "cyan-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 542,
+        "end_us": 554
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_84",
+      "name": "aten.clone",
+      "pretty_name": "zinc-clear-aten.clone",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 542,
+        "end_us": 554
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_85",
+      "name": "aten.empty_like",
+      "pretty_name": "pink-jade-aten.empty_like",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49172.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49172.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 543,
+        "end_us": 544
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_86",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 543,
+        "end_us": 544
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_87",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 544,
+        "end_us": 554
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_88",
+      "name": "aten.reshape",
+      "pretty_name": "sky-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 559,
+        "end_us": 560
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_89",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 560,
+        "end_us": 560
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          12,
+          64
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_90",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 567,
+        "end_us": 567
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_91",
+      "name": "aten.addmm",
+      "pretty_name": "indigo-bright-addmm",
+      "category": "gemm",
+      "ops": 18874368.0,
+      "bytes": {
+        "HBM": 4770824.0,
+        "HBM_param": 2359296.0,
+        "HBM_act": 2411528.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 569,
+        "end_us": 634
+      },
+      "shapes": [
+        [
+          768
+        ],
+        [
+          16,
+          768
+        ],
+        [
+          768,
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_92",
+      "name": "aten.expand",
+      "pretty_name": "slate-soft-aten.expand",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 3080.0,
+        "HBM_param": 0.0,
+        "HBM_act": 3080.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 570,
+        "end_us": 571
+      },
+      "shapes": [
+        [
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_93",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 3084.0,
+        "HBM_param": 0.0,
+        "HBM_act": 3084.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 571,
+        "end_us": 571
+      },
+      "shapes": [
+        [
+          768
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_94",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 572,
+        "end_us": 573
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ],
+        [
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_95",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49152.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49152.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 573,
+        "end_us": 574
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ]
+      ]
+    },
+    {
+      "id": "aten_96",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 2359296.0,
+        "HBM_param": 0.0,
+        "HBM_act": 2359296.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 574,
+        "end_us": 574
+      },
+      "shapes": [
+        [
+          768,
+          768
+        ]
+      ]
+    },
+    {
+      "id": "aten_97",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49152.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49152.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 574,
+        "end_us": 574
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ]
+      ]
+    },
+    {
+      "id": "aten_98",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 636,
+        "end_us": 637
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_99",
+      "name": "aten.dropout",
+      "pretty_name": "amber-dark-aten.dropout",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 643,
+        "end_us": 644
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_100",
+      "name": "aten.add",
+      "pretty_name": "grey-muted-eltwise",
+      "category": "eltwise",
+      "ops": 12288.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 647,
+        "end_us": 651
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_101",
+      "name": "aten.layer_norm",
+      "pretty_name": "cyan-steel-layernorm",
+      "category": "norm",
+      "ops": 73728.0,
+      "bytes": {
+        "HBM": 55308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 55308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 656,
+        "end_us": 671
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [],
+        [
+          768
+        ],
+        [
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_102",
+      "name": "aten.native_layer_norm",
+      "pretty_name": "pink-charcoal-layernorm",
+      "category": "norm",
+      "ops": 73728.0,
+      "bytes": {
+        "HBM": 55304.0,
+        "HBM_param": 0.0,
+        "HBM_act": 55304.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 657,
+        "end_us": 670
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [],
+        [
+          768
+        ],
+        [
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_103",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 658,
+        "end_us": 658
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_104",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 659,
+        "end_us": 659
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_105",
+      "name": "aten.empty",
+      "pretty_name": "amber-bold-aten.empty",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 659,
+        "end_us": 660
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_106",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 68.0,
+        "HBM_param": 0.0,
+        "HBM_act": 68.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 669,
+        "end_us": 670
+      },
+      "shapes": [
+        [
+          16
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_107",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 68.0,
+        "HBM_param": 0.0,
+        "HBM_act": 68.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 670,
+        "end_us": 670
+      },
+      "shapes": [
+        [
+          16
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_108",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 677,
+        "end_us": 677
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_109",
+      "name": "aten.addmm",
+      "pretty_name": "indigo-bright-addmm",
+      "category": "gemm",
+      "ops": 75497472.0,
+      "bytes": {
+        "HBM": 18935816.0,
+        "HBM_param": 9437184.0,
+        "HBM_act": 9498632.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 678,
+        "end_us": 969
+      },
+      "shapes": [
+        [
+          3072
+        ],
+        [
+          16,
+          768
+        ],
+        [
+          768,
+          3072
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_110",
+      "name": "aten.expand",
+      "pretty_name": "slate-soft-aten.expand",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 12296.0,
+        "HBM_param": 0.0,
+        "HBM_act": 12296.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 679,
+        "end_us": 680
+      },
+      "shapes": [
+        [
+          3072
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_111",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 12300.0,
+        "HBM_param": 0.0,
+        "HBM_act": 12300.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 680,
+        "end_us": 680
+      },
+      "shapes": [
+        [
+          3072
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_112",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 393220.0,
+        "HBM_param": 0.0,
+        "HBM_act": 393220.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 680,
+        "end_us": 701
+      },
+      "shapes": [
+        [
+          16,
+          3072
+        ],
+        [
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_113",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 196608.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196608.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 702,
+        "end_us": 702
+      },
+      "shapes": [
+        [
+          16,
+          3072
+        ]
+      ]
+    },
+    {
+      "id": "aten_114",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 9437184.0,
+        "HBM_param": 0.0,
+        "HBM_act": 9437184.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 702,
+        "end_us": 702
+      },
+      "shapes": [
+        [
+          768,
+          3072
+        ]
+      ]
+    },
+    {
+      "id": "aten_115",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49152.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49152.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 702,
+        "end_us": 702
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ]
+      ]
+    },
+    {
+      "id": "aten_116",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 196612.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196612.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 972,
+        "end_us": 972
+      },
+      "shapes": [
+        [
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_117",
+      "name": "aten.mul",
+      "pretty_name": "slate-bright-eltwise",
+      "category": "eltwise",
+      "ops": 49152.0,
+      "bytes": {
+        "HBM": 196612.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196612.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 979,
+        "end_us": 1011
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_118",
+      "name": "aten.to",
+      "pretty_name": "teal-muted-aten.to",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 981,
+        "end_us": 985
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_119",
+      "name": "aten._to_copy",
+      "pretty_name": "rose-peach-aten._to_copy",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 982,
+        "end_us": 985
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_120",
+      "name": "aten.empty_strided",
+      "pretty_name": "yellow-bright-aten.empty_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 983,
+        "end_us": 984
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_121",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 984,
+        "end_us": 985
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_122",
+      "name": "aten.pow",
+      "pretty_name": "pink-peach-eltwise",
+      "category": "eltwise",
+      "ops": 49152.0,
+      "bytes": {
+        "HBM": 196612.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196612.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1020,
+        "end_us": 1046
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_123",
+      "name": "aten.result_type",
+      "pretty_name": "pink-steel-aten.result_type",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 196612.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196612.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1021,
+        "end_us": 1021
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_124",
+      "name": "aten.to",
+      "pretty_name": "teal-muted-aten.to",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 196624.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196624.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1022,
+        "end_us": 1022
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_125",
+      "name": "aten.mul",
+      "pretty_name": "slate-bright-eltwise",
+      "category": "eltwise",
+      "ops": 49152.0,
+      "bytes": {
+        "HBM": 196612.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196612.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1049,
+        "end_us": 1077
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_126",
+      "name": "aten.to",
+      "pretty_name": "teal-muted-aten.to",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1050,
+        "end_us": 1054
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_127",
+      "name": "aten._to_copy",
+      "pretty_name": "rose-peach-aten._to_copy",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1051,
+        "end_us": 1054
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_128",
+      "name": "aten.empty_strided",
+      "pretty_name": "yellow-bright-aten.empty_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1052,
+        "end_us": 1053
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_129",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1053,
+        "end_us": 1054
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_130",
+      "name": "aten.add",
+      "pretty_name": "grey-muted-eltwise",
+      "category": "eltwise",
+      "ops": 49152.0,
+      "bytes": {
+        "HBM": 393220.0,
+        "HBM_param": 0.0,
+        "HBM_act": 393220.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1080,
+        "end_us": 1092
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        [
+          1,
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_131",
+      "name": "aten.mul",
+      "pretty_name": "slate-bright-eltwise",
+      "category": "eltwise",
+      "ops": 49152.0,
+      "bytes": {
+        "HBM": 196612.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196612.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1094,
+        "end_us": 1106
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_132",
+      "name": "aten.to",
+      "pretty_name": "teal-muted-aten.to",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1095,
+        "end_us": 1097
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_133",
+      "name": "aten._to_copy",
+      "pretty_name": "rose-peach-aten._to_copy",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1095,
+        "end_us": 1097
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_134",
+      "name": "aten.empty_strided",
+      "pretty_name": "yellow-bright-aten.empty_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1096,
+        "end_us": 1096
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_135",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1096,
+        "end_us": 1097
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_136",
+      "name": "aten.tanh",
+      "pretty_name": "blue-deep-aten.tanh",
+      "category": "activation",
+      "ops": 196608.0,
+      "bytes": {
+        "HBM": 196608.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196608.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1108,
+        "end_us": 1152
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ]
+      ]
+    },
+    {
+      "id": "aten_137",
+      "name": "aten.add",
+      "pretty_name": "grey-muted-eltwise",
+      "category": "eltwise",
+      "ops": 49152.0,
+      "bytes": {
+        "HBM": 196616.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196616.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1154,
+        "end_us": 1166
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_138",
+      "name": "aten.to",
+      "pretty_name": "teal-muted-aten.to",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1154,
+        "end_us": 1157
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_139",
+      "name": "aten._to_copy",
+      "pretty_name": "rose-peach-aten._to_copy",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1155,
+        "end_us": 1156
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_140",
+      "name": "aten.empty_strided",
+      "pretty_name": "yellow-bright-aten.empty_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1155,
+        "end_us": 1156
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_141",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 0.0,
+        "HBM_param": 0.0,
+        "HBM_act": 0.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1156,
+        "end_us": 1156
+      },
+      "shapes": []
+    },
+    {
+      "id": "aten_142",
+      "name": "aten.mul",
+      "pretty_name": "slate-bright-eltwise",
+      "category": "eltwise",
+      "ops": 49152.0,
+      "bytes": {
+        "HBM": 393216.0,
+        "HBM_param": 0.0,
+        "HBM_act": 393216.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1167,
+        "end_us": 1177
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        [
+          1,
+          16,
+          3072
+        ]
+      ]
+    },
+    {
+      "id": "aten_143",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 196612.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196612.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1185,
+        "end_us": 1186
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          3072
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_144",
+      "name": "aten.addmm",
+      "pretty_name": "indigo-bright-addmm",
+      "category": "gemm",
+      "ops": 75497472.0,
+      "bytes": {
+        "HBM": 19074056.0,
+        "HBM_param": 9437184.0,
+        "HBM_act": 9636872.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1187,
+        "end_us": 1464
+      },
+      "shapes": [
+        [
+          768
+        ],
+        [
+          16,
+          3072
+        ],
+        [
+          3072,
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_145",
+      "name": "aten.expand",
+      "pretty_name": "slate-soft-aten.expand",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 3080.0,
+        "HBM_param": 0.0,
+        "HBM_act": 3080.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1189,
+        "end_us": 1190
+      },
+      "shapes": [
+        [
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_146",
+      "name": "aten.as_strided",
+      "pretty_name": "zinc-steel-aten.as_strided",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 3084.0,
+        "HBM_param": 0.0,
+        "HBM_act": 3084.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1189,
+        "end_us": 1190
+      },
+      "shapes": [
+        [
+          768
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_147",
+      "name": "aten.copy_",
+      "pretty_name": "grey-bright-aten.copy_",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1190,
+        "end_us": 1192
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ],
+        [
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_148",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49152.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49152.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1193,
+        "end_us": 1193
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ]
+      ]
+    },
+    {
+      "id": "aten_149",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 9437184.0,
+        "HBM_param": 0.0,
+        "HBM_act": 9437184.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1193,
+        "end_us": 1193
+      },
+      "shapes": [
+        [
+          3072,
+          768
+        ]
+      ]
+    },
+    {
+      "id": "aten_150",
+      "name": "aten.resolve_conj",
+      "pretty_name": "indigo-bold-aten.resolve_conj",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 196608.0,
+        "HBM_param": 0.0,
+        "HBM_act": 196608.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1193,
+        "end_us": 1193
+      },
+      "shapes": [
+        [
+          16,
+          3072
+        ]
+      ]
+    },
+    {
+      "id": "aten_151",
+      "name": "aten.view",
+      "pretty_name": "orange-bold-layout",
+      "category": "layout",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49156.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49156.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1468,
+        "end_us": 1469
+      },
+      "shapes": [
+        [
+          16,
+          768
+        ],
+        []
+      ]
+    },
+    {
+      "id": "aten_152",
+      "name": "aten.dropout",
+      "pretty_name": "amber-dark-aten.dropout",
+      "category": "other",
+      "ops": 0.0,
+      "bytes": {
+        "HBM": 49160.0,
+        "HBM_param": 0.0,
+        "HBM_act": 49160.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1479,
+        "end_us": 1479
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "aten_153",
+      "name": "aten.add",
+      "pretty_name": "grey-muted-eltwise",
+      "category": "eltwise",
+      "ops": 12288.0,
+      "bytes": {
+        "HBM": 98308.0,
+        "HBM_param": 0.0,
+        "HBM_act": 98308.0
+      },
+      "dtype": "torch.float32",
+      "timing_us": {
+        "cpu_total": 0,
+        "device_total": 0,
+        "start_us": 1481,
+        "end_us": 1484
+      },
+      "shapes": [
+        [
+          1,
+          16,
+          768
+        ],
+        [
+          1,
+          16,
+          768
+        ],
+        []
+      ]
+    }
+  ]
+}

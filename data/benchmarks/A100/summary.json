@@ -1,0 +1,40 @@
+{
+  "system_name": "A100",
+  "gpu_model": "NVIDIA A100-SXM4-80GB",
+  "gpu_count": 8,
+  "gpu_memory_per_card": "81920MB",
+  "hostname": "170-9-235-16",
+  "os": "Linux 6.8.0-85-generic #85-Ubuntu SMP PREEMPT_DYNAMIC Thu Sep 18 15:26:59 UTC 2025 x86_64",
+  "cpu": "AMD EPYC 7J13 64-Core Processor",
+  "cpu_cores": 240,
+  "memory_total": "1.7Ti",
+  "nvidia_driver": "570.195.03",
+  "pytorch_version": "2.8.0+cu128",
+  "cuda_version": "12.8",
+  "cudnn_version": "91002",
+  "python_version": "3.12.3",
+  "available_benchmarks": [
+    {
+      "filename": "a100_llama4_scout_config1_final.json",
+      "model": "llama-4-scout-17b-16e-instruct",
+      "config": "config1",
+      "total_tests": 1,
+      "total_runtime_minutes": 7.1
+    },
+    {
+      "filename": "a100_llama4_scout_config2_final.json", 
+      "model": "llama-4-scout-17b-16e-instruct",
+      "config": "config2",
+      "total_tests": 1,
+      "total_runtime_minutes": 7.1
+    }
+  ],
+  "system_specs": {
+    "peak_tflops": "312",
+    "memory_bandwidth": "2039 GB/s",
+    "tensor_cores": "432",
+    "cuda_cores": "6912",
+    "base_clock": "1410 MHz",
+    "boost_clock": "1410 MHz"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "system_name": "H100",
+  "gpu_model": "NVIDIA H100 80GB SXM5",
+  "gpu_count": 8,
+  "gpu_memory_per_card": "81559MB",
+  "hostname": "192.222.52.110",
+  "os": "Linux (Ubuntu)",
+  "cpu": "Multi-core processor",
+  "memory_total": "High-memory configuration",
+  "nvidia_driver": "Latest H100 compatible driver",
+  "pytorch_version": "vLLM compatible version",
+  "cuda_version": "CUDA 12.x",
+  "cudnn_version": "Latest version",
+  "python_version": "Python 3.x",
+  "hourly_cost": "$23.92",
+  "available_benchmarks": [
+    {
+      "filename": "h100_llama4_scout_config2_final.json",
+      "model": "llama-4-scout-17b-16e-instruct",
+      "config": "config2",
+      "total_tests": 3,
+      "total_runtime_minutes": 43.9
+    },
+    {
+      "filename": "h100_llama4_scout_final_results.json",
+      "model": "llama-4-scout-17b-16e-instruct", 
+      "config": "final",
+      "total_tests": 5,
+      "total_runtime_minutes": 6.7
+    }
+  ],
+  "system_specs": {
+    "peak_tflops": "989",
+    "memory_bandwidth": "3350 GB/s",
+    "tensor_cores": "132",
+    "cuda_cores": "16896",
+    "base_clock": "1500 MHz",
+    "boost_clock": "1500 MHz"
+  }
+}

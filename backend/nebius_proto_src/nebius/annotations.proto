@@ -1,0 +1,186 @@
+syntax = "proto3";
+
+package nebius;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/nebius/gosdk/proto/nebius";
+option java_multiple_files = true;
+option java_outer_classname = "AnnotationsProto";
+option java_package = "ai.nebius.pub";
+
+extend google.protobuf.FileOptions {
+  // Contains additional information about the planned deprecation of a file.
+  // Used along with `option deprecated = true`.
+  DeprecationDetails file_deprecation_details = 1194;
+}
+
+extend google.protobuf.ServiceOptions {
+  // Specifies the domain prefix for the service endpoint.
+  // For example, `option (api_service_name) = "compute";` makes the service
+  // accessible at `compute.api.nebius.cloud:443`.
+  string api_service_name = 1191;
+
+  // Contains additional information about the planned deprecation of a service.
+  // Used along with `option deprecated = true`.
+  DeprecationDetails service_deprecation_details = 1194;
+
+  ServicePySDKSettings service_py_sdk = 1195;
+}
+
+extend google.protobuf.MethodOptions {
+  // Contains additional information about the planned deprecation of a method.
+  // Used along with `option deprecated = true`.
+  DeprecationDetails method_deprecation_details = 1194;
+
+  MethodPySDKSettings method_py_sdk = 1195;
+}
+
+extend google.protobuf.MessageOptions {
+  repeated ResourceBehavior resource_behavior = 1191;
+
+  // Contains additional information about the planned deprecation of a message.
+  // Used along with `option deprecated = true`.
+  DeprecationDetails message_deprecation_details = 1194;
+
+  MessagePySDKSettings message_py_sdk = 1195;
+}
+
+extend google.protobuf.FieldOptions {
+  // Field behavior describes how the field behaves on input or output.
+  repeated FieldBehavior field_behavior = 1191;
+
+  // Sensitive field is masked/removed from the message while logging, storing in DB and
+  // on all others persistent layers (except specialized storage like PDS).
+  bool sensitive = 1192;
+
+  // Credentials field is masked access tokens/jwt/session from the message while logging, storing in DB and
+  // on all others persistent layers
+  bool credentials = 1193;
+
+  // Contains additional information about the planned deprecation of a field.
+  // Used along with `[deprecated = true]`.
+  DeprecationDetails field_deprecation_details = 1194;
+
+  FieldPySDKSettings field_py_sdk = 1195;
+}
+
+extend google.protobuf.OneofOptions {
+  // Field behavior describes how oneof behaves on input or output.
+  repeated FieldBehavior oneof_behavior = 1191;
+
+  OneofPySDKSettings oneof_py_sdk = 1192;
+}
+
+extend google.protobuf.EnumOptions {
+  EnumPySDKSettings enum_py_sdk = 1191;
+
+  // Contains additional information about the planned deprecation of an enum.
+  // Used along with `option deprecated = true`.
+  DeprecationDetails enum_deprecation_details = 1194;
+}
+
+extend google.protobuf.EnumValueOptions {
+  // Contains additional information about the planned deprecation of enum value.
+  // Used along with `[deprecated = true]`.
+  DeprecationDetails enum_value_deprecation_details = 1194;
+
+  EnumValuePySDKSettings enum_value_py_sdk = 1195;
+}
+
+message ServicePySDKSettings {
+  string name = 3;
+}
+
+message MethodPySDKSettings {
+  string name = 3;
+}
+
+message FieldPySDKSettings {
+  string name = 1;
+}
+
+message MessagePySDKSettings {
+  string name = 1;
+}
+
+message OneofPySDKSettings {
+  string name = 1;
+}
+
+message EnumPySDKSettings {
+  string name = 1;
+}
+
+message EnumValuePySDKSettings {
+  string name = 1;
+}
+
+enum ResourceBehavior {
+  // The behavior of the resource is unspecified.
+  // Avoid using this default value.
+  RESOURCE_BEHAVIOR_UNSPECIFIED = 0;
+
+  // Indicates that the resource can be moved to another parent, typically an
+  // IAM container, though not necessarily limited to this.
+  // This behavior suggests that the `metadata.parent_id` attribute could be modified.
+  MOVABLE = 1;
+
+  // Indicates that the resource name can be unspecified or does not follow
+  // uniqueness requirement within parent_id and resource type.
+  UNNAMED = 2;
+
+  // Indicates that the resource is named, and the name cannot be changed after
+  // it is created. It is strongly recommended to do srvices with renaming
+  // capability, as the guidelines suggest.
+  IMMUTABLE_NAME = 3;
+}
+
+enum FieldBehavior {
+  FIELD_BEHAVIOR_UNSPECIFIED = 0;
+
+  // This indicates that the field can't be changed during a resource update.
+  // Changing the field value will cause an `INVALID_ARGUMENT` error.
+  // Resource recreate requires a change of the field value.
+  IMMUTABLE = 2;
+
+  // Indicates field is a resource ID, so it MUST be present on a resource
+  // update, but MUST NOT be set on create.
+  // Otherwise, RPC will fail with the `INVALID_ARGUMENT` error
+  IDENTIFIER = 3;
+
+  // Indicates field is not present in output.
+  INPUT_ONLY = 4;
+
+  // Indicates field can't be set on create or changed on update.
+  // Otherwise, RPC will fail with the `INVALID_ARGUMENT` error
+  OUTPUT_ONLY = 5;
+
+  // Indicates that an empty message and a null have different semantics.
+  // Usually, that field is a feature spec message: its empty message enables
+  // that feature, and null disables it. Such a message is different from `bool`
+  // because it already has some feature parameters, or they can be added later
+  // in a backward-compatible way.
+  // IMPORTANT: if the message itself is recursive, this behavior is forced.
+  MEANINGFUL_EMPTY_VALUE = 6;
+
+  // Indicates that an empty (default) value will be filled by the server.
+  // Usually, that field is a feature spec value, which by default is computed.
+  // Values marked with this annotation won't raise error if they are not set
+  // and the returned value is not equal to protobuf default.
+  //
+  // IMPORTANT:
+  // Updating this value from explicit to default may not lead to Update call in
+  // some tools (eg Terraform).
+  // Compound values (messages, lists and maps) may result in unpredictable
+  // updates (see examples in guidelines).
+  NON_EMPTY_DEFAULT = 7;
+}
+
+message DeprecationDetails {
+  // The date when this method, service, message or field will stop working (format: YYYY-MM-DD)
+  string effective_at = 1;
+
+  // A description to help users understand the reason for deprecation and suggest alternatives
+  string description = 2;
+}

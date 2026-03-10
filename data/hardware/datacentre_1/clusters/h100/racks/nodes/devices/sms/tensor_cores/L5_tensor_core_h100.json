@@ -1,0 +1,66 @@
+{
+    "level": 5,
+    "tensor_core": {
+      "id": "tc-h100-00",
+      "sm_id": "sm-h100-00",
+      "architecture": "Hopper",
+      "generation": "4th Gen Tensor Core with Transformer Engine",
+      "description": "Hopper Tensor Core with FP8, BF16, TF32, and FP16 precision modes; dynamic range adaptation for transformers.",
+  
+      "supported_precisions": ["fp8", "bf16", "fp16", "tf32", "int8"],
+      "matrix_dimensions": {
+        "fp8": { "m": 16, "n": 16, "k": 32 },
+        "bf16": { "m": 16, "n": 16, "k": 16 },
+        "tf32": { "m": 16, "n": 16, "k": 8 }
+      },
+      "operations_per_cycle": {
+        "fp8": 512,
+        "fp16": 256,
+        "tf32": 128
+      },
+      "peak_throughput_TFLOPS": {
+        "fp8": 1.2,
+        "fp16": 0.9,
+        "tf32": 0.45
+      },
+      "latency_cycles": {
+        "fp8": 6,
+        "fp16": 8,
+        "tf32": 10
+      },
+  
+      "energy": {
+        "energy_per_op_pJ": 0.6,
+        "power_W": 1.1,
+        "efficiency_TFLOPS_per_W": 1.1
+      },
+  
+      "connections": {
+        "shared_memory_bandwidth_GBps": 10000,
+        "l1_to_tc_latency_ns": 1.0
+      },
+  
+      "visualization_hints": {
+        "grid": { "rows": 2, "cols": 2 },
+        "color_map": {
+          "fp8": "#facc15",
+          "fp16": "#22c55e",
+          "tf32": "#0ea5e9"
+        },
+        "glow_intensity": 0.35
+      },
+
+      "bottleneck_analysis": {
+      "bottleneck_type": "compute_precision",
+      "bottleneck": "FP8 precision scaling and conversion overhead in Transformer Engine.",
+      "description": "While FP8 Tensor Cores offer huge speedups, dynamic quantization/dequantization and scaling metadata handling add overhead. Tile misalignment with 16×16 FP8 dimensions can further reduce tensor utilization.",
+      "workload_characteristic": "Mixed-precision transformer blocks using FP8 for training or inference with dynamic range adaptation across long sequences."
+    },
+
+  
+      "sources": [
+        "NVIDIA Hopper Architecture Technical Overview (2022)"
+      ]
+    }
+  }
+  

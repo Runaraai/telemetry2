@@ -1,0 +1,126 @@
+{
+    "level": 3,
+    "device": {
+      "id": "gpu-h100-01",
+      "node_id": "node-h100-01",
+      "model": "H100-80GB",
+      "vendor": "NVIDIA",
+      "architecture": "Hopper",
+      "process_nm": 4,
+      "tdp_W": 700,
+      "form_factor": "SXM5",
+  
+      "compute": {
+        "unit_kind": "SM",
+        "units": 144,
+        "warp_size": 32,
+        "tensor_cores_per_sm": 4,
+        "fp32_cores_per_sm": 64,
+        "clock_hz": 1590000000,
+        "boost_clock_hz": 1890000000,
+        "peak_flops": {
+          "fp8": 1979,
+          "fp16": 989,
+          "tf32": 494,
+          "fp32": 60,
+          "fp64": 30,
+          "int8": 3958
+        }
+      },
+
+   
+      "hierarchy": {
+          "gpcs": 8,
+          "tpcs_per_gpc": 9,
+          "sms_per_tpc": 2
+        },
+  
+      "memory": {
+        "hbm_type": "HBM3",
+        "capacity_gb": 80,
+        "bandwidth_GBps": 3000,
+        "stacks": 6,
+        "bus_width_bits": 5120,
+        "l2_cache_MB": 50,
+        "l1_cache_KB": 256,
+        "shared_mem_per_sm_KB": 228
+      },
+  
+      "interconnects": {
+        "nvlink": {
+          "version": "4.0",
+          "links": 18,
+          "per_link_GBps": 100,
+          "aggregate_GBps": 1800,
+          "latency_ns": 1.2
+        },
+        "pcie": {
+          "version": "5.0",
+          "lanes": 16,
+          "bandwidth_GBps": 128
+        },
+        "nvswitch": {
+          "version": "3.0",
+          "bandwidth_GBps": 3600,
+          "latency_ns": 1.2
+        }
+      },
+  
+      "power": {
+        "idle_W": 100,
+        "max_W": 700,
+        "avg_W": 500,
+        "thermal_limit_C": 90
+      },
+  
+      "precision_support": ["fp8", "fp16", "tf32", "fp32", "fp64", "int8"],
+  
+      "subunits": {
+        "sms": 132,
+        "tensor_cores_total": 528,
+        "fp32_cores_total": 8448
+      },
+  
+      "connectivity": {
+        "nvlink_peers": 8,
+        "topology": "hybrid cube mesh"
+      },
+  
+      "links": {
+        "to_node": ["node-h100-01"],
+        "to_peer_gpus": [
+          "gpu-h100-02",
+          "gpu-h100-03",
+          "gpu-h100-04"
+        ]
+      },
+  
+      "visualization_hints": {
+        "grid": { "rows": 11, "cols": 12 },
+        "color_map": {
+          "sm": "#0ea5e9",
+          "tensor_core": "#facc15",
+          "memory": "#22c55e"
+        },
+        "glow_intensity": 0.3
+      },
+  
+      "links_to": {
+        "sm_schema": "L4_sm_h100.json",
+        "tensor_core_schema": "L5_tensor_core_h100.json"
+      },
+
+      "bottleneck_analysis": {
+      "bottleneck_type": "memory",
+      "bottleneck": "HBM3 memory bandwidth saturation (~3.0 TB/s).",
+      "description": "Tensor cores can reach ~1.9 PFLOPS FP8 compute, but memory bandwidth limits sustained throughput. Low arithmetic-intensity operations stall on memory fetch latency, making performance memory-bound.",
+      "workload_characteristic": "Attention, embedding lookups, and layer normalization operations with poor data reuse and heavy memory access."
+    },
+
+  
+      "sources": [
+        "NVIDIA Hopper Architecture Whitepaper (2022)"
+      ]
+    }
+  }
+  

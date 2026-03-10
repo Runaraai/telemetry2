@@ -1,0 +1,127 @@
+{
+    "level": 3,
+    "device": {
+      "id": "gpu-b100-01",
+      "node_id": "node-b100-01",
+      "model": "B100-192GB",
+      "vendor": "NVIDIA",
+      "architecture": "Blackwell",
+      "process_nm": 3,
+      "tdp_W": 700,
+      "form_factor": "SXM6",
+  
+      "compute": {
+        "unit_kind": "SM",
+        "units": 192,
+        "warp_size": 32,
+        "tensor_cores_per_sm": 4,
+        "fp32_cores_per_sm": 128,
+        "clock_hz": 1750000000,
+        "boost_clock_hz": 1980000000,
+        "peak_flops": {
+          "fp4": 7920,
+          "fp8": 3960,
+          "bf16": 1980,
+          "fp16": 1980,
+          "tf32": 990,
+          "fp32": 495,
+          "fp64": 248,
+          "int8": 7920
+        }
+      },
+
+      "hierarchy": {
+          "gpcs": 12,
+          "tpcs_per_gpc": 8,
+          "sms_per_tpc": 2
+        },
+  
+      "memory": {
+        "hbm_type": "HBM3e",
+        "capacity_gb": 192,
+        "bandwidth_GBps": 8000,
+        "stacks": 8,
+        "bus_width_bits": 8192,
+        "l2_cache_MB": 96,
+        "l1_cache_KB": 256,
+        "shared_mem_per_sm_KB": 228
+      },
+  
+      "interconnects": {
+        "nvlink": {
+          "version": "5.0",
+          "links": 18,
+          "per_link_GBps": 100,
+          "aggregate_GBps": 1800,
+          "latency_ns": 1.0
+        },
+        "pcie": {
+          "version": "5.0",
+          "lanes": 16,
+          "bandwidth_GBps": 128
+        },
+        "nvswitch": {
+          "version": "4.0",
+          "bandwidth_GBps": 7200,
+          "latency_ns": 1.0
+        }
+      },
+  
+      "power": {
+        "idle_W": 90,
+        "max_W": 700,
+        "avg_W": 500,
+        "thermal_limit_C": 90
+      },
+  
+      "precision_support": ["fp4", "fp8", "bf16", "fp16", "tf32", "fp32", "fp64", "int8"],
+  
+      "subunits": {
+        "sms": 192,
+        "tensor_cores_total": 768,
+        "fp32_cores_total": 24576
+      },
+  
+      "connectivity": {
+        "nvlink_peers": 8,
+        "topology": "hybrid cube mesh"
+      },
+  
+      "links": {
+        "to_node": ["node-b100-01"],
+        "to_peer_gpus": [
+          "gpu-b100-02",
+          "gpu-b100-03",
+          "gpu-b100-04"
+        ]
+      },
+  
+      "visualization_hints": {
+        "grid": { "rows": 12, "cols": 16 },
+        "color_map": {
+          "sm": "#fb923c",
+          "tensor_core": "#fde047",
+          "memory": "#f43f5e"
+        },
+        "glow_intensity": 0.35
+      },
+  
+      "links_to": {
+        "sm_schema": "L4_sm_b100.json",
+        "tensor_core_schema": "L5_tensor_core_b100.json"
+      },
+
+      "bottleneck_analysis": {
+      "bottleneck_type": "memory",
+      "bottleneck": "HBM3e memory bandwidth bottleneck relative to extreme FP8/FP4 compute throughput.",
+      "description": "The B100 provides 8 TB/s of HBM3e bandwidth but can reach up to 7.9 PFLOPS FP4 compute—leaving little headroom for memory-bound kernels. Tensor cores can process data faster than it can be fetched from HBM, especially for low arithmetic-intensity layers.",
+      "workload_characteristic": "Attention, normalization, or embedding-heavy workloads with large tensor reuse gaps and low arithmetic intensity."
+    },
+
+  
+      "sources": [
+        "NVIDIA Blackwell B100 GPU Architecture (2024)"
+      ]
+    }
+  }
+  

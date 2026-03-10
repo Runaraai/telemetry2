@@ -1,0 +1,563 @@
+{
+  "model_info": {
+    "name": "Qwen3-8B",
+    "num_layers": 28,
+    "vocab_size": 151936,
+    "scope": "SINGLE_LAYER",
+    "description": "ONE decoder layer/block out of 28 total layers"
+  },
+  "architecture": {
+    "d_model": 4096,
+    "n_heads": 32,
+    "n_kv_heads": 8,
+    "d_head": 128,
+    "d_ff": 18944,
+    "attention_type": "GQA",
+    "norm_type": "RMSNorm",
+    "mlp_type": "SwiGLU",
+    "use_bias": true,
+    "positional_encoding": "RoPE",
+    "norm_eps": 1e-06,
+    "max_seq_len": 32768
+  },
+  "batch_config": {
+    "batch_size": 64,
+    "seq_len": 4096,
+    "cache_len": null,
+    "dtype": "FP16",
+    "dtype_bytes": 2,
+    "phase": "prefill",
+    "phase_note": "Prefill = full sequence parallel processing. Attention is O(L\u00b2)"
+  },
+  "metrics": {
+    "scope": "PER_LAYER",
+    "per_layer": {
+      "total_nodes": 21,
+      "total_edges": 20,
+      "total_flops_g": 161863.63,
+      "attention_flops_g": 39801.46,
+      "mlp_flops_g": 122062.17,
+      "attention_percentage": 24.6,
+      "mlp_percentage": 75.4
+    },
+    "full_model_decoder_only": {
+      "description": "All 28 decoder layers (no embeddings/LM head)",
+      "total_flops_g": 4532181.56,
+      "attention_flops_g": 1114440.93,
+      "mlp_flops_g": 3417740.63
+    },
+    "full_model_with_head": {
+      "description": "All 28 layers + token embeddings + LM head",
+      "decoder_layers_flops_g": 4532181.56,
+      "lm_head_flops_g": 326280.08,
+      "total_flops_g": 4858461.64,
+      "note": "Token embedding lookup \u2248 0 FLOPs"
+    }
+  },
+  "graph": {
+    "nodes": [
+      {
+        "id": "input",
+        "name": "Input",
+        "op_type": "Input",
+        "shape": [
+          64,
+          4096,
+          4096
+        ],
+        "outputs": [
+          "x_in"
+        ],
+        "description": "Input token embeddings from previous layer"
+      },
+      {
+        "id": "A0",
+        "name": "RMSNorm-1",
+        "op_type": "RMSNorm",
+        "shape": [
+          64,
+          4096,
+          4096
+        ],
+        "params": {
+          "gamma_beta": [
+            4096
+          ]
+        },
+        "flops_g": 5.36870912,
+        "memory_mb": 2048.0,
+        "bottleneck": "Memory",
+        "inputs": [
+          "x_in"
+        ],
+        "outputs": [
+          "x_norm"
+        ],
+        "description": "Pre-attention layer normalization"
+      },
+      {
+        "id": "A1",
+        "name": "Q Linear (32 Q heads)",
+        "op_type": "Linear",
+        "shape": [
+          64,
+          4096,
+          4096
+        ],
+        "params": {
+          "W": [
+            4096,
+            4096
+          ],
+          "b": [
+            4096
+          ]
+        },
+        "flops_g": 8796.093022208,
+        "memory_mb": 2048.0,
+        "bottleneck": "Compute",
+        "inputs": [
+          "x_norm"
+        ],
+        "outputs": [
+          "Q"
+        ],
+        "description": "Q projection for attention"
+      },
+      {
+        "id": "A2",
+        "name": "K Linear (8 KV heads)",
+        "op_type": "Linear",
+        "shape": [
+          64,
+          4096,
+          1024
+        ],
+        "params": {
+          "W": [
+            4096,
+            1024
+          ],
+          "b": [
+            1024
+          ]
+        },
+        "flops_g": 2199.023255552,
+        "memory_mb": 512.0,
+        "bottleneck": "Compute",
+        "inputs": [
+          "x_norm"
+        ],
+        "outputs": [
+          "K"
+        ],
+        "description": "K projection for attention",
+        "kv_cache_write_mb": 512.0
+      },
+      {
+        "id": "A3",
+        "name": "V Linear (8 KV heads)",
+        "op_type": "Linear",
+        "shape": [
+          64,
+          4096,
+          1024
+        ],
+        "params": {
+          "W": [
+            4096,
+            1024
+          ],
+          "b": [
+            1024
+          ]
+        },
+        "flops_g": 2199.023255552,
+        "memory_mb": 512.0,
+        "bottleneck": "Compute",
+        "inputs": [
+          "x_norm"
+        ],
+        "outputs": [
+          "V"
+        ],
+        "description": "V projection for attention",
+        "kv_cache_write_mb": 512.0
+      },
+      {
+        "id": "A4",
+        "name": "Reshape to heads",
+        "op_type": "Reshape",
+        "shape": [
+          64,
+          32,
+          4096,
+          128
+        ],
+        "flops_g": 0,
+        "memory_mb": 6144.0,
+        "bottleneck": "Memory",
+        "inputs": [
+          "Q",
+          "K",
+          "V"
+        ],
+        "outputs": [
+          "Q_heads",
+          "K_heads",
+          "V_heads"
+        ],
+        "description": "Reshape Q, K, V to separate attention heads"
+      },
+      {
+        "id": "A4_rope",
+        "name": "RoPE",
+        "op_type": "RoPE",
+        "shape": [
+          64,
+          32,
+          4096,
+          128
+        ],
+        "flops_g": 6.442450944,
+        "memory_mb": 2048.0,
+        "bottleneck": "Memory",
+        "inputs": [
+          "Q_heads",
+          "K_heads"
+        ],
+        "outputs": [
+          "Q_heads_rope",
+          "K_heads_rope"
+        ],
+        "description": "Apply Rotary Positional Embeddings (RoPE)"
+      },
+      {
+        "id": "A5_1",
+        "name": "Q @ K^T",
+        "op_type": "MatMul",
+        "shape": [
+          64,
+          32,
+          4096,
+          4096
+        ],
+        "flops_g": 8796.093022208,
+        "memory_mb": 65536.0,
+        "kv_cache_read_mb": 0,
+        "bottleneck": "Compute",
+        "inputs": [
+          "Q_heads_rope",
+          "K_heads_rope"
+        ],
+        "outputs": [
+          "scores"
+        ],
+        "description": "Compute attention scores (full sequence)"
+      },
+      {
+        "id": "A5_2",
+        "name": "Scale (\u00f7\u221ad_h)",
+        "op_type": "Div",
+        "shape": [
+          64,
+          32,
+          4096,
+          4096
+        ],
+        "flops_g": 34.359738368,
+        "memory_mb": 65536.0,
+        "bottleneck": "Memory",
+        "inputs": [
+          "scores"
+        ],
+        "outputs": [
+          "scores_scaled"
+        ],
+        "description": "Scale attention scores by 1/\u221a128"
+      },
+      {
+        "id": "A5_3",
+        "name": "Causal Mask + Softmax",
+        "op_type": "Softmax",
+        "shape": [
+          64,
+          32,
+          4096,
+          4096
+        ],
+        "flops_g": 171.79869184,
+        "memory_mb": 65536.0,
+        "bottleneck": "Memory",
+        "inputs": [
+          "scores_scaled"
+        ],
+        "outputs": [
+          "attention_weights"
+        ],
+        "description": "Apply causal mask and softmax normalization"
+      },
+      {
+        "id": "A5_4",
+        "name": "Attention @ V",
+        "op_type": "MatMul",
+        "shape": [
+          64,
+          32,
+          4096,
+          128
+        ],
+        "flops_g": 8796.093022208,
+        "memory_mb": 2048.0,
+        "kv_cache_read_mb": 0,
+        "bottleneck": "Compute",
+        "inputs": [
+          "attention_weights",
+          "V_heads"
+        ],
+        "outputs": [
+          "context"
+        ],
+        "description": "Weighted sum of values using attention weights"
+      },
+      {
+        "id": "A6",
+        "name": "Concat heads",
+        "op_type": "Reshape",
+        "shape": [
+          64,
+          4096,
+          4096
+        ],
+        "flops_g": 0,
+        "memory_mb": 2048.0,
+        "bottleneck": "Memory",
+        "inputs": [
+          "context"
+        ],
+        "outputs": [
+          "context_concat"
+        ],
+        "description": "Concatenate attention heads back to model dimension"
+      },
+      {
+        "id": "A7",
+        "name": "Output Projection (W_O)",
+        "op_type": "Linear",
+        "shape": [
+          64,
+          4096,
+          4096
+        ],
+        "params": {
+          "W": [
+            4096,
+            4096
+          ],
+          "b": [
+            4096
+          ]
+        },
+        "flops_g": 8796.093022208,
+        "memory_mb": 2048.0,
+        "bottleneck": "Compute",
+        "inputs": [
+          "context_concat"
+        ],
+        "outputs": [
+          "attn_out"
+        ],
+        "description": "Project attention output back to model dimension"
+      },
+      {
+        "id": "A8",
+        "name": "Residual Add",
+        "op_type": "Add",
+        "shape": [
+          64,
+          4096,
+          4096
+        ],
+        "flops_g": 1.073741824,
+        "memory_mb": 4096.0,
+        "bottleneck": "Memory",
+        "inputs": [
+          "attn_out",
+          "x_in"
+        ],
+        "outputs": [
+          "x_attn"
+        ],
+        "description": "Add attention output to residual connection"
+      },
+      {
+        "id": "M0",
+        "name": "RMSNorm-2",
+        "op_type": "RMSNorm",
+        "shape": [
+          64,
+          4096,
+          4096
+        ],
+        "params": {
+          "gamma_beta": [
+            4096
+          ]
+        },
+        "flops_g": 5.36870912,
+        "memory_mb": 2048.0,
+        "bottleneck": "Memory",
+        "inputs": [
+          "x_attn"
+        ],
+        "outputs": [
+          "x_attn_norm"
+        ],
+        "description": "Pre-MLP layer normalization"
+      },
+      {
+        "id": "M1",
+        "name": "Linear W_gate",
+        "op_type": "Linear",
+        "shape": [
+          64,
+          4096,
+          18944
+        ],
+        "params": {
+          "W": [
+            4096,
+            18944
+          ],
+          "b": [
+            18944
+          ]
+        },
+        "flops_g": 40681.930227712,
+        "memory_mb": 9472.0,
+        "bottleneck": "Compute",
+        "inputs": [
+          "x_attn_norm"
+        ],
+        "outputs": [
+          "h_gate"
+        ],
+        "description": "Gate projection for SwiGLU activation"
+      },
+      {
+        "id": "M2",
+        "name": "Linear W_up",
+        "op_type": "Linear",
+        "shape": [
+          64,
+          4096,
+          18944
+        ],
+        "params": {
+          "W": [
+            4096,
+            18944
+          ],
+          "b": [
+            18944
+          ]
+        },
+        "flops_g": 40681.930227712,
+        "memory_mb": 9472.0,
+        "bottleneck": "Compute",
+        "inputs": [
+          "x_attn_norm"
+        ],
+        "outputs": [
+          "h_up"
+        ],
+        "description": "Up projection for SwiGLU activation"
+      },
+      {
+        "id": "M3",
+        "name": "SwiGLU",
+        "op_type": "SwiGLU",
+        "shape": [
+          64,
+          4096,
+          18944
+        ],
+        "flops_g": 9.932111872,
+        "memory_mb": 9472.0,
+        "bottleneck": "Memory",
+        "inputs": [
+          "h_gate",
+          "h_up"
+        ],
+        "outputs": [
+          "h_act"
+        ],
+        "description": "SwiGLU(gate) * up activation"
+      },
+      {
+        "id": "M4",
+        "name": "Linear W_down",
+        "op_type": "Linear",
+        "shape": [
+          64,
+          4096,
+          4096
+        ],
+        "params": {
+          "W": [
+            18944,
+            4096
+          ],
+          "b": [
+            4096
+          ]
+        },
+        "flops_g": 40681.930227712,
+        "memory_mb": 2048.0,
+        "bottleneck": "Compute",
+        "inputs": [
+          "h_act"
+        ],
+        "outputs": [
+          "h_out"
+        ],
+        "description": "Down projection back to model dimension"
+      },
+      {
+        "id": "M5",
+        "name": "Residual Add",
+        "op_type": "Add",
+        "shape": [
+          64,
+          4096,
+          4096
+        ],
+        "flops_g": 1.073741824,
+        "memory_mb": 4096.0,
+        "bottleneck": "Memory",
+        "inputs": [
+          "h_out",
+          "x_attn"
+        ],
+        "outputs": [
+          "y_out"
+        ],
+        "description": "Add MLP output to residual connection"
+      },
+      {
+        "id": "output",
+        "name": "Output",
+        "op_type": "Output",
+        "shape": [
+          64,
+          4096,
+          4096
+        ],
+        "inputs": [
+          "y_out"
+        ],
+        "description": "Layer output passed to next layer"
+      }
+    ]
+  }
+}

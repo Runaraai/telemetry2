@@ -1,0 +1,105 @@
+{
+    "level": 2,
+    "node": {
+      "id": "node-b100-01",
+      "rack_id": "rack-b100-01",
+      "type": "HGX_B100",
+      "vendor": "NVIDIA",
+      "architecture": "Blackwell",
+      "description": "NVIDIA HGX B100 node with 8×B100 GPUs connected via NVSwitch 4.0 and NVLink 5.0, featuring InfiniBand NDR800 uplinks.",
+  
+      "cpu": {
+        "model": "AMD EPYC 9754",
+        "sockets": 2,
+        "cores": 192,
+        "threads": 384,
+        "base_clock_ghz": 2.25,
+        "boost_clock_ghz": 3.7,
+        "tdp_W": 400
+      },
+  
+      "memory": {
+        "type": "DDR5",
+        "capacity_gb": 4096,
+        "channels": 16,
+        "bandwidth_GBps": 819.2
+      },
+  
+      "storage": {
+        "type": "NVMe Gen5",
+        "capacity_TB": 61.44,
+        "bandwidth_GBps": 56
+      },
+  
+      "interconnect": {
+        "type": "NVSwitch 4.0",
+        "switches": 6,
+        "aggregate_bandwidth_GBps": 7200,
+        "latency_ns": 1.0
+      },
+  
+      "fabric": {
+        "type": "NVSwitch 4.0 + NVLink 5.0 + InfiniBand NDR800",
+        "topology": "hybrid cube mesh",
+        "nvswitch_count": 6,
+        "nvlink_links_per_gpu": 18,
+        "nvlink_bandwidth_per_link_GBps": 100,
+        "nvlink_latency_ns": 1.0,
+        "intra_node_links": [
+          { "src": "gpu-b100-01", "dst": "gpu-b100-02", "bandwidth_GBps": 1800 },
+          { "src": "gpu-b100-03", "dst": "gpu-b100-04", "bandwidth_GBps": 1800 },
+          { "src": "gpu-b100-05", "dst": "gpu-b100-06", "bandwidth_GBps": 1800 },
+          { "src": "gpu-b100-07", "dst": "gpu-b100-08", "bandwidth_GBps": 1800 }
+        ],
+        "inter_node_uplinks": {
+          "fabric_type": "InfiniBand NDR800",
+          "ports": 8,
+          "link_bandwidth_GBps": 100,
+          "bisection_bandwidth_TBps": 102.4,
+          "latency_ns": 90
+        },
+        "summary": {
+          "total_internal_bandwidth_TBps": 14.4,
+          "avg_link_latency_ns": 1.0
+        }
+      },
+  
+      "power": {
+        "total_kW": 12.5,
+        "utilization_percent": 86,
+        "cooling_type": "liquid"
+      },
+  
+      "devices": [
+        "gpu-b100-01", "gpu-b100-02", "gpu-b100-03", "gpu-b100-04",
+        "gpu-b100-05", "gpu-b100-06", "gpu-b100-07", "gpu-b100-08"
+      ],
+  
+      "summary": {
+        "total_gpus": 8,
+        "total_memory_TB": 1.5,
+        "total_fp8_PFLOPS": 31.7,
+        "total_fp16_PFLOPS": 15.8,
+        "total_fp32_PFLOPS": 3.96,
+        "aggregate_nvlink_bandwidth_TBps": 14.4
+      },
+  
+      "visualization_hints": {
+        "layout": { "rows": 2, "cols": 4, "spacing": 0.3 },
+        "color_map": {
+          "cpu": "#f43f5e",
+          "gpu": "#fb923c",
+          "fabric": "#fde047"
+        },
+        "glow_intensity": 0.35
+      },
+      
+      "bottleneck_analysis": {
+      "bottleneck_type": "I/O",
+      "bottleneck": "Host memory and storage throughput imbalance relative to NVSwitch/NVLink bandwidth.",
+      "description": "Each B100 node’s NVSwitch 4.0 delivers 7.2 TB/s GPU interconnect bandwidth, while DDR5 memory (819 GB/s) and NVMe Gen5 storage (56 GB/s) lag far behind. CPU-driven data preparation or checkpoint streaming cannot saturate GPU interconnect speed, underutilizing compute resources.",
+      "workload_characteristic": "Data-intensive pipelines requiring frequent CPU-side data staging or checkpoint streaming for model training or inference."
+    }
+    }
+  }
+  

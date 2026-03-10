@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package nebius.compute.v1;
+
+import "buf/validate/validate.proto";
+import "nebius/common/v1/metadata.proto";
+import "nebius/annotations.proto";
+
+option go_package = "github.com/nebius/gosdk/proto/nebius/compute/v1";
+option java_multiple_files = true;
+option java_outer_classname = "GpuClusterProto";
+option java_package = "ai.nebius.pub.compute.v1";
+
+message GpuCluster {
+  common.v1.ResourceMetadata metadata = 1;
+
+  GpuClusterSpec spec = 2;
+
+  GpuClusterStatus status = 3;
+}
+
+message GpuClusterSpec {
+  // The identifier of the physical InfiniBand fabric to connect GPU instances to.
+  // For details, see https://docs.nebius.com/compute/clusters/gpu#fabrics
+  string infiniband_fabric = 1 [(buf.validate.field).required = true, (field_behavior) = IMMUTABLE];
+}
+
+message GpuClusterStatus {
+  repeated string instances = 1;
+
+  // Indicates whether there is an ongoing operation
+  bool reconciling = 2;
+
+  oneof topology {
+    GpuClusterStatusInfinibandTopologyPath infiniband_topology_path = 3;
+  }
+}
+
+message GpuClusterStatusInfinibandTopologyPath {
+  repeated GpuClusterStatusInfinibandTopologyPathInstance instances = 1;
+}
+
+message GpuClusterStatusInfinibandTopologyPathInstance {
+  string instance_id = 1;
+
+  repeated string path = 2;
+}

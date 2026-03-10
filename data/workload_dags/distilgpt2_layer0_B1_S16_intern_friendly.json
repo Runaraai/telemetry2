@@ -1,0 +1,80 @@
+{
+  "layer": "Transformer Block 0",
+  "model": "unknown",
+  "batch_size": 1,
+  "seq_len": 16,
+  "stages": [
+    {
+      "stage": "Normalization",
+      "flops_m": 0.29,
+      "memory_mb": 0.22,
+      "examples": [
+        "aten.layer_norm",
+        "aten.native_layer_norm"
+      ],
+      "total_ops": 4
+    },
+    {
+      "stage": "Self-Attention",
+      "flops_m": 0.79,
+      "memory_mb": 0.15,
+      "examples": [
+        "aten.scaled_dot_product_attention"
+      ],
+      "total_ops": 1
+    },
+    {
+      "stage": "FeedForward",
+      "flops_m": 226.49,
+      "memory_mb": 56.99,
+      "examples": [
+        "aten.addmm"
+      ],
+      "total_ops": 4
+    },
+    {
+      "stage": "Activation",
+      "flops_m": 0.2,
+      "memory_mb": 0.2,
+      "examples": [
+        "aten.tanh"
+      ],
+      "total_ops": 1
+    },
+    {
+      "stage": "Tensor Layout",
+      "flops_m": 0.0,
+      "memory_mb": 1.67,
+      "examples": [
+        "aten.transpose",
+        "aten.view",
+        "aten.contiguous"
+      ],
+      "total_ops": 32
+    },
+    {
+      "stage": "Utility",
+      "flops_m": 0.0,
+      "memory_mb": 33.43,
+      "examples": [
+        "aten._to_copy",
+        "aten._scaled_dot_product_flash_attention_for_cpu",
+        "aten.where"
+      ],
+      "total_ops": 103
+    },
+    {
+      "stage": "Other",
+      "flops_m": 0.37,
+      "memory_mb": 1.97,
+      "examples": [
+        "aten.add",
+        "aten.pow",
+        "aten.mul"
+      ],
+      "total_ops": 9
+    }
+  ],
+  "total_flops_m": 228.14,
+  "total_memory_mb": 94.63
+}
