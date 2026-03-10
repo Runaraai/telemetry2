@@ -685,20 +685,8 @@ if _cors_origins_env:
     else:
         allowed_cors_origins = [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
 else:
-    # Default fallback for hosted website - allows access from any origin matching the production domain
-    # This ensures anyone accessing omniference.com (or its IP) can use the API
-    # The frontend uses relative URLs, so API calls will use the same origin as the page
+    # Default fallback: localhost only. Set CORS_ORIGINS env var for production domains.
     allowed_cors_origins = [
-        # Production domains (with and without www, http and https)
-        "https://voertx.cloud",
-        "http://voertx.cloud",
-        "https://www.voertx.cloud",
-        "http://www.voertx.cloud",
-        "https://omniference.com",
-        "http://omniference.com",
-        "https://www.omniference.com",
-        "http://www.omniference.com",
-        # Localhost for local development
         "http://localhost",
         "http://localhost:3000",
         "http://localhost:5173",

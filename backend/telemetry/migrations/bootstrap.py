@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import os
 import re
 from typing import Iterable
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
+
+
+def _migration_fallback_email() -> str:
+    """Return the email used to backfill orphaned rows during migrations."""
+    return os.getenv("MIGRATION_FALLBACK_EMAIL", "demo@omniference.com")
 
 
 IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -320,16 +326,17 @@ async def _migrate_runs_user_id(conn, schema: str) -> None:
                 FOREIGN KEY (user_id) REFERENCES {schema}.users(user_id) ON DELETE CASCADE;
             """))
             
-            # For existing runs without user_id, assign them to madhur@allyin.ai account if it exists
+            # For existing runs without user_id, assign them to the fallback account if it exists
+            fallback_email = _migration_fallback_email()
             await conn.execute(text(f"""
                 UPDATE {schema}.runs r
                 SET user_id = (
-                    SELECT user_id FROM {schema}.users 
-                    WHERE email = 'madhur@allyin.ai' 
+                    SELECT user_id FROM {schema}.users
+                    WHERE email = :fallback_email
                     LIMIT 1
                 )
                 WHERE r.user_id IS NULL;
-            """))
+            """), {"fallback_email": fallback_email})
             
             # Only enforce NOT NULL if every legacy row has been backfilled
             null_check = await conn.execute(text(f"""
@@ -402,16 +409,17 @@ async def _migrate_provisioning_api_keys_user_id(conn, schema: str) -> None:
                 ON {schema}.provisioning_api_keys(user_id);
             """))
             
-            # For existing API keys without user_id, assign them to madhur@allyin.ai account if it exists
+            # For existing API keys without user_id, assign them to the fallback account if it exists
+            fallback_email = _migration_fallback_email()
             await conn.execute(text(f"""
                 UPDATE {schema}.provisioning_api_keys p
                 SET user_id = (
-                    SELECT user_id FROM {schema}.users 
-                    WHERE email = 'madhur@allyin.ai' 
+                    SELECT user_id FROM {schema}.users
+                    WHERE email = :fallback_email
                     LIMIT 1
                 )
                 WHERE p.user_id IS NULL;
-            """))
+            """), {"fallback_email": fallback_email})
             
             # Add foreign key constraint
             await conn.execute(text(f"""
@@ -465,16 +473,17 @@ async def _migrate_credential_store_user_id(conn, schema: str) -> None:
                 ON {schema}.credential_store(user_id);
             """))
             
-            # For existing credentials without user_id, assign them to madhur@allyin.ai account if it exists
+            # For existing credentials without user_id, assign them to the fallback account if it exists
+            fallback_email = _migration_fallback_email()
             await conn.execute(text(f"""
                 UPDATE {schema}.credential_store c
                 SET user_id = (
-                    SELECT user_id FROM {schema}.users 
-                    WHERE email = 'madhur@allyin.ai' 
+                    SELECT user_id FROM {schema}.users
+                    WHERE email = :fallback_email
                     LIMIT 1
                 )
                 WHERE c.user_id IS NULL;
-            """))
+            """), {"fallback_email": fallback_email})
             
             # Add foreign key constraint
             await conn.execute(text(f"""

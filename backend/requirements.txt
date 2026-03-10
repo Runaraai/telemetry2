@@ -11,6 +11,7 @@ numpy
 pyyaml
 pytest
 httpx
+aiohttp
 toml
 grpcio
 PyJWT

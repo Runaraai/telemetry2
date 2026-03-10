@@ -93,7 +93,7 @@ async def create_provisioning_manifest(
 
     # Build manifest URL (will be used by agent to fetch manifest)
     import os
-    api_base_url = os.getenv("API_BASE_URL", "https://voertx.cloud")
+    api_base_url = os.getenv("API_BASE_URL", "http://localhost:8000")
     manifest_url = f"{api_base_url}/api/telemetry/provision/manifests/{manifest.manifest_id}?token={token}"
 
     return ProvisioningTokenResponse(
@@ -418,7 +418,7 @@ async def get_deployment_config(
     )
 
     # Resolve backend URL (used for Prometheus remote_write)
-    api_base_url = os.getenv("API_BASE_URL", "https://omniference.com").rstrip("/")
+    api_base_url = os.getenv("API_BASE_URL", "http://localhost:8000").rstrip("/")
 
     poll_interval = payload.poll_interval or 5
     enable_profiling = bool(payload.enable_profiling)

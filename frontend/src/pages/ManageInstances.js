@@ -1280,22 +1280,18 @@ const normalizeAvailability = (cfg, zone) => {
     loadCredentials();
   }, [isAuthenticated]);
 
-  // Migrate localStorage credentials to backend (one-time migration for madhur@allyin.ai)
+  // Migrate localStorage credentials to backend (one-time migration for any authenticated user)
   useEffect(() => {
     const migrateLocalStorageCredentials = async () => {
       if (!isAuthenticated || credentialsLoading) return;
-      
+
       // Check if we already have backend credentials - if so, skip migration
       const hasBackendCreds = Object.keys(credentials).length > 0;
       if (hasBackendCreds) return;
-      
-      // Get current user to check if it's madhur@allyin.ai
+
       try {
         const token = localStorage.getItem('auth_token');
         if (!token) return;
-        
-        const user = await apiService.getCurrentUser(token);
-        if (user.email !== 'madhur@allyin.ai') return; // Only migrate for madhur account
         
         // Migrate each provider's credentials from localStorage
         for (const provider of PROVIDERS) {
