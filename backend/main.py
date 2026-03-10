@@ -31,6 +31,10 @@ import openai
 from openai import RateLimitError
 from dotenv import load_dotenv
 
+# Load environment variables BEFORE importing telemetry modules
+# (telemetry.db reads config at import time)
+load_dotenv()
+
 # Real-time monitoring removed - not needed for interactive analysis
 from telemetry.routes import (
     auth_router,
@@ -51,8 +55,6 @@ from telemetry.routes import (
 from routes.nebius import router as nebius_instance_router
 from telemetry.startup import init_telemetry
 
-# Load environment variables
-load_dotenv()
 # openai.api_key = os.getenv("OPENAI_API_KEY")
 # OpenRouter configuration
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -62,10 +64,6 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 # Lambda Cloud API configuration (updated domain per latest docs)
 LAMBDA_API_BASE_URL = "https://cloud.lambda.ai/api/v1"
 LAMBDA_API_KEY = os.getenv("LAMBDA_API_KEY")
-
-# GCP Configuration
-GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
-GCP_CREDENTIALS_PATH = os.getenv("GCP_CREDENTIALS_PATH")
 
 # Number word mapping for numeric conversion
 NUM_WORDS = {
@@ -706,11 +704,6 @@ else:
         "http://localhost:5173",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
-        # GCP instance IP (for direct IP access during development/deployment)
-        "http://34.9.154.3",
-        "http://34.9.154.3:3000",
-        "https://34.9.154.3",
-        "https://34.9.154.3:3000",
     ]
     
     # If API_BASE_URL is set, extract domain and add it to allowed origins
@@ -1033,143 +1026,6 @@ async def make_lambda_api_request(
             status_code=500,
             detail=f"Lambda Cloud API request failed after {max_retries} attempts: {error_msg}"
         )
-
-# ============================================================================
-# GCP API HELPER FUNCTIONS
-# ============================================================================
-
-def get_gcp_compute_client(project_id: str = None, credentials_json: Dict = None):
-    """Get authenticated GCP Compute Engine client."""
-    try:
-        from google.oauth2 import service_account
-        from googleapiclient import discovery
-        
-        if credentials_json:
-            # Use provided service account credentials
-            credentials = service_account.Credentials.from_service_account_info(credentials_json)
-        elif GCP_CREDENTIALS_PATH and os.path.exists(GCP_CREDENTIALS_PATH):
-            # Use credentials from file path
-            credentials = service_account.Credentials.from_service_account_file(GCP_CREDENTIALS_PATH)
-        else:
-            # Try default application credentials
-            from google.auth import default
-            credentials, _ = default()
-        
-        project = project_id or GCP_PROJECT_ID
-        if not project:
-            raise HTTPException(status_code=400, detail="GCP project ID is required")
-        
-        compute = discovery.build('compute', 'v1', credentials=credentials)
-        return compute, project
-        
-    except ImportError:
-        raise HTTPException(
-            status_code=500,
-            detail="Google Cloud libraries not installed. Install google-cloud-compute and google-auth."
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to authenticate with GCP: {str(e)}"
-        )
-
-async def list_gcp_instances(project_id: str = None, credentials_json: Dict = None, zone: str = None) -> List[Dict]:
-    """List all GCP compute instances."""
-    try:
-        compute, project = get_gcp_compute_client(project_id, credentials_json)
-        
-        instances = []
-        if zone:
-            # List instances in specific zone
-            result = await asyncio.to_thread(
-                compute.instances().list,
-                project=project,
-                zone=zone
-            )
-            result = await asyncio.to_thread(result.execute)
-            instances.extend(result.get('items', []))
-        else:
-            # List instances across all zones
-            zones_result = await asyncio.to_thread(
-                compute.zones().list,
-                project=project
-            )
-            zones_result = await asyncio.to_thread(zones_result.execute)
-            
-            for zone_item in zones_result.get('items', []):
-                zone_name = zone_item['name']
-                try:
-                    result = await asyncio.to_thread(
-                        compute.instances().list,
-                        project=project,
-                        zone=zone_name
-                    )
-                    result = await asyncio.to_thread(result.execute)
-                    zone_instances = result.get('items', [])
-                    for inst in zone_instances:
-                        inst['zone_name'] = zone_name
-                    instances.extend(zone_instances)
-                except Exception as e:
-                    logger.warning(f"Failed to list instances in zone {zone_name}: {e}")
-        
-        return instances
-        
-    except Exception as e:
-        logger.error(f"Failed to list GCP instances: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to list GCP instances: {str(e)}")
-
-async def list_gcp_machine_types(project_id: str = None, credentials_json: Dict = None, zone: str = "us-central1-a") -> List[Dict]:
-    """List available GCP machine types."""
-    try:
-        compute, project = get_gcp_compute_client(project_id, credentials_json)
-        
-        result = await asyncio.to_thread(
-            compute.machineTypes().list,
-            project=project,
-            zone=zone
-        )
-        result = await asyncio.to_thread(result.execute)
-        
-        return result.get('items', [])
-        
-    except Exception as e:
-        logger.error(f"Failed to list GCP machine types: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to list GCP machine types: {str(e)}")
-
-async def list_gcp_zones(project_id: str = None, credentials_json: Dict = None) -> List[Dict]:
-    """List available GCP zones."""
-    try:
-        compute, project = get_gcp_compute_client(project_id, credentials_json)
-        
-        result = await asyncio.to_thread(
-            compute.zones().list,
-            project=project
-        )
-        result = await asyncio.to_thread(result.execute)
-        
-        return result.get('items', [])
-        
-    except Exception as e:
-        logger.error(f"Failed to list GCP zones: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to list GCP zones: {str(e)}")
-
-async def list_gcp_accelerator_types(project_id: str = None, credentials_json: Dict = None, zone: str = "us-central1-a") -> List[Dict]:
-    """List available GCP accelerator types (GPUs)."""
-    try:
-        compute, project = get_gcp_compute_client(project_id, credentials_json)
-        
-        result = await asyncio.to_thread(
-            compute.acceleratorTypes().list,
-            project=project,
-            zone=zone
-        )
-        result = await asyncio.to_thread(result.execute)
-        
-        return result.get('items', [])
-        
-    except Exception as e:
-        logger.error(f"Failed to list GCP accelerator types: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to list GCP accelerator types: {str(e)}")
 
 # ============================================================================
 # REMOTE INSTANCE MANAGEMENT HELPER FUNCTIONS
@@ -1740,14 +1596,14 @@ class SetClockRequest(BaseModel):
     clock_percent: int  # 0-100
 
 class TofuInstanceRequest(BaseModel):
-    provider: str  # "aws" or "gcp"
+    provider: str  # "aws"
     instance_name: str
-    instance_type: str  # e.g., "g5.xlarge", "n1-standard-4"
-    region: str  # e.g., "us-east-1", "us-central1"
+    instance_type: str  # e.g., "g5.xlarge"
+    region: str  # e.g., "us-east-1"
     ssh_key_name: Optional[str] = None
     ssh_public_key: Optional[str] = None
-    image_id: Optional[str] = None  # AMI ID for AWS, image family for GCP
-    credentials: Dict[str, Any] = {}  # AWS credentials or GCP service account JSON
+    image_id: Optional[str] = None  # AMI ID for AWS
+    credentials: Dict[str, Any] = {}  # AWS credentials
 
 class SetupInstanceRequestOld(BaseModel):
     """Legacy setup request - kept for backward compatibility"""
@@ -3170,7 +3026,7 @@ async def check_setup_complete(
     """Setup completion stub (not implemented)."""
     return {"status": "not_implemented"}
 # ============================================================================
-# OPENTOFU (TERRAFORM) INTEGRATION FOR AWS/GCP
+# OPENTOFU (TERRAFORM) INTEGRATION FOR AWS
 # ============================================================================
 
 def create_aws_tofu_config(instance_name: str, instance_type: str, region: str, 
@@ -3236,77 +3092,6 @@ output "private_ip" {{
 '''
     return config
 
-def create_gcp_tofu_config(instance_name: str, instance_type: str, region: str,
-                           ssh_public_key: Optional[str] = None,
-                           image_family: Optional[str] = None) -> str:
-    """Create OpenTofu configuration for GCP Compute Engine instance"""
-    # Default image family for GPU instances
-    image = image_family or "ubuntu-2204-jammy-v20231115"
-    project_id = "your-project-id"  # Should be provided in credentials
-    
-    config = f'''terraform {{
-  required_providers {{
-    google = {{
-      source  = "hashicorp/google"
-      version = "~> 5.0"
-    }}
-  }}
-}}
-
-provider "google" {{
-  region = "{region}"
-}}
-
-resource "google_compute_instance" "{instance_name}" {{
-  name         = "{instance_name}"
-  machine_type = "{instance_type}"
-  zone         = "{region}-a"
-
-  boot_disk {{
-    initialize_params {{
-      image = "{image}"
-      size  = 100
-      type  = "pd-ssd"
-    }}
-  }}
-
-  network_interface {{
-    network = "default"
-    access_config {{
-      // Ephemeral public IP
-    }}
-  }}
-'''
-    
-    if ssh_public_key:
-        config += f'''  metadata = {{
-    ssh-keys = "ubuntu:{ssh_public_key}"
-  }}
-'''
-    
-    config += f'''  labels = {{
-    managed-by = "omniference"
-  }}
-  
-  scheduling {{
-    preemptible = false
-  }}
-}}
-
-output "instance_id" {{
-  value = google_compute_instance.{instance_name}.id
-}}
-
-output "public_ip" {{
-  value = google_compute_instance.{instance_name}.network_interface[0].access_config[0].nat_ip
-}}
-
-output "private_ip" {{
-  value = google_compute_instance.{instance_name}.network_interface[0].network_ip
-}}
-'''
-    return config
-
 def run_tofu_command(work_dir: str, command: str, env_vars: Dict[str, str] = None) -> Tuple[str, str, int]:
     """Run OpenTofu command in specified working directory"""
     env = os.environ.copy()
@@ -3345,7 +3130,7 @@ def run_tofu_command(work_dir: str, command: str, env_vars: Dict[str, str] = Non
 
 @app.post("/api/tofu/instance/create")
 async def create_tofu_instance(request: TofuInstanceRequest):
-    """Create an instance using OpenTofu for AWS or GCP"""
+    """Create an instance using OpenTofu for AWS"""
     try:
         # Create workspace directory
         workspace_id = f"{request.provider}_{request.instance_name}_{int(time.time())}"
@@ -3370,25 +3155,6 @@ async def create_tofu_instance(request: TofuInstanceRequest):
                 env_vars["AWS_SECRET_ACCESS_KEY"] = request.credentials["aws_secret_access_key"]
             if "aws_session_token" in request.credentials:
                 env_vars["AWS_SESSION_TOKEN"] = request.credentials["aws_session_token"]
-        elif request.provider == "gcp":
-            config_content = create_gcp_tofu_config(
-                request.instance_name,
-                request.instance_type,
-                request.region,
-                request.ssh_public_key,
-                request.image_id  # Used as image family for GCP
-            )
-            # Set GCP credentials
-            env_vars = {}
-            if "gcp_credentials_json" in request.credentials:
-                # Write service account JSON to file
-                creds_file = os.path.join(work_dir, "gcp_credentials.json")
-                with open(creds_file, "w") as f:
-                    json.dump(request.credentials["gcp_credentials_json"], f)
-                env_vars["GOOGLE_APPLICATION_CREDENTIALS"] = creds_file
-            if "gcp_project_id" in request.credentials:
-                # Update config with project ID
-                config_content = config_content.replace("your-project-id", request.credentials["gcp_project_id"])
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported provider: {request.provider}")
         
@@ -3450,12 +3216,6 @@ async def destroy_tofu_instance(workspace_id: str, credentials: Dict[str, Any] =
         if "aws_access_key_id" in credentials:
             env_vars["AWS_ACCESS_KEY_ID"] = credentials["aws_access_key_id"]
             env_vars["AWS_SECRET_ACCESS_KEY"] = credentials.get("aws_secret_access_key", "")
-        if "gcp_credentials_json" in credentials:
-            creds_file = os.path.join(work_dir, "gcp_credentials.json")
-            with open(creds_file, "w") as f:
-                json.dump(credentials["gcp_credentials_json"], f)
-            env_vars["GOOGLE_APPLICATION_CREDENTIALS"] = creds_file
-        
         # Destroy resources
         stdout, stderr, rc = run_tofu_command(work_dir, "destroy -auto-approve", env_vars)
         if rc != 0:
@@ -5100,174 +4860,6 @@ async def migrate_instance(payload: MigrationRequest, request: Request) -> Migra
         detail=teardown_detail,
     )
 
-
-# ============================================================================
-# GCP API ROUTES
-# ============================================================================
-
-async def _get_gcp_credentials_from_user() -> Optional[Dict[str, Any]]:
-    """Get the user's GCP credentials from stored credentials."""
-    try:
-        from telemetry.routes.auth import get_current_user
-        from telemetry.db import get_repository
-        from telemetry.repository import TelemetryRepository
-        current_user = await get_current_user()
-        async for session in get_repository():
-            repo = TelemetryRepository(session)
-            credentials = await repo.list_credentials(
-                user_id=current_user.user_id,
-                provider="gcp",
-                credential_type="service_account"
-            )
-            if credentials:
-                default_cred = next((c for c in credentials if c.name == "default"), credentials[0])
-                secret = await repo.get_credential_secret(default_cred)
-                secret_data = json.loads(secret) if isinstance(secret, str) else secret
-                return {
-                    "project_id": secret_data.get("projectId") or secret_data.get("project_id"),
-                    "credentials_json": secret_data.get("credentials") or secret_data
-                }
-            break
-    except Exception as e:
-        logger.warning(f"Failed to get user GCP credentials: {e}")
-    return None
-
-class GCPCredentials(BaseModel):
-    project_id: Optional[str] = None
-    credentials_json: Optional[Dict[str, Any]] = None
-    zone: Optional[str] = None
-
-@app.post("/api/v1/gcp/instances")
-async def list_gcp_instances_route(creds: GCPCredentials):
-    """
-    List all GCP compute instances.
-    Uses user's stored GCP credentials if not provided in request.
-    """
-    try:
-        # Get credentials from user storage if not provided
-        if not creds.project_id or not creds.credentials_json:
-            user_creds = await _get_gcp_credentials_from_user()
-            if user_creds:
-                creds.project_id = creds.project_id or user_creds.get("project_id")
-                creds.credentials_json = creds.credentials_json or user_creds.get("credentials_json")
-        
-        if not creds.project_id or not creds.credentials_json:
-            raise HTTPException(status_code=400, detail="GCP credentials not found. Please provide credentials or save them in your account.")
-        
-        logger.info(f"Fetching GCP instances for project: {creds.project_id}")
-        instances = await list_gcp_instances(
-            project_id=creds.project_id,
-            credentials_json=creds.credentials_json,
-            zone=creds.zone
-        )
-        return {"success": True, "instances": instances}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error listing GCP instances: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to list GCP instances: {str(e)}")
-
-@app.post("/api/v1/gcp/machine-types")
-async def list_gcp_machine_types_route(creds: GCPCredentials):
-    """
-    List available GCP machine types.
-    Uses user's stored GCP credentials if not provided in request.
-    """
-    try:
-        # Get credentials from user storage if not provided
-        if not creds.project_id or not creds.credentials_json:
-            user_creds = await _get_gcp_credentials_from_user()
-            if user_creds:
-                creds.project_id = creds.project_id or user_creds.get("project_id")
-                creds.credentials_json = creds.credentials_json or user_creds.get("credentials_json")
-        
-        if not creds.project_id or not creds.credentials_json:
-            raise HTTPException(status_code=400, detail="GCP credentials not found. Please provide credentials or save them in your account.")
-        
-        logger.info(f"Fetching GCP machine types for project: {creds.project_id}")
-        zone = creds.zone or "us-central1-a"
-        machine_types = await list_gcp_machine_types(
-            project_id=creds.project_id,
-            credentials_json=creds.credentials_json,
-            zone=zone
-        )
-        return {"success": True, "machine_types": machine_types}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error listing GCP machine types: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to list GCP machine types: {str(e)}")
-
-@app.post("/api/v1/gcp/zones")
-async def list_gcp_zones_route(creds: GCPCredentials):
-    """
-    List available GCP zones.
-    Uses user's stored GCP credentials if not provided in request.
-    """
-    try:
-        # Get credentials from user storage if not provided
-        if not creds.project_id or not creds.credentials_json:
-            user_creds = await _get_gcp_credentials_from_user()
-            if user_creds:
-                creds.project_id = creds.project_id or user_creds.get("project_id")
-                creds.credentials_json = creds.credentials_json or user_creds.get("credentials_json")
-        
-        if not creds.project_id or not creds.credentials_json:
-            raise HTTPException(status_code=400, detail="GCP credentials not found. Please provide credentials or save them in your account.")
-        
-        logger.info(f"Fetching GCP zones for project: {creds.project_id}")
-        zones = await list_gcp_zones(
-            project_id=creds.project_id,
-            credentials_json=creds.credentials_json
-        )
-        return {"success": True, "zones": zones}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error listing GCP zones: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to list GCP zones: {str(e)}")
-
-@app.post("/api/v1/gcp/accelerator-types")
-async def list_gcp_accelerator_types_route(creds: GCPCredentials):
-    """
-    List available GCP accelerator types (GPUs).
-    Uses user's stored GCP credentials if not provided in request.
-    """
-    try:
-        # Get credentials from user storage if not provided
-        if not creds.project_id or not creds.credentials_json:
-            user_creds = await _get_gcp_credentials_from_user()
-            if user_creds:
-                creds.project_id = creds.project_id or user_creds.get("project_id")
-                creds.credentials_json = creds.credentials_json or user_creds.get("credentials_json")
-        
-        if not creds.project_id or not creds.credentials_json:
-            raise HTTPException(status_code=400, detail="GCP credentials not found. Please provide credentials or save them in your account.")
-        
-        logger.info(f"Fetching GCP accelerator types for project: {creds.project_id}")
-        zone = creds.zone or "us-central1-a"
-        accelerators = await list_gcp_accelerator_types(
-            project_id=creds.project_id,
-            credentials_json=creds.credentials_json,
-            zone=zone
-        )
-        return {"success": True, "accelerator_types": accelerators}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error listing GCP accelerator types: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to list GCP accelerator types: {str(e)}")
-
-@app.get("/api/v1/gcp/config")
-async def get_gcp_config():
-    """
-    Get GCP configuration status.
-    Returns configuration status (does not expose credentials).
-    """
-    return {
-        "project_configured": bool(GCP_PROJECT_ID),
-        "credentials_path_configured": bool(GCP_CREDENTIALS_PATH)
-    }
 
 # ----------------------------------------------------------------------------
 # SIMPLE CONFIG MANAGEMENT ENDPOINTS

@@ -28,7 +28,7 @@ DIO (formerly Omniference) is a comprehensive GPU telemetry monitoring platform 
 - **Dual Deployment Modes**: 
   - **SSH Push**: Traditional SSH-based deployment (push model)
   - **Agent Pull**: API key-based agent deployment (pull model, fully functional)
-- **Multi-Cloud Support**: Supports 5 cloud providers (Lambda Labs, AWS, GCP, Scaleway, Nebius)
+- **Multi-Cloud Support**: Supports 4 cloud providers (Lambda Labs, AWS, Scaleway, Nebius)
 - **Instance Orchestration**: Automated instance launch, setup, and model deployment workflows
 - **Real-Time Metrics**: Stream GPU metrics in real-time through WebSocket connections
 - **Historical Analysis**: Store and query time-series metrics for trend analysis
@@ -273,7 +273,7 @@ The frontend is a React single-page application that provides the user interface
 - Navigation to telemetry metrics when available
 
 **`ManageInstances.js`** - Instance management interface (4,790 lines)
-- Lists available GPU instances from 5 cloud providers (Lambda, AWS, GCP, Scaleway, Nebius)
+- Lists available GPU instances from 4 cloud providers (Lambda, AWS, Scaleway, Nebius)
 - Manages instance credentials with encrypted backend storage
 - Provides navigation to telemetry monitoring
 - Instance launch with region filtering (fixed December 2024)
@@ -2169,7 +2169,7 @@ For questions or contributions, please refer to the main repository documentatio
 - ✅ Better error handling and user feedback
 
 ### Architecture Updates
-- **Cloud Providers**: Now supports 5 providers (Lambda, AWS, GCP, Scaleway, Nebius)
+- **Cloud Providers**: Now supports 4 providers (Lambda, AWS, Scaleway, Nebius)
 - **Deployment Methods**: Both SSH push and Agent pull methods are fully operational
 - **Instance Management**: 4,790-line `ManageInstances.js` component (increased complexity)
 - **Agent Distribution**: Install script hosted at `https://omniference.com/install` with automatic prerequisite installation

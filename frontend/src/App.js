@@ -3,12 +3,13 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, Navig
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box, Toolbar, Button, Avatar, Typography, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, IconButton, Menu, MenuItem, CircularProgress } from '@mui/material';
-import { Dashboard as DashboardIcon, Assessment as AssessmentIcon, Cloud, History as HistoryIcon, Logout, Person } from '@mui/icons-material';
+import { Dashboard as DashboardIcon, Assessment as AssessmentIcon, Cloud, History as HistoryIcon, Dns as DnsIcon, Logout, Person } from '@mui/icons-material';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { UIProvider } from './components/ui/UIProvider';
 import CommandPalette from './components/ui/CommandPalette';
 import Benchmarking from './pages/Benchmarking';
 import ManageInstances from './pages/ManageInstances';
+import RunningInstances from './pages/RunningInstances';
 import TelemetryHistory from './components/TelemetryHistory';
 import LoginPage from './pages/Login';
 
@@ -291,6 +292,7 @@ function SidebarNavigation() {
   const menuItems = [
     { text: 'Profiling', icon: <AssessmentIcon />, path: '/profiling' },
     { text: 'Manage Instances', icon: <Cloud />, path: '/instances' },
+    { text: 'Running Instances', icon: <DnsIcon />, path: '/running-instances' },
     { text: 'Telemetry History', icon: <HistoryIcon />, path: '/telemetry-history' }
   ];
 
@@ -740,6 +742,7 @@ function AppContent() {
           <Route path="/" element={<ProtectedRoute><Benchmarking /></ProtectedRoute>} />
           <Route path="/profiling" element={<ProtectedRoute><Benchmarking /></ProtectedRoute>} />
           <Route path="/instances" element={<ProtectedRoute><ManageInstances /></ProtectedRoute>} />
+          <Route path="/running-instances" element={<ProtectedRoute><RunningInstances /></ProtectedRoute>} />
           <Route path="/telemetry-history" element={<ProtectedRoute><TelemetryHistory /></ProtectedRoute>} />
           <Route path="/login" element={<Navigate to="/" replace />} />
         </Routes>

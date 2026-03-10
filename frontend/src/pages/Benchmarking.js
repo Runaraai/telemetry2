@@ -581,8 +581,7 @@ const Benchmarking = () => {
     const possibleKeys = [
       `cloudCreds_${rwVendor?.toLowerCase() || 'lambda'}`,
       'cloudCreds_lambda',
-      'cloudCreds_aws', 
-      'cloudCreds_gcp'
+      'cloudCreds_aws'
     ];
     
     // Remove duplicates

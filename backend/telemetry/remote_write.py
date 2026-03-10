@@ -9,7 +9,10 @@ from datetime import datetime, timezone
 from functools import partial
 from typing import Any, Callable, Dict, List, Mapping, MutableMapping, Optional, Tuple
 
-import snappy
+try:
+    import snappy
+except ImportError:
+    snappy = None
 from google.protobuf import descriptor_pb2, descriptor_pool, message_factory
 
 from .schemas import MetricSample
@@ -438,6 +441,8 @@ def _build_sample(gpu_id: int, time: datetime, metrics: Mapping[str, float]) -> 
 def _snappy_decompress(body: bytes) -> bytes:
     if not body:
         return b""
+    if snappy is None:
+        raise RemoteWriteDecodeError("python-snappy is not installed; cannot decode Snappy-compressed remote_write payloads")
     try:
         return snappy.uncompress(body)
     except Exception:

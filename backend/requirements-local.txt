@@ -1,0 +1,35 @@
+fastapi
+uvicorn
+pydantic
+python-dotenv
+openai
+numpy
+pyyaml
+httpx
+toml
+grpcio
+PyJWT
+
+# Telemetry persistence and migrations
+sqlalchemy[asyncio]
+asyncpg
+alembic
+
+# Redis for real-time pub/sub and caching
+redis
+
+# Pydantic settings (v2)
+pydantic-settings
+
+# Core dependencies
+paramiko
+pandas
+psutil
+multipart
+cryptography
+protobuf
+
+# Authentication
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart

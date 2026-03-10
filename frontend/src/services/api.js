@@ -839,47 +839,6 @@ export const apiService = {
     return response.data;
   },
 
-  // GCP API endpoints
-  getGCPInstances: async (projectId, credentialsJson, zone = null) => {
-    const response = await api.post('/api/v1/gcp/instances', {
-      project_id: projectId,
-      credentials_json: credentialsJson,
-      zone: zone
-    });
-    return response.data;
-  },
-
-  getGCPMachineTypes: async (projectId, credentialsJson, zone = 'us-central1-a') => {
-    const response = await api.post('/api/v1/gcp/machine-types', {
-      project_id: projectId,
-      credentials_json: credentialsJson,
-      zone: zone
-    });
-    return response.data;
-  },
-
-  getGCPZones: async (projectId, credentialsJson) => {
-    const response = await api.post('/api/v1/gcp/zones', {
-      project_id: projectId,
-      credentials_json: credentialsJson
-    });
-    return response.data;
-  },
-
-  getGCPAcceleratorTypes: async (projectId, credentialsJson, zone = 'us-central1-a') => {
-    const response = await api.post('/api/v1/gcp/accelerator-types', {
-      project_id: projectId,
-      credentials_json: credentialsJson,
-      zone: zone
-    });
-    return response.data;
-  },
-
-  getGCPConfig: async () => {
-    const response = await api.get('/api/v1/gcp/config');
-    return response.data;
-  },
-
   // Aggregated instances endpoint
   getAggregatedInstances: async () => {
     const response = await api.get('/api/instances/aggregated', {

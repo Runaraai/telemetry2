@@ -135,7 +135,7 @@ This audit reveals significant gaps between the product vision ("One-Click Setup
 #### ❌ **ManageInstances.js - 4,790 Lines** (Increased from 4,715)
 - **Location:** `frontend/src/pages/ManageInstances.js`
 - **Issue:** Monolithic component handling:
-  - 5 cloud providers (Lambda, AWS, GCP, Scaleway, Nebius)
+  - 4 cloud providers (Lambda, AWS, Scaleway, Nebius)
   - Credential management
   - Instance listing
   - Launch dialogs
@@ -319,7 +319,6 @@ const MetricCard = React.memo(({ data, metricKey, ... }) => {
      - `LambdaProvider.jsx`
      - `ScalewayProvider.jsx`
      - `NebiusProvider.jsx`
-     - `GCPProvider.jsx`
      - `AWSProvider.jsx`
   3. Create shared `ProviderCredentials.jsx` component
   4. Refactor `ManageInstances.js` to orchestrate providers

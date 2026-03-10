@@ -183,9 +183,33 @@ async def run_bootstrap(
         f"SELECT add_retention_policy('gpu_metrics', INTERVAL '{retention_days} days', if_not_exists => TRUE);",
     )
 
+    timescale_keywords = ("timescaledb", "create_hypertable", "add_retention_policy")
+
+    # Detect whether TimescaleDB is available so we can skip its statements
+    # without poisoning the transaction.
+    _has_timescale = False
+    async with engine.connect() as probe:
+        try:
+            result = await probe.execute(
+                text("SELECT 1 FROM pg_available_extensions WHERE name = 'timescaledb'")
+            )
+            _has_timescale = result.scalar() is not None
+        except Exception:
+            pass
+
     async with engine.begin() as conn:
         for statement in statements:
-            await conn.execute(text(statement))
+            is_timescale = any(kw in statement.lower() for kw in timescale_keywords)
+            if is_timescale and not _has_timescale:
+                print(f"TimescaleDB not available, skipping: {statement.strip()[:80]}")
+                continue
+            try:
+                nested = await conn.begin_nested()
+                await conn.execute(text(statement))
+                await nested.commit()
+            except Exception as e:
+                await nested.rollback()
+                print(f"Warning: bootstrap statement failed (continuing): {statement.strip()[:80]} — {e}")
         
         # Add new columns to existing gpu_metrics table (migration)
         await _migrate_gpu_metrics_table(conn, safe_schema)

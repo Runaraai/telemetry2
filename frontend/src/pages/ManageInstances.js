@@ -25,41 +25,8 @@ import RefreshControl from '../components/ui/RefreshControl';
 import { ListSkeleton } from '../components/ui/Skeletons';
 
 const PROVIDERS = [
-  { 
-    id: 'lambda', 
-    label: 'Lambda Labs',
-    logo: 'https://lambdalabs.com/favicon.ico',
-    name: 'Lambda Labs',
-    color: '#1976d2',
-    bgColor: '#000000',
-    requiredFields: ['API Key'],
-    helpUrl: 'https://docs-api.lambda.ai/api/cloud',
-    helpText: 'To get your Lambda Labs API key:\\n1. Log in to your Lambda Labs account\\n2. Navigate to API Keys section\\n3. Generate a new API key\\n4. Copy the key and paste it here'
-  },
-  { 
-    id: 'aws', 
-    label: 'AWS',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/9/93/Amazon_Web_Services_Logo.svg',
-    name: 'Amazon Web Services',
-    color: '#FF9900',
-    bgColor: '#FFFFFF',
-    requiredFields: ['Access Key ID', 'Secret Access Key'],
-    helpUrl: 'https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html',
-    helpText: 'To get your AWS Access Keys:\\n1. Log in to AWS Console\\n2. Go to IAM -> Users -> Your User\\n3. Click "Security credentials" tab\\n4. Click "Create access key"\\n5. Copy Access Key ID and Secret Access Key'
-  },
-  { 
-    id: 'gcp', 
-    label: 'GCP',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg',
-    name: 'Google Cloud Platform',
-    color: '#4285F4',
-    bgColor: '#FFFFFF',
-    requiredFields: ['Project ID', 'Service Account JSON'],
-    helpUrl: 'https://cloud.google.com/iam/docs/creating-managing-service-account-keys',
-    helpText: 'To get your GCP credentials:\\n1. Go to GCP Console -> IAM & Admin -> Service Accounts\\n2. Create or select a service account\\n3. Create a JSON key\\n4. Download the JSON file and paste its contents here'
-  },
-  { 
-    id: 'scaleway', 
+  {
+    id: 'scaleway',
     label: 'Scaleway',
     logo: 'https://www.scaleway.com/favicon-192x192.png',
     name: 'Scaleway',
@@ -68,17 +35,6 @@ const PROVIDERS = [
     requiredFields: ['Access Key', 'Secret Key', 'Project ID'],
     helpUrl: 'https://www.scaleway.com/en/docs/iam/how-to/create-api-keys/',
     helpText: 'To get your Scaleway credentials:\\n1. Go to Scaleway Console -> IAM -> API Keys\\n2. Create an Access Key and Secret Key\\n3. Copy your Project ID from Project settings\\n4. Paste keys and Project ID here'
-  },
-  {
-    id: 'nebius',
-    label: 'Nebius',
-    logo: 'https://nebius.com/favicon.ico',
-    name: 'Nebius',
-    color: '#0b7c7e',
-    bgColor: '#FFFFFF',
-    requiredFields: ['Service Account ID', 'Authorized Key ID', 'Project ID', 'Private Key'],
-    helpUrl: 'https://docs.nebius.com/compute/virtual-machines/creating/regular-vm',
-    helpText: 'To call the Nebius API you need a service account and an authorized key:\\n1. In Nebius Console, go to Administration → IAM → Service accounts and copy the Service Account ID.\\n2. On the same page upload an authorized key (RSA) and copy its ID.\\n3. Copy the private key PEM that you downloaded when creating the key and paste it below.\\n4. Provide your Project ID (folder ID) from the Nebius Console project settings.'
   }
 ];
 
@@ -154,92 +110,32 @@ function parseBackendCredential(credential, secret) {
   if (!credential || !secret) {
     return null;
   }
-  
-  const provider = credential.provider;
-  
+
   try {
-    // Try to parse as JSON first
     const secretData = typeof secret === 'string' ? JSON.parse(secret) : secret;
-    
-    if (provider === 'gcp') {
-      return {
-        gcpProjectId: secretData.projectId || secretData.project_id || '',
-        gcpCredentialsJson: typeof secretData.credentials === 'string' ? secretData.credentials : JSON.stringify(secretData.credentials || secretData)
-      };
-    } else if (provider === 'aws') {
-      return {
-        accessKeyId: secretData.accessKeyId || secretData.access_key_id || secretData.apiKey || '',
-        secretAccessKey: secretData.secretAccessKey || secretData.secret_access_key || secretData.secretKey || ''
-      };
-    } else if (provider === 'scaleway') {
-      return {
-        accessKeyId: secretData.accessKeyId || secretData.access_key_id || secretData.apiKey || '',
-        secretKey: secretData.secretKey || secretData.secret_key || '',
-        projectId: secretData.projectId || secretData.project_id || ''
-      };
-    } else if (provider === 'nebius') {
+
     return {
-      serviceAccountId: secretData.serviceAccountId || secretData.service_account_id || '',
-      keyId: secretData.keyId || secretData.key_id || '',
+      accessKeyId: secretData.accessKeyId || secretData.access_key_id || secretData.apiKey || '',
       secretKey: secretData.secretKey || secretData.secret_key || '',
       projectId: secretData.projectId || secretData.project_id || ''
     };
-  } else if (provider === 'lambda') {
-      // Lambda secret might be JSON with apiKey field, or just the plain API key string
-      const apiKey = secretData.apiKey || secretData.api_key || secretData || '';
-      return { apiKey };
-    }
-    return null;
   } catch (e) {
-    // If secret is not JSON, treat it as a simple string (e.g., Lambda API key)
-    if (provider === 'lambda') {
-      return { apiKey: secret };
-    } else if (provider === 'scaleway') {
-      // Scaleway credentials should be JSON, but if parsing fails, try to extract from plain string
-      // This handles edge cases where the secret might be corrupted or stored incorrectly
-      console.warn('⚠️ parseBackendCredential(scaleway): Secret is not valid JSON, attempting recovery');
-      // If the secret looks like it might be a partial JSON or corrupted, return empty values
-      // The user will need to re-enter their credentials
-      return {
-        accessKeyId: '',
-        secretKey: '',
-        projectId: ''
-      };
-    }
-    return null;
+    console.warn('⚠️ parseBackendCredential(scaleway): Secret is not valid JSON');
+    return {
+      accessKeyId: '',
+      secretKey: '',
+      projectId: ''
+    };
   }
 }
 
 // Helper to convert frontend format to backend credential secret
 function createBackendSecret(providerId, data) {
-  if (providerId === 'gcp') {
-    return JSON.stringify({
-      projectId: data.projectId,
-      credentials: typeof data.serviceAccountJson === 'string' ? JSON.parse(data.serviceAccountJson) : data.serviceAccountJson
-    });
-  } else if (providerId === 'aws') {
-    return JSON.stringify({
-      accessKeyId: data.accessKeyId,
-      secretAccessKey: data.secretAccessKey
-    });
-  } else if (providerId === 'scaleway') {
-    return JSON.stringify({
-      accessKeyId: data.accessKeyId,
-      secretKey: data.secretKey,
-      projectId: data.projectId
-    });
-  } else if (providerId === 'nebius') {
-    return JSON.stringify({
-      serviceAccountId: data.serviceAccountId,
-      projectId: data.projectId,
-      keyId: data.keyId,
-      secretKey: data.secretKey
-    });
-  } else if (providerId === 'lambda') {
-    // Lambda API key is just a string
-    return data.apiKey;
-  }
-  return '';
+  return JSON.stringify({
+    accessKeyId: data.accessKeyId,
+    secretKey: data.secretKey,
+    projectId: data.projectId
+  });
 }
 
 export default function ManageInstances() {
@@ -249,7 +145,7 @@ export default function ManageInstances() {
   const [viewMode, setViewMode] = useState('cloud'); // 'cloud' or 'local'
   const { showToast, confirm } = useUI();
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [selectedProvider, setSelectedProvider] = useState(null);
+  const [selectedProvider, setSelectedProvider] = useState('scaleway');
   const [openModal, setOpenModal] = useState(null);
   const [credentials, setCredentials] = useState({}); // Store credentials from backend
   const [credentialSecrets, setCredentialSecrets] = useState({}); // Cache credential secrets
@@ -689,16 +585,25 @@ const normalizeAvailability = (cfg, zone) => {
     const secret = credentialSecrets['scaleway'];
     if (cred && secret) {
       const parsed = parseBackendCredential(cred, secret);
-      if (parsed?.secretKey && parsed?.projectId) {
+      if (parsed?.secretKey) {
         return {
           secretKey: parsed.secretKey,
-          projectId: parsed.projectId,
+          projectId: parsed.projectId || '',
           accessKeyId: parsed.accessKeyId || '',
         };
       }
     }
 
-    // Legacy fallback to localStorage (older sessions)
+    // Fallback to env vars
+    if (process.env.REACT_APP_SCW_ACCESS_KEY && process.env.REACT_APP_SCW_SECRET_KEY) {
+      return {
+        secretKey: process.env.REACT_APP_SCW_SECRET_KEY,
+        projectId: process.env.REACT_APP_SCW_PROJECT_ID || '',
+        accessKeyId: process.env.REACT_APP_SCW_ACCESS_KEY,
+      };
+    }
+
+    // Legacy fallback to localStorage
     const raw = localStorage.getItem(storageKey('scaleway'));
     if (!raw) {
       return null;
@@ -739,8 +644,8 @@ const normalizeAvailability = (cfg, zone) => {
     }
     setScwLaunchForm({
       region: preferredRegion,
-      publicKey: '',
-      sshKeyName: '',
+      publicKey: process.env.REACT_APP_SCW_SSH_PUBLIC_KEY || '',
+      sshKeyName: 'runara-key',
       commercialType: preferredType,
       rootVolumeSize: null,
       rootVolumeType: isH100 ? 'sbs_volume' : null, // Auto-set sbs_volume for H100
@@ -754,11 +659,11 @@ const normalizeAvailability = (cfg, zone) => {
   
   // Form state
   const [formData, setFormData] = useState({
-    lambda: { apiKey: '' },
-    aws: { accessKeyId: '', secretAccessKey: '' },
-    gcp: { projectId: '', serviceAccountJson: '' },
-    scaleway: { accessKeyId: '', secretKey: '', projectId: '' },
-    nebius: { serviceAccountId: '', keyId: '', secretKey: '', projectId: '' }
+    scaleway: {
+      accessKeyId: process.env.REACT_APP_SCW_ACCESS_KEY || '',
+      secretKey: process.env.REACT_APP_SCW_SECRET_KEY || '',
+      projectId: process.env.REACT_APP_SCW_PROJECT_ID || ''
+    }
   });
 
   // Fetch Scaleway products for selected region
@@ -864,58 +769,26 @@ const normalizeAvailability = (cfg, zone) => {
   }, [scwRegion, credentials, credentialSecrets]);
 
   // Check if provider is connected (from backend credentials, fallback to localStorage)
-  const isProviderConnected = (providerId) => {
-    const cred = credentials[providerId];
-    const secret = credentialSecrets[providerId];
-    const hasBackendSecret = cred?.secret_available || !!cred?.secret_preview;
-    
-    // First, try backend credentials
+  const isProviderConnected = (_providerId) => {
+    // Check env vars first (hardcoded credentials)
+    if (process.env.REACT_APP_SCW_ACCESS_KEY && process.env.REACT_APP_SCW_SECRET_KEY) {
+      return true;
+    }
+
+    // Check backend credentials
+    const cred = credentials['scaleway'];
+    const secret = credentialSecrets['scaleway'];
     if (cred && secret) {
       const parsed = parseBackendCredential(cred, secret);
-      if (!parsed) {
-        if (providerId === 'scaleway') {
-          // Scaleway credentials are corrupted - show error and allow re-entry
-          console.error('❌ isProviderConnected(scaleway): Credentials are corrupted or invalid JSON. Please re-enter your Scaleway credentials.');
-          // Return false so user can re-enter credentials
-          return false;
-        }
-      } else {
-        if (providerId === 'gcp') {
-          return !!(parsed.gcpProjectId && parsed.gcpCredentialsJson);
-        } else if (providerId === 'aws') {
-          return !!(parsed.accessKeyId && parsed.secretAccessKey);
-        } else if (providerId === 'scaleway') {
-          // Check if all required fields are present and non-empty
-          const isValid = !!(parsed.accessKeyId && parsed.secretKey && parsed.projectId);
-          if (!isValid) {
-            console.warn('⚠️ isProviderConnected(scaleway): Credential fields are missing or empty. Please re-enter your Scaleway credentials.');
-          }
-          return isValid;
-        } else if (providerId === 'nebius') {
-          return !!(parsed.serviceAccountId && parsed.keyId && parsed.secretKey && parsed.projectId);
-        } else if (providerId === 'lambda') {
-          const hasApiKey = !!parsed.apiKey;
-          return hasApiKey;
-        }
-      }
+      return !!(parsed?.accessKeyId && parsed?.secretKey);
     }
-    
+
     // Fallback to localStorage
-    const stored = localStorage.getItem(storageKey(providerId));
+    const stored = localStorage.getItem(storageKey('scaleway'));
     if (!stored) return false;
     try {
       const parsed = JSON.parse(stored);
-      if (providerId === 'gcp') {
-        return !!(parsed.gcpProjectId && parsed.gcpCredentialsJson);
-      } else if (providerId === 'aws') {
-        return !!(parsed.apiKey || parsed.accessKeyId);
-      } else if (providerId === 'scaleway') {
-        return !!(parsed.accessKeyId && parsed.secretKey && parsed.projectId);
-      } else if (providerId === 'nebius') {
-        return !!(parsed.serviceAccountId && parsed.keyId && parsed.secretKey && parsed.projectId);
-      } else {
-        return !!parsed.apiKey;
-      }
+      return !!(parsed.accessKeyId && parsed.secretKey);
     } catch (e) {
       return false;
     }
@@ -1324,59 +1197,22 @@ const normalizeAvailability = (cfg, zone) => {
     }
     
     // Load credentials from localStorage into formData
-    PROVIDERS.forEach(provider => {
-      try {
-        const raw = localStorage.getItem(storageKey(provider.id));
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (provider.id === 'gcp') {
-            setFormData(prev => ({
-              ...prev,
-              gcp: {
-                projectId: parsed.gcpProjectId || '',
-                serviceAccountJson: parsed.gcpCredentialsJson || ''
-              }
-            }));
-          } else if (provider.id === 'aws') {
-            setFormData(prev => ({
-              ...prev,
-              aws: {
-                accessKeyId: parsed.apiKey || parsed.accessKeyId || '',
-                secretAccessKey: parsed.secretKey || parsed.secretAccessKey || ''
-              }
-            }));
-          } else if (provider.id === 'scaleway') {
-            setFormData(prev => ({
-              ...prev,
-              scaleway: {
-                accessKeyId: parsed.accessKeyId || parsed.SCALEWAY_ACCESS_KEY || parsed.apiKey || '',
-                secretKey: parsed.secretKey || parsed.SCALEWAY_SECRET_KEY || '',
-                projectId: parsed.projectId || parsed.SCALEWAY_PROJECT_ID || ''
-              }
-            }));
-          } else if (provider.id === 'nebius') {
-            setFormData(prev => ({
-              ...prev,
-              nebius: {
-                serviceAccountId: parsed.serviceAccountId || '',
-                keyId: parsed.keyId || '',
-                secretKey: parsed.secretKey || '',
-                projectId: parsed.projectId || ''
-              }
-            }));
-          } else {
-            setFormData(prev => ({
-              ...prev,
-              lambda: {
-                apiKey: parsed.apiKey || ''
-              }
-            }));
+    try {
+      const raw = localStorage.getItem(storageKey('scaleway'));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setFormData(prev => ({
+          ...prev,
+          scaleway: {
+            accessKeyId: parsed.accessKeyId || parsed.SCALEWAY_ACCESS_KEY || parsed.apiKey || prev.scaleway.accessKeyId,
+            secretKey: parsed.secretKey || parsed.SCALEWAY_SECRET_KEY || prev.scaleway.secretKey,
+            projectId: parsed.projectId || parsed.SCALEWAY_PROJECT_ID || prev.scaleway.projectId
           }
-        }
-      } catch (e) {
-        // ignore
+        }));
       }
-    });
+    } catch (e) {
+      // ignore
+    }
     
     if (!currentId) {
       PROVIDERS.forEach((p) => localStorage.removeItem(storageKey(p.id)));
@@ -1423,49 +1259,14 @@ const normalizeAvailability = (cfg, zone) => {
           if (cred && secret) {
             const parsed = parseBackendCredential(cred, secret);
             if (parsed) {
-              if (provider.id === 'gcp') {
-                setFormData(prev => ({
-                  ...prev,
-                  gcp: {
-                    projectId: parsed.gcpProjectId || '',
-                    serviceAccountJson: parsed.gcpCredentialsJson || ''
-                  }
-                }));
-              } else if (provider.id === 'aws') {
-                setFormData(prev => ({
-                  ...prev,
-                  aws: {
-                    accessKeyId: parsed.accessKeyId || '',
-                    secretAccessKey: parsed.secretAccessKey || ''
-                  }
-                }));
-              } else if (provider.id === 'scaleway') {
-                setFormData(prev => ({
-                  ...prev,
-                  scaleway: {
-                    accessKeyId: parsed.accessKeyId || '',
-                    secretKey: parsed.secretKey || '',
-                    projectId: parsed.projectId || ''
-                  }
-                }));
-            } else if (provider.id === 'nebius') {
               setFormData(prev => ({
                 ...prev,
-                nebius: {
-                  serviceAccountId: parsed.serviceAccountId || '',
-                  keyId: parsed.keyId || '',
-                  secretKey: parsed.secretKey || '',
-                  projectId: parsed.projectId || ''
+                scaleway: {
+                  accessKeyId: parsed.accessKeyId || prev.scaleway.accessKeyId,
+                  secretKey: parsed.secretKey || prev.scaleway.secretKey,
+                  projectId: parsed.projectId || prev.scaleway.projectId
                 }
               }));
-            } else if (provider.id === 'lambda') {
-                setFormData(prev => ({
-                  ...prev,
-                  lambda: {
-                    apiKey: parsed.apiKey || ''
-                  }
-                }));
-              }
             }
           }
         });
@@ -1506,40 +1307,13 @@ const normalizeAvailability = (cfg, zone) => {
             let secret = '';
             let credentialType = 'api_key';
             
-            if (provider.id === 'gcp') {
-              if (!parsed.gcpProjectId || !parsed.gcpCredentialsJson) continue;
-              secret = JSON.stringify({
-                projectId: parsed.gcpProjectId,
-                credentials: typeof parsed.gcpCredentialsJson === 'string' ? JSON.parse(parsed.gcpCredentialsJson) : parsed.gcpCredentialsJson
-              });
-              credentialType = 'service_account';
-            } else if (provider.id === 'aws') {
-              if (!parsed.accessKeyId && !parsed.apiKey) continue;
-              secret = JSON.stringify({
-                accessKeyId: parsed.accessKeyId || parsed.apiKey,
-                secretAccessKey: parsed.secretAccessKey || parsed.secretKey
-              });
-              credentialType = 'access_key';
-            } else if (provider.id === 'scaleway') {
-              if (!parsed.accessKeyId && !parsed.SCALEWAY_ACCESS_KEY) continue;
-              secret = JSON.stringify({
-                accessKeyId: parsed.accessKeyId || parsed.SCALEWAY_ACCESS_KEY || parsed.apiKey,
-                secretKey: parsed.secretKey || parsed.SCALEWAY_SECRET_KEY,
-                projectId: parsed.projectId || parsed.SCALEWAY_PROJECT_ID
-              });
-              credentialType = 'access_key';
-            } else if (provider.id === 'nebius') {
-              if (!parsed.keyId || !parsed.secretKey) continue;
-              secret = JSON.stringify({
-                keyId: parsed.keyId,
-                secretKey: parsed.secretKey
-              });
-              credentialType = 'api_key';
-            } else if (provider.id === 'lambda') {
-              if (!parsed.apiKey) continue;
-              secret = parsed.apiKey;
-              credentialType = 'api_key';
-            }
+            if (!parsed.accessKeyId && !parsed.SCALEWAY_ACCESS_KEY) continue;
+            secret = JSON.stringify({
+              accessKeyId: parsed.accessKeyId || parsed.SCALEWAY_ACCESS_KEY || parsed.apiKey,
+              secretKey: parsed.secretKey || parsed.SCALEWAY_SECRET_KEY,
+              projectId: parsed.projectId || parsed.SCALEWAY_PROJECT_ID
+            });
+            credentialType = 'access_key';
             
             if (secret) {
               await apiService.saveCredential(
@@ -1583,31 +1357,37 @@ const normalizeAvailability = (cfg, zone) => {
     migrateLocalStorageCredentials();
   }, [isAuthenticated, credentialsLoading, credentials]);
 
+
+  // Auto-connect Scaleway using hardcoded env credentials
+  const autoConnectRef = useRef(false);
   useEffect(() => {
-    const loadNebiusRegions = async () => {
-      try {
-        const regions = await apiService.getNebiusRegions();
-        if (Array.isArray(regions) && regions.length > 0) {
-          setNebiusRegions(regions);
-          setNebiusRegion((prev) => (regions.includes(prev) ? prev : regions[0]));
-        }
-      } catch (err) {
-        console.warn('Failed to load Nebius regions', err);
+    if (autoConnectRef.current) return;
+    const accessKey = process.env.REACT_APP_SCW_ACCESS_KEY;
+    const secretKey = process.env.REACT_APP_SCW_SECRET_KEY;
+    if (accessKey && secretKey) {
+      // Save to localStorage so isProviderConnected returns true immediately
+      const projectId = process.env.REACT_APP_SCW_PROJECT_ID || '';
+      const credsObj = { accessKeyId: accessKey, secretKey: secretKey, projectId };
+      localStorage.setItem(storageKey('scaleway'), JSON.stringify(credsObj));
+      autoConnectRef.current = true;
+
+      // Also auto-save to backend if authenticated
+      if (isAuthenticated && !credentials['scaleway']) {
+        const secret = JSON.stringify(credsObj);
+        apiService.saveCredential('scaleway', 'default', 'access_key', secret, 'Scaleway credentials')
+          .then((savedCred) => {
+            setCredentials(prev => ({ ...prev, scaleway: savedCred }));
+            setCredentialSecrets(prev => ({ ...prev, scaleway: secret }));
+          })
+          .catch((e) => console.warn('Auto-save credentials failed:', e));
       }
-    };
-    loadNebiusRegions();
-  }, []);
+    }
+  }, [isAuthenticated, credentials]);
 
   // Auto-load Scaleway regions and default select connected provider
   useEffect(() => {
     loadScwRegions();
-    if (!selectedProvider) {
-      const connected = PROVIDERS.find((p) => isProviderConnected(p.id));
-      if (connected) {
-        setSelectedProvider(connected.id);
-      }
-    }
-  }, [selectedProvider]);
+  }, []);
 
   // Auto-load Scaleway configs when selected and connected
   useEffect(() => {
@@ -1617,11 +1397,6 @@ const normalizeAvailability = (cfg, zone) => {
     }
   }, [selectedProvider, scwRegion, fetchScalewayConfigs, fetchScalewayInstances]);
 
-  useEffect(() => {
-    if (selectedProvider === 'nebius' && isProviderConnected('nebius')) {
-      fetchNebiusConfigs();
-    }
-  }, [selectedProvider, nebiusRegion, fetchNebiusConfigs]);
 
   useEffect(() => {
     if (!scwLaunchOpen) return;
@@ -1643,22 +1418,6 @@ const normalizeAvailability = (cfg, zone) => {
 
   const { open: scwProgressOpen, serverId: scwProgressServerId, zone: scwProgressZone, refreshedInstances: scwProgressRefreshed } = scwProgress;
 
-  // Auto-fetch Lambda instances when Lambda is connected
-  useEffect(() => {
-    if (selectedProvider === 'lambda' && isProviderConnected('lambda') && !credentialsLoading) {
-      const cred = credentials['lambda'];
-      const secret = credentialSecrets['lambda'];
-      if (cred && secret) {
-        const parsed = parseBackendCredential(cred, secret);
-        if (parsed && parsed.apiKey) {
-          // Auto-fetch instances and instance types when Lambda is connected
-          fetchLambdaInstances(parsed.apiKey).catch(() => {
-            // Silently fail - user can manually refresh
-          });
-        }
-      }
-    }
-  }, [selectedProvider, credentials, credentialSecrets, credentialsLoading]);
 
   // Poll Scaleway server status when progress dialog is open
   useEffect(() => {
@@ -1747,38 +1506,10 @@ const normalizeAvailability = (cfg, zone) => {
     setError('');
     setMessage('');
     
-    // Validate based on provider
-    if (providerId === 'gcp') {
-      if (!data.projectId || !data.serviceAccountJson) {
-        setError('Please provide GCP Project ID and Service Account JSON');
-        return false;
-      }
-      try {
-        JSON.parse(data.serviceAccountJson);
-      } catch (e) {
-        setError('Invalid JSON format for GCP Service Account credentials');
-        return false;
-      }
-    } else if (providerId === 'aws') {
-      if (!data.accessKeyId || !data.secretAccessKey) {
-        setError('Please provide both Access Key ID and Secret Access Key');
-        return false;
-      }
-    } else if (providerId === 'scaleway') {
-      if (!data.accessKeyId || !data.secretKey || !data.projectId) {
-        setError('Please provide Scaleway Access Key, Secret Key, and Project ID');
-        return false;
-      }
-    } else if (providerId === 'nebius') {
-      if (!data.serviceAccountId || !data.keyId || !data.secretKey || !data.projectId) {
-        setError('Please provide Nebius Service Account ID, Key ID, Project ID, and Private Key');
-        return false;
-      }
-    } else if (providerId === 'lambda') {
-      if (!data.apiKey) {
-        setError('Please provide Lambda Labs API key');
-        return false;
-      }
+    // Validate Scaleway credentials
+    if (!data.accessKeyId || !data.secretKey || !data.projectId) {
+      setError('Please provide Scaleway Access Key, Secret Key, and Project ID');
+      return false;
     }
 
     // Save to backend
@@ -1806,7 +1537,7 @@ const normalizeAvailability = (cfg, zone) => {
         savedCred = await apiService.saveCredential(
           providerId,
           'default',
-          providerId === 'gcp' ? 'service_account' : providerId === 'lambda' ? 'api_key' : 'access_key',
+          providerId === 'lambda' ? 'api_key' : 'access_key',
           secret,
           `${provider.name} credentials`
         );
@@ -1879,15 +1610,7 @@ const normalizeAvailability = (cfg, zone) => {
       
       // Auto-fetch instances after saving
       try {
-        if (providerId === 'lambda') {
-          await fetchLambdaInstances(data.apiKey);
-        } else if (providerId === 'gcp') {
-          await fetchGCPInstances(data.projectId, JSON.parse(data.serviceAccountJson));
-        } else if (providerId === 'scaleway') {
-          await fetchScalewayConfigs();
-        } else if (providerId === 'nebius') {
-          await fetchNebiusConfigs();
-        }
+        await fetchScalewayConfigs();
       } catch (fetchError) {
         console.error('Auto-fetch after save failed:', fetchError);
         // Error is already handled by fetch functions
@@ -2105,19 +1828,8 @@ const normalizeAvailability = (cfg, zone) => {
     }
     
     // Otherwise, refresh the selected provider
-    if (selectedProvider === 'scaleway') {
-      fetchScalewayInstances(scwRegion, { showGlobalLoading: true });
-    } else if (selectedProvider === 'nebius') {
-      fetchNebiusInstances();
-    } else if (selectedProvider === 'lambda') {
-      const cred = credentials['lambda'];
-      const secret = credentialSecrets['lambda'];
-      const parsed = cred && secret ? parseBackendCredential(cred, secret) : null;
-      if (parsed?.apiKey) {
-        fetchLambdaInstances(parsed.apiKey);
-      }
-    }
-  }, [aggregatedViewMode, selectedProvider, scwRegion, fetchScalewayInstances, fetchNebiusInstances, fetchLambdaInstances, fetchAggregatedInstances, credentials, credentialSecrets]);
+    fetchScalewayInstances(scwRegion, { showGlobalLoading: true });
+  }, [aggregatedViewMode, selectedProvider, scwRegion, fetchScalewayInstances, fetchAggregatedInstances]);
 
   // Fetch Lambda instance types and regions for launch
   const fetchLaunchData = async (apiKey) => {
@@ -2488,47 +2200,6 @@ const normalizeAvailability = (cfg, zone) => {
     }
   };
 
-  // Fetch GCP instances
-  const fetchGCPInstances = async (projectId, credentials) => {
-    if (!projectId || !credentials) {
-      setError('Please provide valid GCP Project ID and Service Account credentials');
-      return;
-    }
-    setLoading(true);
-    setError('');
-    setMessage('');
-    try {
-      const instancesRes = await apiService.getGCPInstances(projectId, credentials, null);
-      setInstances(prev => ({
-        ...prev,
-        gcp: instancesRes.instances || []
-      }));
-      setExpandedProvider('gcp');
-      setMessage('GCP instances fetched successfully');
-    } catch (e) {
-      console.error('GCP fetch error:', e);
-      // Handle different error types
-      if (e.response?.status === 401) {
-        setError('Invalid GCP credentials. Please check your Service Account JSON and try again.');
-      } else if (e.response?.status === 403) {
-        setError('Access denied. Your Service Account does not have permission to access GCP resources.');
-      } else if (e.response?.status === 404) {
-        setError('Project not found. Please check your GCP Project ID and try again.');
-      } else if (e.message?.toLowerCase().includes('network')) {
-        setError('Network error. Please check your internet connection and try again.');
-      } else {
-        setError(`Failed to fetch GCP instances: ${e.response?.data?.detail || e.message || 'Unknown error'}`);
-      }
-      // Clear instances on error
-      setInstances(prev => ({
-        ...prev,
-        gcp: []
-      }));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Disabled auto-load on mount to prevent 401 errors with invalid stored credentials
   // Users must manually click "Fetch Instances" to load data
   // useEffect(() => {
@@ -2541,13 +2212,6 @@ const normalizeAvailability = (cfg, zone) => {
   //             const parsed = JSON.parse(raw);
   //             if (provider.id === 'lambda' && parsed.apiKey) {
   //               await fetchLambdaInstances(parsed.apiKey);
-  //             } else if (provider.id === 'gcp' && parsed.gcpProjectId && parsed.gcpCredentialsJson) {
-  //               try {
-  //                 const creds = JSON.parse(parsed.gcpCredentialsJson);
-  //                 await fetchGCPInstances(parsed.gcpProjectId, creds);
-  //               } catch (e) {
-  //                 // Invalid JSON
-  //               }
   //             }
   //           }
   //         } catch (e) {
@@ -2595,278 +2259,6 @@ const normalizeAvailability = (cfg, zone) => {
   return (
     <>
     <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: 'background.default' }}>
-      {/* Vertical Integration Sidebar */}
-      <Box sx={{ 
-        width: '280px', 
-        borderRight: '1px solid',
-        borderColor: 'divider',
-        backgroundColor: 'grey.50',
-        p: 3,
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        {/* Header */}
-        <Box sx={{ mb: 0, p: '8px', pt: '13px' }}>
-          <Typography variant="h6" sx={{ 
-            fontWeight: 600, 
-            mb: 0,
-            fontSize: '16px',
-            color: '#000000',
-            px: '8px'
-          }}>
-            Integration
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ 
-            fontSize: '0.75rem', 
-            display: 'block',
-            color: 'rgba(0,0,0,0.4)',
-            px: '8px',
-            mt: '4px'
-          }}>
-            Configure cloud provider credentials or connect to local instances
-          </Typography>
-        </Box>
-
-        {/* View Mode Toggle */}
-        <Box sx={{ mb: 0, px: '8px', pt: '38px' }}>
-          <Box
-            sx={{
-              display: 'flex',
-              backgroundColor: '#e7e7e7',
-              borderRadius: '4px',
-              p: '2px',
-              border: 'none',
-              gap: 0
-            }}
-          >
-            <Box
-              onClick={() => {
-                setViewMode('cloud');
-                setSelectedProvider(null);
-              }}
-              sx={{
-                flex: 1,
-                py: '3px',
-                px: '10px',
-                borderRadius: '4px',
-                backgroundColor: viewMode === 'cloud' ? '#FFFFFF' : 'transparent',
-                cursor: 'pointer',
-                textAlign: 'center',
-                transition: 'background-color 0.2s',
-                '&:hover': {
-                  backgroundColor: viewMode === 'cloud' ? '#FFFFFF' : 'rgba(255,255,255,0.3)'
-                }
-              }}
-            >
-              <Typography
-                variant="caption"
-                sx={{
-                  fontWeight: 400,
-                  color: '#000000',
-                  fontSize: '10px'
-                }}
-              >
-                Cloud Providers
-              </Typography>
-            </Box>
-            <Box
-              onClick={() => {
-                setViewMode('local');
-                setSelectedProvider(null);
-              }}
-              sx={{
-                flex: 1,
-                py: '3px',
-                px: '10px',
-                borderRadius: '4px',
-                backgroundColor: viewMode === 'local' ? '#FFFFFF' : 'transparent',
-                cursor: 'pointer',
-                textAlign: 'center',
-                transition: 'background-color 0.2s',
-                '&:hover': {
-                  backgroundColor: viewMode === 'local' ? '#FFFFFF' : 'rgba(255,255,255,0.3)'
-                }
-              }}
-            >
-              <Typography
-                variant="caption"
-                sx={{
-                  fontWeight: 400,
-                  color: '#000000',
-                  fontSize: '10px'
-                }}
-              >
-                Local Instances
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-
-        {/* Cloud Providers or Local Instance Form */}
-        {viewMode === 'cloud' && aggregatedViewMode === 'cloud' ? (
-          <Stack spacing={0} sx={{ px: '8px', pt: '35px', gap: '8px' }}>
-            {PROVIDERS.map((provider) => {
-            const isConnected = isProviderConnected(provider.id);
-            const isSelected = selectedProvider === provider.id;
-            
-            return (
-              <Box
-                key={provider.id}
-                sx={{ 
-                  borderRadius: '8px',
-                  border: '1px solid rgba(0,0,0,0.2)',
-                  cursor: 'pointer',
-                  backgroundColor: isConnected ? '#e4e4e4' : '#e4e4e4',
-                  boxShadow: '0.5px 0.5px 1px 0px rgba(0,0,0,0.1)',
-                  '&:hover': {
-                    boxShadow: '0.5px 0.5px 2px 0px rgba(0,0,0,0.15)'
-                  },
-                  transition: 'all 0.2s',
-                  height: '40px',
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}
-                onClick={() => setSelectedProvider(provider.id)}
-              >
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  height: '100%',
-                  px: '11px',
-                  position: 'relative'
-                }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                    <Box
-                      component="img"
-                      src={provider.logo}
-                      alt={provider.name}
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                      sx={{
-                        width: provider.id === 'lambda' ? '15px' : provider.id === 'aws' ? '29px' : provider.id === 'gcp' ? '19px' : provider.id === 'scaleway' ? '19px' : '19px',
-                        height: provider.id === 'lambda' ? '15px' : provider.id === 'aws' ? '19px' : provider.id === 'gcp' ? '19px' : provider.id === 'scaleway' ? '19px' : '19px',
-                        objectFit: 'contain',
-                        objectPosition: 'center',
-                        flexShrink: 0
-                      }}
-                    />
-                    <Typography variant="body2" sx={{ 
-                      fontWeight: 400,
-                      fontSize: '12px',
-                      color: '#000000'
-                    }}>
-                      {provider.label}
-                    </Typography>
-                  </Box>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenModal(provider.id);
-                    }}
-                    sx={{
-                      textTransform: 'none',
-                      borderRadius: '4px',
-                      backgroundColor: isConnected ? '#2e7d32' : '#0879f4',
-                      color: '#FFFFFF',
-                      fontSize: '10px',
-                      fontWeight: 500,
-                      px: '10px',
-                      py: '5px',
-                      minWidth: 'auto',
-                      height: '22px',
-                      '&:hover': {
-                        backgroundColor: isConnected ? '#1b5e20' : '#0669d4'
-                      }
-                    }}
-                  >
-                    {isConnected ? 'Connected' : 'Integrate'}
-                  </Button>
-                </Box>
-              </Box>
-            );
-          })}
-          </Stack>
-        ) : viewMode === 'cloud' && aggregatedViewMode === 'aggregated' ? (
-          <Box sx={{ px: '8px', pt: '35px' }}>
-            <Alert severity="info" sx={{ borderRadius: 2 }}>
-              Instance Based view shows all providers together. Switch back to Cloud Based to manage integrations per provider.
-            </Alert>
-          </Box>
-        ) : (
-          <Box sx={{ px: '8px', pt: '35px' }}>
-            <Card
-              sx={{
-                borderRadius: '8px',
-                border: '1px solid',
-                borderColor: 'divider',
-                backgroundColor: 'background.paper'
-              }}
-            >
-              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                <Stack spacing={2}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <VpnKeyIcon color="primary" />
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      Local Instance
-                    </Typography>
-                  </Box>
-                  
-                  <TextField
-                    fullWidth
-                    label="IP Address"
-                    value={localInstanceForm.ipAddress}
-                    onChange={(e) => setLocalInstanceForm(prev => ({ ...prev, ipAddress: e.target.value }))}
-                    placeholder="192.168.1.100"
-                    size="small"
-                  />
-                  
-                  <TextField
-                    fullWidth
-                    label="SSH User"
-                    value={localInstanceForm.sshUser}
-                    onChange={(e) => setLocalInstanceForm(prev => ({ ...prev, sshUser: e.target.value }))}
-                    placeholder="ubuntu"
-                    size="small"
-                  />
-                  
-                  <TextField
-                    fullWidth
-                    label="SSH Key"
-                    value={localInstanceForm.sshKey}
-                    onChange={(e) => setLocalInstanceForm(prev => ({ ...prev, sshKey: e.target.value }))}
-                    placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;..."
-                    type="password"
-                    size="small"
-                    sx={{ 
-                      fontSize: '0.75rem'
-                    }}
-                    autoComplete="new-password"
-                  />
-                  
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    fullWidth
-                    onClick={handleLocalInstanceConnect}
-                    startIcon={<PlayArrowIcon />}
-                    sx={{
-                      textTransform: 'none',
-                      borderRadius: '8px'
-                    }}
-                  >
-                    Connect to Instance
-                  </Button>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Box>
-        )}
-      </Box>
-
       {/* Main Content Area */}
       <Box sx={{ flex: 1, p: 4, display: 'flex', flexDirection: 'column' }}>
         {/* Messages */}
@@ -3235,43 +2627,7 @@ const normalizeAvailability = (cfg, zone) => {
                     
                     const parsed = JSON.parse(raw);
                     
-                    if (selectedProvider === 'lambda') {
-                      // Use backend credentials if available, otherwise fall back to localStorage
-                      const cred = credentials['lambda'];
-                      const secret = credentialSecrets['lambda'];
-                      let apiKey = null;
-                      
-                      if (cred && secret) {
-                        const parsedBackend = parseBackendCredential(cred, secret);
-                        apiKey = parsedBackend?.apiKey;
-                      }
-                      
-                      if (!apiKey && parsed?.apiKey) {
-                        apiKey = parsed.apiKey; // Fallback to localStorage
-                      }
-                      
-                      if (!apiKey) {
-                        setError('No API key found. Please re-integrate with Lambda Labs.');
-                        return;
-                      }
-                      // fetchLambdaInstances now also fetches instance types internally
-                      await fetchLambdaInstances(apiKey);
-                    } else if (selectedProvider === 'scaleway') {
-                      await fetchScalewayInstances(scwRegion);
-                    } else if (selectedProvider === 'gcp') {
-                      if (!parsed.gcpProjectId || !parsed.gcpCredentialsJson) {
-                        setError('Incomplete GCP credentials. Please re-integrate with GCP.');
-                        return;
-                      }
-                      try {
-                        const creds = JSON.parse(parsed.gcpCredentialsJson);
-                        await fetchGCPInstances(parsed.gcpProjectId, creds);
-                      } catch (jsonError) {
-                        setError('Invalid GCP Service Account JSON format. Please re-integrate with valid credentials.');
-                      }
-                    } else if (selectedProvider === 'nebius') {
-                      await fetchNebiusInstances();
-                    }
+                    await fetchScalewayInstances(scwRegion);
                   } catch (e) {
                     console.error('Fetch button error:', e);
                     setError(`Failed to fetch instances: ${e.message || 'Unknown error'}`);
@@ -3281,45 +2637,6 @@ const normalizeAvailability = (cfg, zone) => {
               >
                 {loading ? 'Fetching...' : 'Fetch Instances'}
                 </Button>
-                {selectedProvider === 'lambda' && isProviderConnected('lambda') && (
-                  <Button
-                    variant="outlined"
-                    startIcon={<PlayArrowIcon />}
-                    onClick={async () => {
-                      try {
-                        // Use backend credentials if available, otherwise fall back to localStorage
-                        const cred = credentials['lambda'];
-                        const secret = credentialSecrets['lambda'];
-                        let apiKey = null;
-                        
-                        if (cred && secret) {
-                          const parsedBackend = parseBackendCredential(cred, secret);
-                          apiKey = parsedBackend?.apiKey;
-                        }
-                        
-                        if (!apiKey) {
-                          const raw = localStorage.getItem(storageKey('lambda'));
-                          if (raw) {
-                            const parsed = JSON.parse(raw);
-                            apiKey = parsed.apiKey;
-                          }
-                        }
-                        
-                        if (!apiKey) {
-                          setError('Lambda API key not found. Please re-integrate.');
-                          return;
-                        }
-                        await fetchLaunchData(apiKey);
-                        setLaunchDialogOpen(true);
-                      } catch (e) {
-                        setError('Failed to load launch data: ' + e.message);
-                      }
-                    }}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    Launch New Instance
-              </Button>
-                )}
               </Stack>
             )}
           </Box>
@@ -4411,67 +3728,6 @@ const normalizeAvailability = (cfg, zone) => {
                           </Paper>
                         </Grid>
                       );
-                    } else if (selectedProvider === 'gcp') {
-                      const zone = instance.zone_name || instance.zone?.split('/').pop() || 'N/A';
-                      const machineType = instance.machineType?.split('/').pop() || 'N/A';
-                      const status = instance.status?.toLowerCase() || 'unknown';
-                      const externalIp = instance.networkInterfaces?.[0]?.accessConfigs?.[0]?.natIP || 'N/A';
-                      
-                      return (
-                        <Grid item xs={12} md={6} key={instance.id || instance.name || idx}>
-                          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-                              {instance.name || 'Unnamed'}
-                            </Typography>
-                            <Stack spacing={1}>
-                              <Box>
-                                <Typography variant="caption" color="text.secondary">Machine Type</Typography>
-                                <Typography variant="body2">{machineType}</Typography>
-                              </Box>
-                              <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-                                <Chip 
-                                  size="small" 
-                                  label={status} 
-                                  color={
-                                    status === 'running' ? 'success' : 
-                                    status === 'stopped' ? 'default' : 
-                                    status === 'terminated' ? 'error' : 
-                                    'default'
-                                  } 
-                                />
-                                <Chip size="small" variant="outlined" label={zone} />
-                                {externalIp !== 'N/A' && <Chip size="small" variant="outlined" label={`IP: ${externalIp}`} />}
-                              </Stack>
-                              {status === 'running' && (
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  startIcon={<PlayArrowIcon />}
-                                  onClick={() => {
-                                    const instanceData = {
-                                      id: instance.id,
-                                      name: instance.name,
-                                      instanceType: machineType,
-                                      gpuModel: instance.guestAccelerators?.[0]?.acceleratorType?.split('/').pop() || 'N/A',
-                                      gpuCount: instance.guestAccelerators?.[0]?.acceleratorCount || 0,
-                                      region: zone,
-                                      ipAddress: externalIp,
-                                      sshUser: 'ubuntu',
-                                      provider: 'gcp',
-                                      vendor: 'GCP',
-                                      status: status || 'running',
-                                    };
-                                    navigate('/profiling', { state: { openTelemetry: true, instanceData, allowMigration: true } });
-                                  }}
-                                  sx={{ mt: 1, textTransform: 'none' }}
-                                >
-                                  Manage Instance
-                                </Button>
-                              )}
-                            </Stack>
-                          </Paper>
-                        </Grid>
-                      );
                     }
                     return null;
                   })}
@@ -4660,29 +3916,6 @@ const normalizeAvailability = (cfg, zone) => {
                   </>
                 )}
                 
-                {openModal === 'gcp' && (
-                  <>
-                <TextField
-                  fullWidth
-                      label="Project ID"
-                      value={data.projectId}
-                      onChange={(e) => handleInputChange('gcp', 'projectId', e.target.value)}
-                      sx={{ mb: 2 }}
-                      placeholder="my-gcp-project-123"
-                    />
-              <TextField
-                fullWidth
-                      label="Service Account JSON"
-                      value={data.serviceAccountJson}
-                      onChange={(e) => handleInputChange('gcp', 'serviceAccountJson', e.target.value)}
-                multiline
-                      rows={6}
-                      sx={{ mb: 2, fontFamily: 'monospace', fontSize: '0.875rem' }}
-                      placeholder='{"type": "service_account", "project_id": "...", "private_key": "...", ...}'
-                    />
-                  </>
-                )}
-
                 {openModal === 'scaleway' && (
                   <>
                 <TextField
@@ -5417,6 +4650,21 @@ const normalizeAvailability = (cfg, zone) => {
                 });
                 const serverId = res.id || scwLaunchConfig?.name || launchCommercialType;
                 setMessage(`Launch requested: ${serverId} in ${res.zone}`);
+                // Track launched instance in localStorage for Running Instances page
+                try {
+                  const tracked = JSON.parse(localStorage.getItem('runara_launched_instances') || '[]');
+                  tracked.push({
+                    id: res.id,
+                    zone: res.zone || launchRegion,
+                    name: res.name || `scw-${launchCommercialType}`,
+                    commercial_type: launchCommercialType,
+                    ip: res.ip || null,
+                    launched_at: new Date().toISOString(),
+                  });
+                  localStorage.setItem('runara_launched_instances', JSON.stringify(tracked));
+                } catch (err) {
+                  console.warn('Failed to track launched instance:', err);
+                }
                 // Close modal and reset state before async operations
                 setScwLaunchOpen(false);
                 resetScwLaunchState();

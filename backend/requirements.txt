@@ -50,11 +50,6 @@ cryptography
 python-snappy
 protobuf
 
-# Google Cloud Platform
-google-cloud-compute
-google-auth
-google-api-python-client
-
 # Authentication
 python-jose[cryptography]
 passlib[bcrypt]

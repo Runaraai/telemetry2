@@ -24,7 +24,7 @@ DIO (formerly Omniference) is a comprehensive GPU telemetry monitoring and AI pe
 - **Historical Analysis**: Time-series data storage and querying
 - **AI Performance Analysis**: Model workload analysis and optimization recommendations
 - **Workflow Orchestration**: Multi-phase workflows for instance setup, deployment, and benchmarking
-- **Cloud Integration**: Support for Scaleway, Lambda Cloud, and GCP
+- **Cloud Integration**: Support for Scaleway, Lambda Cloud, AWS, and Nebius
 
 ### Key Technologies
 
@@ -1233,59 +1233,6 @@ DELETE /api/v1/lambda-cloud/ssh-keys/{key_id}
 #### Health Check
 ```http
 GET /api/v1/lambda-cloud/health
-```
-
----
-
-### GCP (`/api/v1/gcp`)
-
-#### List Instances
-```http
-POST /api/v1/gcp/instances
-Content-Type: application/json
-
-{
-  "project_id": "project-id",
-  "zone": "us-central1-a",
-  "credentials": {...}
-}
-```
-
-#### Get Machine Types
-```http
-POST /api/v1/gcp/machine-types
-Content-Type: application/json
-
-{
-  "project_id": "project-id",
-  "zone": "us-central1-a"
-}
-```
-
-#### Get Zones
-```http
-POST /api/v1/gcp/zones
-Content-Type: application/json
-
-{
-  "project_id": "project-id"
-}
-```
-
-#### Get Accelerator Types
-```http
-POST /api/v1/gcp/accelerator-types
-Content-Type: application/json
-
-{
-  "project_id": "project-id",
-  "zone": "us-central1-a"
-}
-```
-
-#### Get Config
-```http
-GET /api/v1/gcp/config
 ```
 
 ---

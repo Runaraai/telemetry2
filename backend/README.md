@@ -17,14 +17,13 @@ cd backend
 pip install -r requirements.txt
 ```
 
-## OpenTofu Setup for AWS/GCP Instance Management
+## OpenTofu Setup for AWS Instance Management
 
-To enable AWS and GCP instance management via OpenTofu, see [SETUP_OPENTOFU.md](./SETUP_OPENTOFU.md) for detailed installation and configuration instructions.
+To enable AWS instance management via OpenTofu, see [SETUP_OPENTOFU.md](./SETUP_OPENTOFU.md) for detailed installation and configuration instructions.
 
 Quick setup:
 - Install OpenTofu (or Terraform as fallback)
 - Configure AWS CLI or set AWS credentials
-- Create GCP service account and download JSON key
 - Set environment variables for credentials
 
 ## Running the API
@@ -205,27 +204,12 @@ pip install -r requirements.txt
 python start.py
 ```
 
-### Docker
-```bash
-cd backend
-docker build -t omniference-backend .
-docker run -p 8000:8000 omniference-backend
-```
-
-### Docker Compose
-```bash
-cd backend
-docker-compose up -d
-```
-
 ## Project Structure
 ```
 backend/
 ├── main.py              # FastAPI application
 ├── start.py             # Startup script
 ├── requirements.txt     # Python dependencies
-├── Dockerfile          # Docker configuration
-├── docker-compose.yml  # Docker Compose configuration
 ├── test_api.py         # API test script
 ├── hardware_builder/   # Hardware modeling (copied)
 ├── tco_mapper/         # Performance analysis (copied)
