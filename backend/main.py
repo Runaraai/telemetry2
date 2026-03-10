@@ -43,6 +43,7 @@ from telemetry.routes import (
     health_router,
     instance_orchestration_router,
     metrics_router,
+    profiling_router,
     provisioning_router,
     remote_write_router,
     runs_router,
@@ -765,6 +766,7 @@ app.include_router(nebius_router, prefix="/api")
 app.include_router(nebius_instance_router)  # New instance management routes
 app.include_router(ai_insights_router, prefix="/api")
 app.include_router(sm_profiling_router, prefix="/api")
+app.include_router(profiling_router, prefix="/api/telemetry")
 app.include_router(instance_orchestration_router)
 app.include_router(websocket_router)
 

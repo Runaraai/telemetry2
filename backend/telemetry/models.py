@@ -74,6 +74,20 @@ class Run(Base):
         passive_deletes=True,
         uselist=False,
     )
+    workload: Mapped[Optional["WorkloadMetrics"]] = relationship(
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+    )
+    kernel_profiles: Mapped[List["KernelProfile"]] = relationship(
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    bottleneck: Mapped[Optional["BottleneckAnalysis"]] = relationship(
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+    )
 
 
 class GpuMetric(Base):
@@ -504,6 +518,127 @@ class ProvisioningAPIKey(Base):
     )
     revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+
+class WorkloadMetrics(Base):
+    """Workload-level inference profiling metrics for a run."""
+
+    __tablename__ = "workload_metrics"
+
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("runs.run_id", ondelete="CASCADE"), primary_key=True
+    )
+    model_name: Mapped[Optional[str]] = mapped_column(String(255))
+    server_url: Mapped[Optional[str]] = mapped_column(String(500))
+    concurrency: Mapped[Optional[int]] = mapped_column(Integer)
+    num_requests: Mapped[Optional[int]] = mapped_column(Integer)
+    successful_requests: Mapped[Optional[int]] = mapped_column(Integer)
+    failed_requests: Mapped[Optional[int]] = mapped_column(Integer)
+    duration_s: Mapped[Optional[float]] = mapped_column(Float)
+    # TTFT (time-to-first-token) in milliseconds
+    ttft_mean_ms: Mapped[Optional[float]] = mapped_column(Float)
+    ttft_p50_ms: Mapped[Optional[float]] = mapped_column(Float)
+    ttft_p95_ms: Mapped[Optional[float]] = mapped_column(Float)
+    ttft_p99_ms: Mapped[Optional[float]] = mapped_column(Float)
+    # TPOT (time-per-output-token) in milliseconds
+    tpot_mean_ms: Mapped[Optional[float]] = mapped_column(Float)
+    tpot_p50_ms: Mapped[Optional[float]] = mapped_column(Float)
+    tpot_p95_ms: Mapped[Optional[float]] = mapped_column(Float)
+    tpot_p99_ms: Mapped[Optional[float]] = mapped_column(Float)
+    # E2E latency in milliseconds
+    e2e_latency_mean_ms: Mapped[Optional[float]] = mapped_column(Float)
+    e2e_latency_p99_ms: Mapped[Optional[float]] = mapped_column(Float)
+    # Throughput
+    throughput_req_sec: Mapped[Optional[float]] = mapped_column(Float)
+    throughput_tok_sec: Mapped[Optional[float]] = mapped_column(Float)
+    total_input_tokens: Mapped[Optional[int]] = mapped_column(Integer)
+    total_output_tokens: Mapped[Optional[int]] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+
+class KernelProfile(Base):
+    """CUDA kernel profiling breakdown for a run."""
+
+    __tablename__ = "kernel_profiles"
+
+    profile_id: Mapped[UUID] = mapped_column(
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("runs.run_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    total_cuda_ms: Mapped[Optional[float]] = mapped_column(Float)
+    total_flops: Mapped[Optional[float]] = mapped_column(Float)
+    estimated_tflops: Mapped[Optional[float]] = mapped_column(Float)
+    profiled_requests: Mapped[Optional[str]] = mapped_column(String(50))
+    trace_source: Mapped[Optional[str]] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    categories: Mapped[List["KernelCategory"]] = relationship(
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class KernelCategory(Base):
+    """Individual CUDA kernel category timing within a profile."""
+
+    __tablename__ = "kernel_categories"
+    __table_args__ = (
+        Index("idx_kernel_categories_profile", "profile_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    profile_id: Mapped[UUID] = mapped_column(
+        ForeignKey("kernel_profiles.profile_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    total_ms: Mapped[float] = mapped_column(Float, nullable=False)
+    pct: Mapped[float] = mapped_column(Float, nullable=False)
+    kernel_count: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    profile: Mapped[KernelProfile] = relationship(back_populates="categories")
+
+
+class BottleneckAnalysis(Base):
+    """Bottleneck classification and efficiency analysis for a run."""
+
+    __tablename__ = "bottleneck_analyses"
+
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("runs.run_id", ondelete="CASCADE"), primary_key=True
+    )
+    primary_bottleneck: Mapped[str] = mapped_column(String(20), nullable=False)
+    compute_util_pct: Mapped[Optional[float]] = mapped_column(Float)
+    sm_active_mean_pct: Mapped[Optional[float]] = mapped_column(Float)
+    memory_bw_util_pct: Mapped[Optional[float]] = mapped_column(Float)
+    hbm_bw_mean_gbps: Mapped[Optional[float]] = mapped_column(Float)
+    cpu_overhead_estimated_pct: Mapped[Optional[float]] = mapped_column(Float)
+    nvlink_util_pct: Mapped[Optional[float]] = mapped_column(Float)
+    arithmetic_intensity: Mapped[Optional[float]] = mapped_column(Float)
+    roofline_bound: Mapped[Optional[str]] = mapped_column(String(20))
+    mfu_pct: Mapped[Optional[float]] = mapped_column(Float)
+    actual_tflops: Mapped[Optional[float]] = mapped_column(Float)
+    peak_tflops_bf16: Mapped[Optional[float]] = mapped_column(Float)
+    recommendations: Mapped[Optional[List[str]]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
 
 
 class User(Base):

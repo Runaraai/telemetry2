@@ -242,8 +242,11 @@ async def run_bootstrap(
         
         # Add ingest_token_hash to runs table and composite index (migration)
         await _migrate_runs_ingest_token(conn, safe_schema)
-        
-        
+
+        # Add workload/kernel/bottleneck profiling tables
+        await _migrate_profiling_tables(conn, safe_schema)
+
+
 async def _migrate_runs_ingest_token(conn, schema: str) -> None:
     """Add ingest_token_hash, token_created_at columns and composite index to runs table."""
     try:
@@ -880,3 +883,90 @@ async def _migrate_deployment_queue_tables(conn, schema: str) -> None:
     await conn.execute(text(
         f"CREATE UNIQUE INDEX IF NOT EXISTS uq_user_email ON {schema}.users(email);"
     ))
+
+
+async def _migrate_profiling_tables(conn, schema: str) -> None:
+    """Create workload_metrics, kernel_profiles, kernel_categories, bottleneck_analyses tables."""
+    try:
+        await conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS {schema}.workload_metrics (
+                run_id UUID PRIMARY KEY REFERENCES {schema}.runs(run_id) ON DELETE CASCADE,
+                model_name VARCHAR(255),
+                server_url VARCHAR(500),
+                concurrency INTEGER,
+                num_requests INTEGER,
+                successful_requests INTEGER,
+                failed_requests INTEGER,
+                duration_s DOUBLE PRECISION,
+                ttft_mean_ms DOUBLE PRECISION,
+                ttft_p50_ms DOUBLE PRECISION,
+                ttft_p95_ms DOUBLE PRECISION,
+                ttft_p99_ms DOUBLE PRECISION,
+                tpot_mean_ms DOUBLE PRECISION,
+                tpot_p50_ms DOUBLE PRECISION,
+                tpot_p95_ms DOUBLE PRECISION,
+                tpot_p99_ms DOUBLE PRECISION,
+                e2e_latency_mean_ms DOUBLE PRECISION,
+                e2e_latency_p99_ms DOUBLE PRECISION,
+                throughput_req_sec DOUBLE PRECISION,
+                throughput_tok_sec DOUBLE PRECISION,
+                total_input_tokens INTEGER,
+                total_output_tokens INTEGER,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+        """))
+
+        await conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS {schema}.kernel_profiles (
+                profile_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                run_id UUID NOT NULL REFERENCES {schema}.runs(run_id) ON DELETE CASCADE,
+                total_cuda_ms DOUBLE PRECISION,
+                total_flops DOUBLE PRECISION,
+                estimated_tflops DOUBLE PRECISION,
+                profiled_requests VARCHAR(50),
+                trace_source VARCHAR(500),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+        """))
+        await conn.execute(text(f"""
+            CREATE INDEX IF NOT EXISTS idx_kernel_profiles_run_id
+            ON {schema}.kernel_profiles(run_id);
+        """))
+
+        await conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS {schema}.kernel_categories (
+                id SERIAL PRIMARY KEY,
+                profile_id UUID NOT NULL REFERENCES {schema}.kernel_profiles(profile_id) ON DELETE CASCADE,
+                category VARCHAR(50) NOT NULL,
+                total_ms DOUBLE PRECISION NOT NULL,
+                pct DOUBLE PRECISION NOT NULL,
+                kernel_count INTEGER NOT NULL
+            );
+        """))
+        await conn.execute(text(f"""
+            CREATE INDEX IF NOT EXISTS idx_kernel_categories_profile
+            ON {schema}.kernel_categories(profile_id);
+        """))
+
+        await conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS {schema}.bottleneck_analyses (
+                run_id UUID PRIMARY KEY REFERENCES {schema}.runs(run_id) ON DELETE CASCADE,
+                primary_bottleneck VARCHAR(20) NOT NULL,
+                compute_util_pct DOUBLE PRECISION,
+                sm_active_mean_pct DOUBLE PRECISION,
+                memory_bw_util_pct DOUBLE PRECISION,
+                hbm_bw_mean_gbps DOUBLE PRECISION,
+                cpu_overhead_estimated_pct DOUBLE PRECISION,
+                nvlink_util_pct DOUBLE PRECISION,
+                arithmetic_intensity DOUBLE PRECISION,
+                roofline_bound VARCHAR(20),
+                mfu_pct DOUBLE PRECISION,
+                actual_tflops DOUBLE PRECISION,
+                peak_tflops_bf16 DOUBLE PRECISION,
+                recommendations JSONB,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+        """))
+        print("Profiling tables (workload_metrics, kernel_profiles, kernel_categories, bottleneck_analyses) created.")
+    except Exception as e:
+        print(f"Note: profiling tables migration: {e}")

@@ -612,6 +612,139 @@ class DeploymentConfigResponse(BaseModel):
     deployment_instructions: Optional[Dict[str, Any]] = None  # Optional deployment instructions for agent
 
 
+# ── Workload / Kernel / Bottleneck profiling schemas ─────────────────────────
+
+
+class WorkloadMetricsCreate(BaseModel):
+    """Workload profiling data submitted by the agent."""
+
+    model_name: Optional[str] = None
+    server_url: Optional[str] = None
+    concurrency: Optional[int] = None
+    num_requests: Optional[int] = None
+    successful_requests: Optional[int] = None
+    failed_requests: Optional[int] = None
+    duration_s: Optional[float] = None
+    ttft_mean_ms: Optional[float] = None
+    ttft_p50_ms: Optional[float] = None
+    ttft_p95_ms: Optional[float] = None
+    ttft_p99_ms: Optional[float] = None
+    tpot_mean_ms: Optional[float] = None
+    tpot_p50_ms: Optional[float] = None
+    tpot_p95_ms: Optional[float] = None
+    tpot_p99_ms: Optional[float] = None
+    e2e_latency_mean_ms: Optional[float] = None
+    e2e_latency_p99_ms: Optional[float] = None
+    throughput_req_sec: Optional[float] = None
+    throughput_tok_sec: Optional[float] = None
+    total_input_tokens: Optional[int] = None
+    total_output_tokens: Optional[int] = None
+
+
+class WorkloadMetricsRead(WorkloadMetricsCreate):
+    """Workload metrics returned from the API."""
+
+    run_id: UUID
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class KernelCategoryData(BaseModel):
+    """Single kernel category timing."""
+
+    category: str
+    total_ms: float
+    pct: float
+    count: int = Field(alias="kernel_count", default=0)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class KernelProfileCreate(BaseModel):
+    """Kernel profiling data submitted by the agent."""
+
+    total_cuda_ms: Optional[float] = None
+    total_flops: Optional[float] = None
+    estimated_tflops: Optional[float] = None
+    profiled_requests: Optional[str] = None
+    trace_source: Optional[str] = None
+    categories: List[KernelCategoryData] = Field(default_factory=list)
+
+
+class KernelProfileRead(BaseModel):
+    """Kernel profile returned from the API."""
+
+    profile_id: UUID
+    run_id: UUID
+    total_cuda_ms: Optional[float]
+    total_flops: Optional[float]
+    estimated_tflops: Optional[float]
+    profiled_requests: Optional[str]
+    trace_source: Optional[str]
+    categories: List[KernelCategoryData]
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BottleneckAnalysisCreate(BaseModel):
+    """Bottleneck analysis data submitted by the agent."""
+
+    primary_bottleneck: str = Field(..., max_length=20)
+    compute_util_pct: Optional[float] = None
+    sm_active_mean_pct: Optional[float] = None
+    memory_bw_util_pct: Optional[float] = None
+    hbm_bw_mean_gbps: Optional[float] = None
+    cpu_overhead_estimated_pct: Optional[float] = None
+    nvlink_util_pct: Optional[float] = None
+    arithmetic_intensity: Optional[float] = None
+    roofline_bound: Optional[str] = None
+    mfu_pct: Optional[float] = None
+    actual_tflops: Optional[float] = None
+    peak_tflops_bf16: Optional[float] = None
+    recommendations: Optional[List[str]] = None
+
+
+class BottleneckAnalysisRead(BottleneckAnalysisCreate):
+    """Bottleneck analysis returned from the API."""
+
+    run_id: UUID
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProfileUpload(BaseModel):
+    """Complete profiling payload uploaded by the agent after a run.
+
+    Matches the JSON output structure of agent.py / report.py.
+    """
+
+    workload: Optional[WorkloadMetricsCreate] = None
+    kernel: Optional[KernelProfileCreate] = None
+    bottleneck: Optional[BottleneckAnalysisCreate] = None
+    run_metadata: Optional[Dict[str, Any]] = None
+    gpu: Optional[Dict[str, Any]] = None
+
+
+class ProfileUploadResponse(BaseModel):
+    """Response after successful profile upload."""
+
+    run_id: UUID
+    workload_stored: bool = False
+    kernel_stored: bool = False
+    bottleneck_stored: bool = False
+
+
+class RunDetailFull(RunDetail):
+    """Extended run detail including profiling data."""
+
+    workload: Optional[WorkloadMetricsRead] = None
+    kernel_profiles: Optional[List[KernelProfileRead]] = None
+    bottleneck: Optional[BottleneckAnalysisRead] = None
+
+
 # Authentication schemas
 class UserCreate(BaseModel):
     """Schema for creating a new user."""

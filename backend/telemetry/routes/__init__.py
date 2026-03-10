@@ -14,6 +14,7 @@ from .ws import router as websocket_router
 from .scaleway import router as scaleway_router
 from .nebius import router as nebius_router
 from .ai_insights import router as ai_insights_router
+from .profiling import router as profiling_router
 
 __all__ = [
     "auth_router",
@@ -22,6 +23,7 @@ __all__ = [
     "health_router",
     "instance_orchestration_router",
     "metrics_router",
+    "profiling_router",
     "provisioning_router",
     "remote_write_router",
     "runs_router",
