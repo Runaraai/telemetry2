@@ -10,6 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from ..db import get_session
 from ..models import (
@@ -176,7 +177,10 @@ async def get_run_profile(
     session: AsyncSession = Depends(_get_session),
 ) -> RunDetailFull:
     """Get full run detail including profiling data (workload, kernel, bottleneck)."""
-    run = await session.get(Run, run_id)
+    from ..models import RunSummary
+    stmt = select(Run).where(Run.run_id == run_id).options(selectinload(Run.summary))
+    result = await session.execute(stmt)
+    run = result.scalar_one_or_none()
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
 
