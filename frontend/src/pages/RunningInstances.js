@@ -13,6 +13,7 @@ import {
   Assessment as ProfileIcon,
   Dns as DnsIcon
 } from '@mui/icons-material';
+import { apiService } from '../services/api';
 
 // GPU specifications lookup
 const GPU_SPECS = {
@@ -48,7 +49,38 @@ function parseGpuCount(commercialType) {
 }
 
 const BASE = 'https://api.scaleway.com/instance/v1/zones';
-const SECRET_KEY = process.env.REACT_APP_SCW_SECRET_KEY || '';
+
+function parseScalewayCredential(secret) {
+  if (!secret) return null;
+  try {
+    const data = typeof secret === 'string' ? JSON.parse(secret) : secret;
+    const secretKey = data?.secretKey || data?.secret_key || '';
+    const projectId = data?.projectId || data?.project_id || '';
+    if (!secretKey) return null;
+    return { secretKey, projectId };
+  } catch {
+    return null;
+  }
+}
+
+function getLocalScalewayCredential() {
+  const envSecret = process.env.REACT_APP_SCW_SECRET_KEY || '';
+  const envProject = process.env.REACT_APP_SCW_PROJECT_ID || '';
+  if (envSecret) {
+    return { secretKey: envSecret, projectId: envProject };
+  }
+
+  try {
+    const legacy = JSON.parse(localStorage.getItem('cloudCreds_scaleway') || '{}');
+    const secretKey = legacy.secretKey || legacy.SCALEWAY_SECRET_KEY || '';
+    const projectId = legacy.projectId || legacy.SCALEWAY_PROJECT_ID || '';
+    if (secretKey) {
+      return { secretKey, projectId };
+    }
+  } catch {}
+
+  return null;
+}
 
 const STATE_COLORS = {
   running: 'success',
@@ -73,9 +105,9 @@ function removeTrackedInstance(id) {
   } catch {}
 }
 
-async function fetchServerDetails(zone, serverId) {
+async function fetchServerDetails(zone, serverId, secretKey) {
   const res = await fetch(`${BASE}/${zone}/servers/${serverId}`, {
-    headers: { 'X-Auth-Token': SECRET_KEY },
+    headers: { 'X-Auth-Token': secretKey },
   });
   if (!res.ok) {
     if (res.status === 404) return null; // server was deleted
@@ -85,11 +117,11 @@ async function fetchServerDetails(zone, serverId) {
   return { ...data.server, zone };
 }
 
-async function serverAction(zone, serverId, action) {
+async function serverAction(zone, serverId, action, secretKey) {
   const res = await fetch(`${BASE}/${zone}/servers/${serverId}/action`, {
     method: 'POST',
     headers: {
-      'X-Auth-Token': SECRET_KEY,
+      'X-Auth-Token': secretKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ action }),
@@ -105,10 +137,44 @@ export default function RunningInstances() {
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [credentialsLoading, setCredentialsLoading] = useState(true);
+  const [scwCredential, setScwCredential] = useState(() => getLocalScalewayCredential());
   const [actionLoading, setActionLoading] = useState({});
   const [actionError, setActionError] = useState({});
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCredentialFromBackend = async () => {
+      try {
+        const creds = await apiService.listCredentialsWithSecrets('scaleway');
+        const first = Array.isArray(creds) ? creds[0] : null;
+        const parsed = parseScalewayCredential(first?.secret);
+        if (!cancelled && parsed?.secretKey) {
+          setScwCredential(parsed);
+          return;
+        }
+      } catch {
+        // Ignore and fall back to env/localStorage.
+      } finally {
+        if (!cancelled) {
+          setCredentialsLoading(false);
+        }
+      }
+    };
+
+    loadCredentialFromBackend();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const load = useCallback(async () => {
+    if (!scwCredential?.secretKey) {
+      setServers([]);
+      return;
+    }
+
     const tracked = getTrackedInstances();
     if (tracked.length === 0) {
       setServers([]);
@@ -118,7 +184,7 @@ export default function RunningInstances() {
     setError(null);
     try {
       const results = await Promise.allSettled(
-        tracked.map((t) => fetchServerDetails(t.zone, t.id))
+        tracked.map((t) => fetchServerDetails(t.zone, t.id, scwCredential.secretKey))
       );
       const live = [];
       const deadIds = [];
@@ -140,7 +206,7 @@ export default function RunningInstances() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scwCredential]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -155,10 +221,11 @@ export default function RunningInstances() {
   }, [servers, load]);
 
   async function handleStart(server) {
+    if (!scwCredential?.secretKey) return;
     setActionLoading((prev) => ({ ...prev, [server.id]: 'start' }));
     setActionError((prev) => { const n = { ...prev }; delete n[server.id]; return n; });
     try {
-      await serverAction(server.zone, server.id, 'poweron');
+      await serverAction(server.zone, server.id, 'poweron', scwCredential.secretKey);
       setServers((prev) =>
         prev.map((s) => (s.id === server.id ? { ...s, state: 'starting' } : s))
       );
@@ -170,10 +237,11 @@ export default function RunningInstances() {
   }
 
   async function handlePause(server) {
+    if (!scwCredential?.secretKey) return;
     setActionLoading((prev) => ({ ...prev, [server.id]: 'pause' }));
     setActionError((prev) => { const n = { ...prev }; delete n[server.id]; return n; });
     try {
-      await serverAction(server.zone, server.id, 'poweroff');
+      await serverAction(server.zone, server.id, 'poweroff', scwCredential.secretKey);
       setServers((prev) =>
         prev.map((s) => (s.id === server.id ? { ...s, state: 'stopping' } : s))
       );
@@ -185,11 +253,12 @@ export default function RunningInstances() {
   }
 
   async function handleTerminate(server) {
+    if (!scwCredential?.secretKey) return;
     if (!window.confirm(`Terminate "${server.name}"? This will permanently delete the server and its local volumes.`)) return;
     setActionLoading((prev) => ({ ...prev, [server.id]: 'terminate' }));
     setActionError((prev) => { const n = { ...prev }; delete n[server.id]; return n; });
     try {
-      await serverAction(server.zone, server.id, 'terminate');
+      await serverAction(server.zone, server.id, 'terminate', scwCredential.secretKey);
       removeTrackedInstance(server.id);
       setServers((prev) => prev.filter((s) => s.id !== server.id));
     } catch (e) {
@@ -211,11 +280,12 @@ export default function RunningInstances() {
     navigate('/profiling', { state: { openTelemetry: true, instanceData, allowMigration: true } });
   }
 
-  if (!SECRET_KEY) {
+  if (!credentialsLoading && !scwCredential?.secretKey) {
     return (
       <Box sx={{ p: 4 }}>
         <Alert severity="warning">
-          Scaleway credentials not configured. Set REACT_APP_SCW_SECRET_KEY in your .env file.
+          Scaleway credentials not configured. Integrate Scaleway in Manage Instances, or set
+          `REACT_APP_SCW_SECRET_KEY` in the frontend environment before building.
         </Alert>
       </Box>
     );
