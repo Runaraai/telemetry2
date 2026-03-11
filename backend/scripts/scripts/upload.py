@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
 """
-upload.py - Upload telemetry JSON to the Runara platform.
+upload.py - Upload telemetry JSON to the Omniference backend and/or Runara.
 
 Usage:
-    python upload.py /tmp/telemetry_1234.json
+    # Upload to Omniference backend (requires run_id + ingest_token):
+    python upload.py /tmp/telemetry_1234.json --backend-url https://omniference.com \\
+        --run-id <uuid> --ingest-token <token>
+
+    # Upload to Runara (legacy, requires ~/.runara/config):
     python upload.py /tmp/telemetry_1234.json --label "H100 full run"
 
-Config sources (highest priority first):
-  1) Env vars:
-       RUNARA_TOKEN
-       RUNARA_API_BASE
-       RUNARA_WEB_BASE (optional, used for dashboard links)
-  2) ~/.runara/config JSON:
-       {
-         "api_token": "...",
-         "api_base": "https://...",
-         "web_base": "https://... (optional)"
-       }
+    # Upload to both:
+    python upload.py /tmp/telemetry_1234.json --backend-url https://omniference.com \\
+        --run-id <uuid> --ingest-token <token> --label "H100 full run"
+
+Config sources for Omniference backend (highest priority first):
+  1) CLI args: --backend-url, --run-id, --ingest-token
+  2) Env vars: OMNI_BACKEND_URL, OMNI_RUN_ID, OMNI_INGEST_TOKEN
+
+Config sources for Runara (highest priority first):
+  1) Env vars: RUNARA_TOKEN, RUNARA_API_BASE, RUNARA_WEB_BASE
+  2) ~/.runara/config JSON
 """
 
 from __future__ import annotations
@@ -34,6 +38,11 @@ CONFIG_PATH = Path.home() / ".runara" / "config"
 ENV_TOKEN = "RUNARA_TOKEN"
 ENV_API = "RUNARA_API_BASE"
 ENV_WEB = "RUNARA_WEB_BASE"
+
+# Omniference backend env vars
+ENV_OMNI_URL = "OMNI_BACKEND_URL"
+ENV_OMNI_RUN_ID = "OMNI_RUN_ID"
+ENV_OMNI_TOKEN = "OMNI_INGEST_TOKEN"
 
 
 class ConfigError(Exception):
@@ -276,30 +285,216 @@ def upload_if_configured(
         return None
 
 
+# ── Omniference backend upload ────────────────────────────────────────────────
+
+
+def _transform_agent_json_to_profile_payload(data: dict) -> dict:
+    """Transform agent.py/report.py JSON output into ProfileUpload schema format.
+
+    The agent JSON has slightly different field names than the backend's
+    ProfileUpload Pydantic schema. This function maps between them.
+    """
+    payload: dict = {}
+
+    # Workload metrics
+    w = data.get("workload")
+    if w:
+        payload["workload"] = {
+            "model_name": w.get("model"),
+            "server_url": w.get("server_url"),
+            "concurrency": w.get("concurrency"),
+            "num_requests": w.get("total_requests"),
+            "successful_requests": w.get("successful"),
+            "failed_requests": w.get("failed"),
+            "duration_s": w.get("duration_s"),
+            "ttft_mean_ms": w.get("ttft_mean_ms"),
+            "ttft_p50_ms": w.get("ttft_p50_ms"),
+            "ttft_p95_ms": w.get("ttft_p95_ms"),
+            "ttft_p99_ms": w.get("ttft_p99_ms"),
+            "tpot_mean_ms": w.get("tpot_mean_ms"),
+            "tpot_p50_ms": w.get("tpot_p50_ms"),
+            "tpot_p95_ms": w.get("tpot_p95_ms"),
+            "tpot_p99_ms": w.get("tpot_p99_ms"),
+            "e2e_latency_mean_ms": w.get("e2e_latency_mean_ms"),
+            "e2e_latency_p99_ms": w.get("e2e_latency_p99_ms"),
+            "throughput_req_sec": w.get("requests_per_sec"),
+            "throughput_tok_sec": w.get("tokens_per_sec_total"),
+            "total_input_tokens": w.get("total_input_tokens"),
+            "total_output_tokens": w.get("total_output_tokens"),
+        }
+
+    # Kernel profile
+    k = data.get("kernel")
+    if k:
+        categories = []
+        for cat in k.get("categories", []):
+            categories.append({
+                "category": cat.get("category", ""),
+                "total_ms": cat.get("total_ms", 0),
+                "pct": cat.get("pct", 0),
+                "kernel_count": cat.get("count", 0),
+            })
+        payload["kernel"] = {
+            "total_cuda_ms": k.get("total_cuda_ms"),
+            "total_flops": None,  # not in agent output; derived from estimated_tflops
+            "estimated_tflops": k.get("estimated_tflops"),
+            "profiled_requests": str(k.get("profiled_requests", "")),
+            "trace_source": k.get("trace_source"),
+            "categories": categories,
+        }
+
+    # Bottleneck analysis
+    b = data.get("bottleneck")
+    if b:
+        gpu = data.get("gpu", {})
+        payload["bottleneck"] = {
+            "primary_bottleneck": b.get("primary", "unknown"),
+            "compute_util_pct": b.get("compute_util_pct"),
+            "sm_active_mean_pct": b.get("sm_active_mean_pct"),
+            "memory_bw_util_pct": b.get("memory_bw_util_pct"),
+            "hbm_bw_mean_gbps": b.get("hbm_bw_mean_gbps"),
+            "cpu_overhead_estimated_pct": b.get("cpu_overhead_estimated_pct"),
+            "nvlink_util_pct": b.get("nvlink_util_pct"),
+            "arithmetic_intensity": b.get("arithmetic_intensity"),
+            "roofline_bound": b.get("roofline_bound"),
+            "mfu_pct": gpu.get("mfu_pct"),
+            "actual_tflops": gpu.get("actual_tflops"),
+            "peak_tflops_bf16": gpu.get("theoretical_tflops_bf16"),
+            "recommendations": b.get("recommendations"),
+        }
+
+    # Run metadata (passed through as-is)
+    rm = data.get("run_metadata")
+    if rm:
+        payload["run_metadata"] = rm
+
+    return payload
+
+
+def upload_to_backend(
+    json_path: Path,
+    backend_url: str,
+    run_id: str,
+    ingest_token: str,
+) -> bool:
+    """Upload profiling JSON to the Omniference backend.
+
+    Args:
+        json_path: Path to the agent's telemetry JSON file.
+        backend_url: Base URL of the backend (e.g. https://omniference.com).
+        run_id: UUID of the run to upload to.
+        ingest_token: Ingest token for authentication.
+
+    Returns:
+        True if upload succeeded, False otherwise.
+    """
+    data = json.loads(json_path.read_bytes())
+    payload = _transform_agent_json_to_profile_payload(data)
+
+    url = f"{backend_url.rstrip('/')}/api/telemetry/profiling/runs/{run_id}"
+    req = urllib.request.Request(
+        url,
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "X-Ingest-Token": ingest_token,
+        },
+        data=json.dumps(payload).encode(),
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read())
+        return True
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"Backend upload failed ({exc.code}) at {url}: {body}"
+        ) from exc
+
+
+def upload_to_backend_if_configured(
+    json_path: Path,
+    backend_url: str = "",
+    run_id: str = "",
+    ingest_token: str = "",
+    verbose: bool = True,
+) -> bool:
+    """Upload to Omniference backend if credentials are available.
+
+    Checks CLI args first, then env vars. Returns True if uploaded.
+    """
+    reset = "\033[0m"
+    green = "\033[32m"
+    yellow = "\033[33m"
+    cyan = "\033[36m"
+
+    url = backend_url or os.environ.get(ENV_OMNI_URL, "").strip()
+    rid = run_id or os.environ.get(ENV_OMNI_RUN_ID, "").strip()
+    token = ingest_token or os.environ.get(ENV_OMNI_TOKEN, "").strip()
+
+    if not url or not rid or not token:
+        if verbose:
+            print(f"  {cyan}·{reset}  No Omniference backend config — skipping backend upload")
+            print(f"  {cyan}·{reset}  Set OMNI_BACKEND_URL, OMNI_RUN_ID, OMNI_INGEST_TOKEN or use CLI args")
+        return False
+
+    try:
+        if verbose:
+            print(f"  {cyan}·{reset}  Uploading {json_path.name} to Omniference backend ...")
+        upload_to_backend(json_path, url, rid, token)
+        if verbose:
+            print(f"  {green}✓{reset}  Backend upload complete (run_id: {rid})")
+        return True
+    except Exception as exc:
+        if verbose:
+            print(f"  {yellow}!{reset}  Backend upload failed: {exc}")
+        return False
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Upload telemetry JSON to Runara",
+        description="Upload telemetry JSON to Omniference backend and/or Runara",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("json_path", type=Path, help="Path to telemetry JSON")
-    parser.add_argument("--label", default="", help="Optional run label/title")
+    parser.add_argument("--label", default="", help="Optional run label/title (Runara)")
+
+    # Omniference backend args
+    parser.add_argument("--backend-url", default="",
+                        help="Omniference backend URL (or set OMNI_BACKEND_URL)")
+    parser.add_argument("--run-id", default="",
+                        help="Run UUID for profiling upload (or set OMNI_RUN_ID)")
+    parser.add_argument("--ingest-token", default="",
+                        help="Ingest token for auth (or set OMNI_INGEST_TOKEN)")
+    parser.add_argument("--skip-runara", action="store_true",
+                        help="Skip Runara upload (only upload to Omniference backend)")
+
     args = parser.parse_args()
 
     if not args.json_path.exists():
         sys.exit(f"File not found: {args.json_path}")
 
-    print(f"  · Uploading {args.json_path.name} ...")
-    try:
-        run_id, dashboard_url = upload(args.json_path, label=args.label)
-        print(f"  ✓ Upload complete (run_id: {run_id})")
-        if dashboard_url:
-            print(f"  → Dashboard: {dashboard_url}")
-        else:
-            print("  ! Dashboard URL unknown (set RUNARA_WEB_BASE or web_base in ~/.runara/config)")
-    except ConfigError as exc:
-        sys.exit(str(exc))
-    except Exception as exc:
-        sys.exit(f"Upload failed: {exc}")
+    any_upload = False
+
+    # Upload to Omniference backend
+    if upload_to_backend_if_configured(
+        args.json_path,
+        backend_url=args.backend_url,
+        run_id=args.run_id,
+        ingest_token=args.ingest_token,
+    ):
+        any_upload = True
+
+    # Upload to Runara (legacy)
+    if not args.skip_runara:
+        result = upload_if_configured(args.json_path, label=args.label)
+        if result:
+            any_upload = True
+
+    if not any_upload:
+        print("  ! No upload target configured. Run saved locally only.")
+        print("  ! Set --backend-url/--run-id/--ingest-token for Omniference backend")
+        print("  ! Or set RUNARA_TOKEN/RUNARA_API_BASE for Runara")
 
 
 if __name__ == "__main__":

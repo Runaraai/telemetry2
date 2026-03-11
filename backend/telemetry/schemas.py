@@ -592,6 +592,25 @@ class DeploymentConfigRequest(BaseModel):
     api_key: str
     poll_interval: Optional[int] = Field(default=5, ge=1, le=60)
     enable_profiling: Optional[bool] = Field(default=False)
+    enable_workload_profiling: Optional[bool] = Field(
+        default=False,
+        description="Enable workload/kernel profiling uploads from agent.py.",
+    )
+    workload_model: Optional[str] = Field(
+        default=None,
+        max_length=255,
+        description="Model name passed to workload profiling runs.",
+    )
+    workload_concurrency: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=64,
+        description="Concurrency passed to workload profiling runs.",
+    )
+    profiling_mode: Optional[str] = Field(
+        default="standard",
+        description="Profiling mode for agent runs: standard, kernel, or full.",
+    )
     metadata: Optional[Dict[str, Any]] = None
 
 
@@ -600,6 +619,7 @@ class DeploymentConfigResponse(BaseModel):
 
     instance_id: str
     run_id: UUID
+    ingest_token: str = ""  # Token for profiling uploads (X-Ingest-Token header)
     docker_compose: str  # Full docker-compose.yml content
     prometheus_config: str  # Prometheus configuration
     backend_url: str
@@ -610,6 +630,7 @@ class DeploymentConfigResponse(BaseModel):
     dcgm_health_exporter: str
     token_exporter: str
     deployment_instructions: Optional[Dict[str, Any]] = None  # Optional deployment instructions for agent
+    profiling_upload: Optional[Dict[str, Any]] = None
 
 
 # ── Workload / Kernel / Bottleneck profiling schemas ─────────────────────────
@@ -777,4 +798,3 @@ class UserRead(BaseModel):
     last_login: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
-

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import shlex
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 from uuid import UUID
@@ -117,7 +118,8 @@ async def deploy_instance(
             detail="deployment_type must be 'ssh' or 'agent'"
         )
     
-    run = await repo.get_run(payload.run_id)
+    ingest_token = ""
+    run = await repo.get_run(payload.run_id, current_user.user_id)
     if run:
         run_id = run.run_id
     else:
@@ -126,7 +128,7 @@ async def deploy_instance(
             gpu_model=None,  # Will be detected from metrics later
             gpu_count=None,
         )
-        run = await repo.create_run(run_payload, current_user.user_id)
+        run, ingest_token = await repo.create_run(run_payload, current_user.user_id)
         run_id = run.run_id
         payload.run_id = run_id
     
@@ -135,6 +137,7 @@ async def deploy_instance(
         # Agent deployment payload only needs: run_id, backend_url, poll_interval, enable_profiling
         agent_payload = {
             "run_id": str(run_id),
+            "ingest_token": ingest_token,
             "backend_url": payload.backend_url,
             "poll_interval": payload.poll_interval,
             "enable_profiling": payload.enable_profiling,
@@ -311,6 +314,7 @@ async def cleanup_instance(
 async def get_component_status(
     instance_id: str,
     run_id: Optional[UUID] = None,
+    current_user: User = Depends(get_current_user),
     repo: TelemetryRepository = Depends(get_repository),
 ) -> Dict[str, Any]:
     """
@@ -329,7 +333,7 @@ async def get_component_status(
         run_id = runs[0].run_id
     
     # Get run to access credentials
-    run = await repo.get_run(run_id)
+    run = await repo.get_run(run_id, current_user.user_id)
     if not run:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -606,6 +610,145 @@ async def get_component_status(
     }
 
 
+@router.post("/{instance_id}/run-profiling", status_code=status.HTTP_202_ACCEPTED)
+async def run_profiling(
+    instance_id: str,
+    run_id: UUID,
+    mode: str = Query("standard", description="Profiling mode: standard, kernel, or full"),
+    num_requests: int = Query(50, ge=1, le=500, description="Number of requests"),
+    concurrency: int = Query(4, ge=1, le=32, description="Max concurrent requests"),
+    current_user: User = Depends(get_current_user),
+    repo: TelemetryRepository = Depends(get_repository),
+) -> Dict[str, Any]:
+    """Trigger a workload/kernel profiling run on a deployed instance via SSH.
+
+    Uploads agent.py and the telemetry package to the instance, then runs
+    agent.py with --backend-url, --run-id, and --ingest-token to upload
+    profiling results directly to the backend.
+
+    Requires an active deployment with SSH credentials.
+    """
+    if mode not in ("standard", "kernel", "full"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="mode must be 'standard', 'kernel', or 'full'",
+        )
+
+    # Find deployment record for this instance
+    deployment_record = None
+    async with deployment_manager._lock:
+        for record in deployment_manager._records.values():
+            if record.instance_id == instance_id and record.status == "running":
+                deployment_record = record
+                break
+
+    if not deployment_record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active deployment found for this instance. Deploy monitoring first.",
+        )
+
+    # Get run and regenerate ingest token for the profiling upload
+    run = await repo.get_run(run_id, current_user.user_id)
+    if not run:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Run not found",
+        )
+
+    ingest_token = await repo.regenerate_ingest_token(run_id, current_user.user_id)
+    if not ingest_token:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot generate ingest token for this run",
+        )
+
+    request = deployment_record.request
+    backend_url = request.backend_url
+
+    def _run_profiling_sync():
+        import os as _os
+        from pathlib import Path as _Path
+
+        ssh = deployment_manager._connect(request)
+        try:
+            remote_dir = f"/tmp/omni-profiling-{run_id}"
+            ssh.exec_command(
+                f"mkdir -p {remote_dir}/telemetry/gpu"
+                f" {remote_dir}/telemetry/kernel"
+                f" {remote_dir}/telemetry/workload"
+            )
+            import time
+            time.sleep(0.5)
+
+            # Upload agent files via SFTP
+            sftp = ssh.open_sftp()
+            try:
+                scripts_dir = _Path(__file__).resolve().parent.parent.parent / "scripts" / "scripts"
+
+                for fname in ["agent.py", "upload.py"]:
+                    local = scripts_dir / fname
+                    if local.exists():
+                        sftp.put(str(local), f"{remote_dir}/{fname}")
+
+                # Upload telemetry package
+                tel_dir = scripts_dir / "telemetry"
+                if tel_dir.exists():
+                    for root, dirs, files in _os.walk(tel_dir):
+                        rel = _os.path.relpath(root, scripts_dir)
+                        remote_sub = f"{remote_dir}/{rel}".replace("\\", "/")
+                        try:
+                            sftp.mkdir(remote_sub)
+                        except IOError:
+                            pass
+                        for f in files:
+                            if f.endswith(".py"):
+                                sftp.put(
+                                    _os.path.join(root, f),
+                                    f"{remote_sub}/{f}",
+                                )
+            finally:
+                sftp.close()
+
+            # Run agent.py
+            cmd = (
+                f"cd {shlex.quote(remote_dir)} && python3 agent.py"
+                f" --mode {shlex.quote(mode)}"
+                f" --num-requests {num_requests}"
+                f" --concurrency {concurrency}"
+                f" --backend-url {shlex.quote(str(backend_url))}"
+                f" --run-id {shlex.quote(str(run_id))}"
+                f" --ingest-token {shlex.quote(str(ingest_token))}"
+                f" --skip-runara"
+                f" --no-start-vllm"
+                f" --skip-dcgm"
+                f" 2>&1"
+            )
+            stdin, stdout, stderr = ssh.exec_command(cmd, timeout=600)
+            exit_code = stdout.channel.recv_exit_status()
+            output = (stdout.read() + stderr.read()).decode("utf-8", errors="replace")[-2000:]
+
+            return {
+                "success": exit_code == 0,
+                "exit_code": exit_code,
+                "output_tail": output,
+            }
+        finally:
+            ssh.close()
+
+    result = await asyncio.get_running_loop().run_in_executor(
+        None, _run_profiling_sync
+    )
+
+    return {
+        "status": "completed" if result["success"] else "failed",
+        "run_id": str(run_id),
+        "mode": mode,
+        "exit_code": result["exit_code"],
+        "output_tail": result["output_tail"],
+    }
+
+
 @router.get("/jobs", response_model=DeploymentJobListResponse)
 async def list_deployment_jobs(
     instance_id: Optional[str] = None,
@@ -696,4 +839,3 @@ async def get_queue_stats() -> Dict[str, Any]:
     """Get deployment queue statistics."""
     stats = await queue_manager.get_queue_stats()
     return stats
-

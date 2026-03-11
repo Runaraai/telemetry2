@@ -422,6 +422,13 @@ async def get_deployment_config(
 
     poll_interval = payload.poll_interval or 5
     enable_profiling = bool(payload.enable_profiling)
+    enable_workload_profiling = bool(payload.enable_workload_profiling)
+    profiling_mode = (payload.profiling_mode or "standard").strip().lower()
+    if profiling_mode not in {"standard", "kernel", "full"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="profiling_mode must be 'standard', 'kernel', or 'full'",
+        )
     metadata = payload.metadata or {}
 
     # Map agent metadata to DeploymentManager system_info structure
@@ -447,6 +454,18 @@ async def get_deployment_config(
     nvidia_smi_script = manager._nvidia_smi_exporter_script()
     dcgm_health_script = manager._dcgm_health_exporter_script()
     token_exporter_script = manager._token_exporter_script()
+    profiling_upload = {
+        "enabled": enable_workload_profiling,
+        "endpoint": f"{api_base_url}/api/telemetry/profiling/runs/{run.run_id}",
+        "run_id": str(run.run_id),
+        "ingest_token": ingest_token,
+        "auth_header": "X-Ingest-Token",
+        "mode": profiling_mode,
+    }
+    if payload.workload_model:
+        profiling_upload["model"] = payload.workload_model
+    if payload.workload_concurrency is not None:
+        profiling_upload["concurrency"] = payload.workload_concurrency
 
     await repo.session.commit()
 
@@ -468,6 +487,7 @@ async def get_deployment_config(
     return DeploymentConfigResponse(
         instance_id=payload.instance_id,
         run_id=run.run_id,
+        ingest_token=ingest_token,
         docker_compose=docker_compose,
         prometheus_config=prometheus_config,
         backend_url=api_base_url,
@@ -478,5 +498,5 @@ async def get_deployment_config(
         dcgm_health_exporter=dcgm_health_script,
         token_exporter=token_exporter_script,
         deployment_instructions=deployment_instructions,
+        profiling_upload=profiling_upload,
     )
-

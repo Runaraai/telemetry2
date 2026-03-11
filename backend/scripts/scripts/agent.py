@@ -1486,7 +1486,17 @@ def parse_args() -> argparse.Namespace:
 
     # Upload
     p.add_argument("--no-upload", action="store_true",
-                   help="Skip uploading results to Runara (results saved locally only)")
+                   help="Skip uploading results (results saved locally only)")
+
+    # Omniference backend upload
+    p.add_argument("--backend-url", default="",
+                   help="Omniference backend URL (or set OMNI_BACKEND_URL)")
+    p.add_argument("--run-id", default="",
+                   help="Run UUID for profiling upload (or set OMNI_RUN_ID)")
+    p.add_argument("--ingest-token", default="",
+                   help="Ingest token for auth (or set OMNI_INGEST_TOKEN)")
+    p.add_argument("--skip-runara", action="store_true",
+                   help="Skip Runara upload (only upload to Omniference backend)")
 
     return p.parse_args()
 
@@ -1592,19 +1602,29 @@ def main() -> None:
     phase_final_summary(checks, standard_path, kernel_path,
                         kernel_attempted=args.mode in ("kernel", "full"))
 
-    # ── Phase 7: upload to Runara ─────────────────────────────────────────────
+    # ── Phase 7: upload ─────────────────────────────────────────────────────
     if not args.no_upload:
-        _phase_upload(standard_path, kernel_path)
+        _phase_upload(
+            standard_path, kernel_path,
+            backend_url=args.backend_url,
+            run_id=args.run_id,
+            ingest_token=args.ingest_token,
+            skip_runara=args.skip_runara,
+        )
 
 
 def _phase_upload(
     standard_path: "Path | None",
     kernel_path: "Path | None",
+    backend_url: str = "",
+    run_id: str = "",
+    ingest_token: str = "",
+    skip_runara: bool = False,
 ) -> None:
-    """Upload completed run files to Runara (if configured)."""
+    """Upload completed run files to Omniference backend and/or Runara."""
     try:
         sys.path.insert(0, str(Path(__file__).parent))
-        from upload import upload_if_configured  # type: ignore[import]
+        from upload import upload_if_configured, upload_to_backend_if_configured  # type: ignore[import]
     except ImportError:
         return  # upload.py not present — silently skip
 
@@ -1612,9 +1632,18 @@ def _phase_upload(
     if not paths:
         return
 
-    _head("Phase 7 — Upload to Runara")
+    _head("Phase 7 — Upload")
     for path in paths:
-        upload_if_configured(path, verbose=True)
+        # Upload to Omniference backend
+        upload_to_backend_if_configured(
+            path,
+            backend_url=backend_url,
+            run_id=run_id,
+            ingest_token=ingest_token,
+        )
+        # Upload to Runara (legacy)
+        if not skip_runara:
+            upload_if_configured(path, verbose=True)
 
 
 if __name__ == "__main__":

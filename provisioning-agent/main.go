@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -65,11 +66,13 @@ type Config struct {
 type DeploymentConfig struct {
 	InstanceID         string `json:"instance_id"`
 	RunID              string `json:"run_id"`
+	IngestToken        string `json:"ingest_token"`
 	DockerCompose      string `json:"docker_compose"`
 	PrometheusConfig   string `json:"prometheus_config"`
 	BackendURL         string `json:"backend_url"`
 	PollInterval       int    `json:"poll_interval"`
 	EnableProfiling    bool   `json:"enable_profiling"`
+	ProfilingUpload    map[string]interface{} `json:"profiling_upload"`
 	DCGMCollectors     string `json:"dcgm_collectors_csv"`
 	NvidiaSMIExporter  string `json:"nvidia_smi_exporter"`
 	DCGMHealthExporter string `json:"dcgm_health_exporter"`
@@ -278,12 +281,38 @@ func (a *ProvisioningAgent) FetchDeploymentConfig(pollInterval int, enableProfil
 	metadata := a.collectMetadata()
 	metadata["agent_version"] = AgentVersion
 
+	enableWorkloadProfiling := strings.EqualFold(
+		strings.TrimSpace(os.Getenv("OMNIFERENCE_ENABLE_WORKLOAD_PROFILING")),
+		"true",
+	)
+	profilingMode := strings.TrimSpace(os.Getenv("OMNIFERENCE_PROFILING_MODE"))
+	if profilingMode == "" {
+		profilingMode = "standard"
+	}
+	workloadModel := strings.TrimSpace(os.Getenv("OMNIFERENCE_WORKLOAD_MODEL"))
+	workloadConcurrency := strings.TrimSpace(os.Getenv("OMNIFERENCE_WORKLOAD_CONCURRENCY"))
+
 	payload := map[string]interface{}{
-		"instance_id":      a.Config.InstanceID,
-		"api_key":          a.Config.APIKey,
-		"poll_interval":    pollInterval,
-		"enable_profiling": enableProfiling,
-		"metadata":         metadata,
+		"instance_id":               a.Config.InstanceID,
+		"api_key":                   a.Config.APIKey,
+		"poll_interval":             pollInterval,
+		"enable_profiling":          enableProfiling,
+		"enable_workload_profiling": enableWorkloadProfiling,
+		"profiling_mode":            profilingMode,
+		"metadata":                  metadata,
+	}
+	if workloadModel != "" {
+		payload["workload_model"] = workloadModel
+	}
+	if workloadConcurrency != "" {
+		if parsed, err := strconv.Atoi(workloadConcurrency); err == nil && parsed > 0 {
+			payload["workload_concurrency"] = parsed
+		} else {
+			a.Logger.Warn(
+				"Ignoring invalid OMNIFERENCE_WORKLOAD_CONCURRENCY; expected positive integer",
+				zap.String("value", workloadConcurrency),
+			)
+		}
 	}
 
 	resp, err := a.retryableRequest(a.ctx, url, payload, 3)
