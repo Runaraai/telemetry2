@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -175,11 +175,18 @@ const Benchmarking = () => {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   
   // Workflow state (step-by-step)
-  const [selectedModel, setSelectedModel] = useState('RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic');
+  const [selectedModel, setSelectedModel] = useState('Qwen/Qwen3.5-9B');
   const [workflowSetupStatus, setWorkflowSetupStatus] = useState({ loading: false, status: null, message: null, workflowId: null, logs: '' });
   const [workflowCheckStatus, setWorkflowCheckStatus] = useState({ loading: false, status: null, message: null, workflowId: null, logs: '' });
   const [workflowDeployStatus, setWorkflowDeployStatus] = useState({ loading: false, status: null, message: null, workflowId: null, logs: '' });
   const [workflowBenchmarkStatus, setWorkflowBenchmarkStatus] = useState({ loading: false, status: null, message: null, workflowId: null, logs: '', errorDetails: null });
+  const [workflowEvents, setWorkflowEvents] = useState([]);
+  const workflowProgressRef = useRef({
+    setup: '',
+    check: '',
+    deploy: '',
+    benchmark: '',
+  });
   
   // Benchmark parameters for workflow
   const [workflowInputSeqLen, setWorkflowInputSeqLen] = useState(1000);
@@ -189,6 +196,49 @@ const Benchmarking = () => {
   const [workflowMaxConcurrency, setWorkflowMaxConcurrency] = useState(256);
   const [lastUpdated, setLastUpdated] = useState(null);
   const { showToast } = useUI();
+
+  const getWorkflowModelPath = (modelName = selectedModel) => (
+    rwCloudProvider === 'scaleway'
+      ? `/scratch/BM/models/${modelName.split('/').pop()}`
+      : `/home/ubuntu/BM/models/${modelName.split('/').pop()}`
+  );
+
+  const appendWorkflowEvent = (phase, level, message) => {
+    const entry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      ts: new Date().toISOString(),
+      phase,
+      level,
+      message,
+    };
+    setWorkflowEvents((prev) => [entry, ...prev].slice(0, 250));
+  };
+
+  const trackWorkflowProgress = (phase, statusValue, messageValue) => {
+    const statusText = (statusValue || '').toString().toLowerCase();
+    const messageText = (messageValue || '').toString().trim();
+    if (!statusText && !messageText) return;
+
+    const signature = `${statusText}|${messageText}`;
+    if (workflowProgressRef.current[phase] === signature) return;
+    workflowProgressRef.current[phase] = signature;
+
+    let level = 'info';
+    if (statusText === 'failed' || statusText === 'error') {
+      level = 'error';
+    } else if (statusText === 'completed') {
+      level = 'success';
+    }
+
+    appendWorkflowEvent(phase, level, messageText || `Status: ${statusText}`);
+  };
+
+  const getEventColor = (level) => {
+    if (level === 'error') return 'error';
+    if (level === 'success') return 'success';
+    if (level === 'warning') return 'warning';
+    return 'info';
+  };
   
   // Helper function to safely format numbers
   const safeToFixed = (value, decimals = 2) => {
@@ -563,11 +613,37 @@ const Benchmarking = () => {
   const encodePemToBase64 = (pemText) => {
     if (!pemText || !pemText.trim()) return null;
     try {
+      const normalizedPem = pemText.replace(/\r\n/g, '\n').trim();
+
+      // If the pasted value is already base64 (from stored creds), keep it as-is.
+      const compact = normalizedPem.replace(/\s+/g, '');
+      const base64Like = /^[A-Za-z0-9+/=]+$/.test(compact);
+      if (base64Like && !normalizedPem.includes('BEGIN')) {
+        try {
+          const decoded = (typeof window !== 'undefined' && window.atob)
+            ? window.atob(compact)
+            : Buffer.from(compact, 'base64').toString('utf-8');
+          if (decoded.includes('PRIVATE KEY')) {
+            return compact;
+          }
+        } catch (e) {
+          // Not valid base64 PEM, fall through and encode as plain text.
+        }
+      }
+
       if (typeof window !== 'undefined' && window.btoa) {
-        return window.btoa(pemText);
+        if (typeof window.TextEncoder !== 'undefined') {
+          const bytes = new window.TextEncoder().encode(normalizedPem);
+          let binary = '';
+          bytes.forEach((b) => {
+            binary += String.fromCharCode(b);
+          });
+          return window.btoa(binary);
+        }
+        return window.btoa(normalizedPem);
       }
       // Fallback for Node.js environment (if needed)
-      return Buffer.from(pemText).toString('base64');
+      return Buffer.from(normalizedPem, 'utf-8').toString('base64');
     } catch (error) {
       console.error('Failed to encode PEM to base64:', error);
       return null;
@@ -958,13 +1034,81 @@ const Benchmarking = () => {
 
               {runStatus && (
                 <Alert 
-                  severity={runStatus.includes('✅') ? 'success' : runStatus.includes('❌') ? 'error' : 'info'} 
+                  severity={
+                    /✅|completed successfully/i.test(runStatus)
+                      ? 'success'
+                      : /❌|failed|error/i.test(runStatus)
+                        ? 'error'
+                        : 'info'
+                  } 
                   sx={{ borderRadius: 2 }}
-                  icon={runStatus.includes('✅') ? <CheckCircleIcon /> : runStatus.includes('❌') ? <ErrorIcon /> : <InfoIcon />}
+                  icon={
+                    /✅|completed successfully/i.test(runStatus)
+                      ? <CheckCircleIcon />
+                      : /❌|failed|error/i.test(runStatus)
+                        ? <ErrorIcon />
+                        : <InfoIcon />
+                  }
                 >
                   {runStatus}
                 </Alert>
               )}
+
+              <Card sx={{ borderRadius: 3, border: `1px solid ${alpha('#000', 0.1)}` }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <TerminalIcon sx={{ color: 'primary.main' }} />
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        Workflow Activity Log
+                      </Typography>
+                    </Stack>
+                    <Button
+                      variant="text"
+                      size="small"
+                      onClick={() => {
+                        workflowProgressRef.current = { setup: '', check: '', deploy: '', benchmark: '' };
+                        setWorkflowEvents([]);
+                      }}
+                      disabled={workflowEvents.length === 0}
+                    >
+                      Clear
+                    </Button>
+                  </Stack>
+                  {workflowEvents.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      No events yet. Start a phase to see live workflow status transitions.
+                    </Typography>
+                  ) : (
+                    <Paper
+                      sx={{
+                        p: 2,
+                        maxHeight: 280,
+                        overflow: 'auto',
+                        backgroundColor: alpha('#1E4530', 0.35),
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Stack spacing={1}>
+                        {workflowEvents.map((event) => (
+                          <Stack
+                            key={event.id}
+                            direction={{ xs: 'column', sm: 'row' }}
+                            spacing={1}
+                            alignItems={{ xs: 'flex-start', sm: 'center' }}
+                          >
+                            <Chip size="small" color={getEventColor(event.level)} label={event.phase} />
+                            <Typography variant="caption" color="text.secondary" sx={{ minWidth: 90 }}>
+                              {new Date(event.ts).toLocaleTimeString()}
+                            </Typography>
+                            <Typography variant="body2">{event.message}</Typography>
+                          </Stack>
+                        ))}
+                      </Stack>
+                    </Paper>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Cloud Provider Tabs */}
               <Card sx={{ borderRadius: 3, border: `1px solid ${alpha('#000', 0.1)}`, mb: 3 }}>
@@ -980,6 +1124,8 @@ const Benchmarking = () => {
                       setWorkflowCheckStatus({ loading: false, status: null, message: null, workflowId: null, logs: '' });
                       setWorkflowDeployStatus({ loading: false, status: null, message: null, workflowId: null, logs: '' });
                       setWorkflowBenchmarkStatus({ loading: false, status: null, message: null, workflowId: null, logs: '', errorDetails: null });
+                      workflowProgressRef.current = { setup: '', check: '', deploy: '', benchmark: '' };
+                      setWorkflowEvents([]);
                     }}
                     sx={{ borderBottom: 1, borderColor: 'divider' }}
                   >
@@ -1008,6 +1154,9 @@ const Benchmarking = () => {
                           label="Select Model"
                           sx={{ borderRadius: 2 }}
                       >
+                          <MenuItem value="Qwen/Qwen3.5-9B">
+                            Qwen/Qwen3.5-9B
+                          </MenuItem>
                           <MenuItem value="RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic">
                             RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic
                           </MenuItem>
@@ -1027,9 +1176,7 @@ const Benchmarking = () => {
                     <TextField
                         label="Model Path (on remote instance)"
                       fullWidth
-                        value={rwCloudProvider === 'scaleway' 
-                          ? `/scratch/BM/models/${selectedModel.split('/').pop()}`
-                          : `/home/ubuntu/BM/models/${selectedModel.split('/').pop()}`}
+                        value={getWorkflowModelPath(selectedModel)}
                         InputProps={{ readOnly: true }}
                         helperText={`This path will be used on the remote instance (${rwCloudProvider === 'scaleway' ? 'Scaleway uses /scratch' : 'Lambda uses /home/ubuntu'})`}
                         sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
@@ -1161,14 +1308,21 @@ const Benchmarking = () => {
                       onClick={async () => {
                           if (!rwSshHost || !rwSshKey) {
                             setRunStatus('Error: IP address and SSH key are required');
+                            appendWorkflowEvent('setup', 'error', 'Cannot start setup: missing SSH host or key.');
                           return;
                         }
                           setWorkflowSetupStatus({ ...workflowSetupStatus, loading: true, status: null, message: 'Starting setup...' });
+                          appendWorkflowEvent('setup', 'info', 'Starting setup phase...');
                           try {
                             const pemBase64 = encodePemToBase64(rwSshKey);
-                            const modelPath = rwCloudProvider === 'scaleway'
-                              ? `/scratch/BM/models/${selectedModel.split('/').pop()}`
-                              : `/home/ubuntu/BM/models/${selectedModel.split('/').pop()}`;
+                            if (!pemBase64) {
+                              const errMsg = 'Error: SSH key encoding failed. Paste the full PEM contents (BEGIN/END lines).';
+                              setWorkflowSetupStatus({ ...workflowSetupStatus, loading: false, status: 'error', message: errMsg });
+                              setRunStatus(errMsg);
+                              appendWorkflowEvent('setup', 'error', errMsg);
+                              return;
+                            }
+                            const modelPath = getWorkflowModelPath(selectedModel);
                             const response = await apiService.workflowSetupInstance({
                               ssh_host: rwSshHost,
                               ssh_user: rwSshUser,
@@ -1185,10 +1339,12 @@ const Benchmarking = () => {
                               logs: ''
                             });
                             setRunStatus(`✅ Setup started. Workflow ID: ${response.workflow_id}`);
+                            appendWorkflowEvent('setup', 'info', `Workflow started: ${response.workflow_id}`);
                             
                             const pollLogs = setInterval(async () => {
                               try {
                                 const result = await apiService.getWorkflowLogs(response.workflow_id, 'setup');
+                                trackWorkflowProgress('setup', result.status, result.message);
                                 setWorkflowSetupStatus(prev => ({ 
                                   ...prev, 
                                   logs: result.logs || '',
@@ -1197,6 +1353,11 @@ const Benchmarking = () => {
                                 }));
                                 
                                 if (result.status === 'completed' || result.status === 'failed') {
+                                  appendWorkflowEvent(
+                                    'setup',
+                                    result.status === 'completed' ? 'success' : 'error',
+                                    result.message || `Setup ${result.status}`
+                                  );
                                   clearInterval(pollLogs);
                                 }
                               } catch (e) {
@@ -1207,7 +1368,8 @@ const Benchmarking = () => {
                             setTimeout(() => clearInterval(pollLogs), 1800000);
                           } catch (e) {
                             setWorkflowSetupStatus({ ...workflowSetupStatus, loading: false, status: 'error', message: e.response?.data?.detail || e.message });
-                            setRunStatus(`❌ Setup failed: ${e.response?.data?.detail || e.message}`);
+                            setRunStatus(`Setup failed: ${e.response?.data?.detail || e.message}`);
+                            appendWorkflowEvent('setup', 'error', e.response?.data?.detail || e.message);
                         }
                       }}
                         disabled={workflowSetupStatus.loading || !rwSshHost || !rwSshKey}
@@ -1377,11 +1539,20 @@ const Benchmarking = () => {
                         onClick={async () => {
                           if (!rwSshHost || !rwSshKey) {
                             setRunStatus('Error: IP address and SSH key are required');
+                            appendWorkflowEvent('check', 'error', 'Cannot start check: missing SSH host or key.');
                             return;
                           }
                           setWorkflowCheckStatus({ ...workflowCheckStatus, loading: true, status: null, message: 'Starting check...' });
+                          appendWorkflowEvent('check', 'info', 'Starting check phase...');
                           try {
                             const pemBase64 = encodePemToBase64(rwSshKey);
+                            if (!pemBase64) {
+                              const errMsg = 'Error: SSH key encoding failed. Paste the full PEM contents (BEGIN/END lines).';
+                              setWorkflowCheckStatus({ ...workflowCheckStatus, loading: false, status: 'error', message: errMsg });
+                              setRunStatus(errMsg);
+                              appendWorkflowEvent('check', 'error', errMsg);
+                              return;
+                            }
                             const response = await apiService.workflowCheckInstance({
                               ssh_host: rwSshHost,
                           ssh_user: rwSshUser,
@@ -1395,11 +1566,13 @@ const Benchmarking = () => {
                               workflowId: response.workflow_id,
                               logs: ''
                         });
-                            setRunStatus(`✅ Check started. Workflow ID: ${response.workflow_id}`);
+                            setRunStatus(`Check started. Workflow ID: ${response.workflow_id}`);
+                            appendWorkflowEvent('check', 'info', `Workflow started: ${response.workflow_id}`);
                         
                             const pollLogs = setInterval(async () => {
                             try {
                                 const result = await apiService.getWorkflowLogs(response.workflow_id, 'check');
+                                trackWorkflowProgress('check', result.status, result.message);
                                 setWorkflowCheckStatus(prev => ({ 
                                 ...prev, 
                                   logs: result.logs || '',
@@ -1408,6 +1581,11 @@ const Benchmarking = () => {
                                 }));
                                 
                                 if (result.status === 'completed' || result.status === 'failed') {
+                                  appendWorkflowEvent(
+                                    'check',
+                                    result.status === 'completed' ? 'success' : 'error',
+                                    result.message || `Check ${result.status}`
+                                  );
                                   clearInterval(pollLogs);
                               }
                             } catch (e) {
@@ -1417,7 +1595,8 @@ const Benchmarking = () => {
                             setTimeout(() => clearInterval(pollLogs), 1800000);
                       } catch (e) {
                             setWorkflowCheckStatus({ ...workflowCheckStatus, loading: false, status: 'error', message: e.response?.data?.detail || e.message });
-                            setRunStatus(`❌ Check failed: ${e.response?.data?.detail || e.message}`);
+                            setRunStatus(`Check failed: ${e.response?.data?.detail || e.message}`);
+                            appendWorkflowEvent('check', 'error', e.response?.data?.detail || e.message);
                       }
                     }}
                         disabled={workflowCheckStatus.loading || !rwSshHost || !rwSshKey || workflowSetupStatus.status !== 'completed'}
@@ -1587,14 +1766,21 @@ const Benchmarking = () => {
                     onClick={async () => {
                           if (!rwSshHost || !rwSshKey) {
                             setRunStatus('Error: IP address and SSH key are required');
+                            appendWorkflowEvent('deploy', 'error', 'Cannot start deploy: missing SSH host or key.');
                         return;
                       }
                           setWorkflowDeployStatus({ ...workflowDeployStatus, loading: true, status: null, message: 'Starting deploy...' });
+                          appendWorkflowEvent('deploy', 'info', 'Starting deploy phase...');
                       try {
                             const pemBase64 = encodePemToBase64(rwSshKey);
-                            const modelPath = rwCloudProvider === 'scaleway'
-                              ? `/scratch/BM/models/${selectedModel.split('/').pop()}`
-                              : `/home/ubuntu/BM/models/${selectedModel.split('/').pop()}`;
+                            if (!pemBase64) {
+                              const errMsg = 'Error: SSH key encoding failed. Paste the full PEM contents (BEGIN/END lines).';
+                              setWorkflowDeployStatus({ ...workflowDeployStatus, loading: false, status: 'error', message: errMsg });
+                              setRunStatus(errMsg);
+                              appendWorkflowEvent('deploy', 'error', errMsg);
+                              return;
+                            }
+                            const modelPath = getWorkflowModelPath(selectedModel);
                             const response = await apiService.workflowDeployVLLM({
                               cloud_provider: rwCloudProvider,
                               ssh_host: rwSshHost,
@@ -1613,11 +1799,13 @@ const Benchmarking = () => {
                               workflowId: response.workflow_id,
                               logs: ''
                             });
-                            setRunStatus(`✅ Deploy started. Workflow ID: ${response.workflow_id}`);
+                            setRunStatus(`Deploy started. Workflow ID: ${response.workflow_id}`);
+                            appendWorkflowEvent('deploy', 'info', `Workflow started: ${response.workflow_id}`);
                             
                             const pollLogs = setInterval(async () => {
                               try {
                                 const result = await apiService.getWorkflowLogs(response.workflow_id, 'deploy');
+                                trackWorkflowProgress('deploy', result.status, result.message);
                                 let combinedLogs = result.logs || '';
                                 if (result.container_logs) {
                                   combinedLogs += '\n\n=== Inference Container Logs ===\n' + result.container_logs;
@@ -1630,6 +1818,11 @@ const Benchmarking = () => {
                                 }));
                                 
                                 if (result.status === 'completed' || result.status === 'failed') {
+                                  appendWorkflowEvent(
+                                    'deploy',
+                                    result.status === 'completed' ? 'success' : 'error',
+                                    result.message || `Deploy ${result.status}`
+                                  );
                                   clearInterval(pollLogs);
                                 }
                               } catch (e) {
@@ -1639,7 +1832,8 @@ const Benchmarking = () => {
                             setTimeout(() => clearInterval(pollLogs), 1800000);
                       } catch (e) {
                             setWorkflowDeployStatus({ ...workflowDeployStatus, loading: false, status: 'error', message: e.response?.data?.detail || e.message });
-                            setRunStatus(`❌ Deploy failed: ${e.response?.data?.detail || e.message}`);
+                            setRunStatus(`Deploy failed: ${e.response?.data?.detail || e.message}`);
+                            appendWorkflowEvent('deploy', 'error', e.response?.data?.detail || e.message);
                       }
                     }}
                         disabled={workflowDeployStatus.loading || !rwSshHost || !rwSshKey || workflowCheckStatus.status !== 'completed'}
@@ -1926,14 +2120,21 @@ const Benchmarking = () => {
                   onClick={async () => {
                           if (!rwSshHost || !rwSshKey) {
                             setRunStatus('Error: IP address and SSH key are required');
+                            appendWorkflowEvent('benchmark', 'error', 'Cannot start benchmark: missing SSH host or key.');
                             return;
                           }
                           setWorkflowBenchmarkStatus({ ...workflowBenchmarkStatus, loading: true, status: null, message: 'Starting benchmark...' });
+                          appendWorkflowEvent('benchmark', 'info', 'Starting benchmark phase...');
                           try {
                             const pemBase64 = encodePemToBase64(rwSshKey);
-                            const modelPath = rwCloudProvider === 'scaleway'
-                              ? `/scratch/BM/models/${selectedModel.split('/').pop()}`
-                              : `/home/ubuntu/BM/models/${selectedModel.split('/').pop()}`;
+                            if (!pemBase64) {
+                              const errMsg = 'Error: SSH key encoding failed. Paste the full PEM contents (BEGIN/END lines).';
+                              setWorkflowBenchmarkStatus({ ...workflowBenchmarkStatus, loading: false, status: 'error', message: errMsg });
+                              setRunStatus(errMsg);
+                              appendWorkflowEvent('benchmark', 'error', errMsg);
+                              return;
+                            }
+                            const modelPath = getWorkflowModelPath(selectedModel);
                             const response = await apiService.workflowRunBenchmark({
                               cloud_provider: rwCloudProvider,
                               ssh_host: rwSshHost,
@@ -1953,11 +2154,13 @@ const Benchmarking = () => {
                               workflowId: response.workflow_id,
                               logs: ''
                             });
-                            setRunStatus(`✅ Benchmark started. Workflow ID: ${response.workflow_id}`);
+                            setRunStatus(`Benchmark started. Workflow ID: ${response.workflow_id}`);
+                            appendWorkflowEvent('benchmark', 'info', `Workflow started: ${response.workflow_id}`);
                             
                             const pollLogs = setInterval(async () => {
                               try {
                                 const result = await apiService.getWorkflowLogs(response.workflow_id, 'benchmark');
+                                trackWorkflowProgress('benchmark', result.status, result.message);
                                 setWorkflowBenchmarkStatus(prev => ({ 
                                   ...prev, 
                                   logs: result.logs || '',
@@ -1969,13 +2172,15 @@ const Benchmarking = () => {
                                 // Show error alert if failed
                                 if (result.status === 'failed') {
                                   clearInterval(pollLogs);
-                                  setRunStatus(`❌ Benchmark failed: ${result.message || 'Unknown error'}`);
+                                  setRunStatus(`Benchmark failed: ${result.message || 'Unknown error'}`);
+                                  appendWorkflowEvent('benchmark', 'error', result.message || 'Unknown error');
                                   if (result.error_details) {
                                     console.error('Benchmark error details:', result.error_details);
                                   }
                                 } else if (result.status === 'completed') {
                                   clearInterval(pollLogs);
-                                  setRunStatus(`✅ Benchmark completed successfully`);
+                                  setRunStatus(`Benchmark completed successfully`);
+                                  appendWorkflowEvent('benchmark', 'success', 'Benchmark completed successfully.');
                                 }
                               } catch (e) {
                                 console.error('Failed to fetch logs:', e);
@@ -1984,7 +2189,8 @@ const Benchmarking = () => {
                             setTimeout(() => clearInterval(pollLogs), 1800000);
                           } catch (e) {
                             setWorkflowBenchmarkStatus({ ...workflowBenchmarkStatus, loading: false, status: 'error', message: e.response?.data?.detail || e.message });
-                            setRunStatus(`❌ Benchmark failed: ${e.response?.data?.detail || e.message}`);
+                            setRunStatus(`Benchmark failed: ${e.response?.data?.detail || e.message}`);
+                            appendWorkflowEvent('benchmark', 'error', e.response?.data?.detail || e.message);
                     }
                   }}
                         disabled={workflowBenchmarkStatus.loading || !rwSshHost || !rwSshKey || workflowDeployStatus.status !== 'completed'}

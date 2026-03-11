@@ -445,8 +445,8 @@ echo ""
 echo "=== Phase 6: Model Preparation ==="
 
 # Get model name and path from environment variables (with defaults)
-MODEL_NAME="${MODEL_NAME:-RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic}"
-MODEL_PATH="${MODEL_PATH:-/home/ubuntu/BM/models/scout17b-fp8dyn}"
+MODEL_NAME="${MODEL_NAME:-Qwen/Qwen3.5-9B}"
+MODEL_PATH="${MODEL_PATH:-/home/ubuntu/BM/models/Qwen3.5-9B}"
 
 echo "Model Configuration:"
 echo "  Model Name: $MODEL_NAME"

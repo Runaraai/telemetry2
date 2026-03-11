@@ -30,6 +30,7 @@ REBOOT_NEEDED=false
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_DIR="$HOME/h100_benchmark_env"
 
 # Source GPU detection utilities
 # Check in same directory as script first, then in home directory
@@ -281,21 +282,37 @@ docker compose version
 echo ""
 echo "=== Phase 3: CUDA and Development Tools Setup ==="
 
+# Cleanup from previous interrupted apt/dpkg runs (common after low-disk failures)
+echo "Cleaning package cache and recovering package manager state..."
+sudo apt-get clean || true
+sudo rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb 2>/dev/null || true
+sudo dpkg --configure -a 2>/dev/null || true
+sudo DEBIAN_FRONTEND=noninteractive apt-get -f install -y 2>/dev/null || true
+
 # Check CUDA version (if installed)
 if command -v nvcc &> /dev/null; then
     echo "CUDA version:"
     nvcc --version
+    echo "CUDA toolkit already present, skipping reinstall."
 else
     echo "CUDA not installed yet, proceeding with installation..."
+    # Install CUDA Development Toolkit only if nvcc is missing.
+    # The Ubuntu meta-package is very large and can fill root disk.
+    echo "Installing CUDA Development Toolkit..."
+    apt_install nvidia-cuda-toolkit || {
+        echo "❌ Failed to install nvidia-cuda-toolkit. Check free disk space on /."
+        df -h /
+        exit 1
+    }
+
+    # Verify CUDA installation
+    echo "Verifying CUDA installation..."
+    if ! command -v nvcc &> /dev/null; then
+        echo "❌ nvcc is still missing after CUDA toolkit installation."
+        exit 1
+    fi
+    nvcc --version
 fi
-
-# Install CUDA Development Toolkit
-echo "Installing CUDA Development Toolkit..."
-apt_install nvidia-cuda-toolkit
-
-# Verify CUDA installation
-echo "Verifying CUDA installation..."
-nvcc --version
 
 # Phase 4: Python Environment and Dependencies
 echo ""
@@ -303,30 +320,47 @@ echo "=== Phase 4: Python Environment and Dependencies ==="
 
 # Install python3-venv if not already installed
 echo "Installing python3-venv..."
-apt_install python3-venv
+apt_install python3-venv || {
+    echo "❌ Failed to install python3-venv."
+    exit 1
+}
 
 # Create virtual environment
-echo "Creating virtual environment..."
-python3 -m venv h100_benchmark_env
+echo "Creating virtual environment at $VENV_DIR..."
+python3 -m venv "$VENV_DIR" || {
+    echo "❌ Failed to create virtual environment at $VENV_DIR."
+    df -h /
+    exit 1
+}
 
-# Activate virtual environment
-echo "Activating virtual environment..."
-source h100_benchmark_env/bin/activate
+VENV_PY="$VENV_DIR/bin/python"
+if [ ! -x "$VENV_PY" ]; then
+    echo "❌ Virtual environment python not found at $VENV_PY."
+    exit 1
+fi
 
-# Upgrade pip
-echo "Upgrading pip..."
-pip install --upgrade pip
+echo "Upgrading pip in venv..."
+"$VENV_PY" -m pip install --upgrade pip setuptools wheel || {
+    echo "❌ Failed to upgrade pip in virtual environment."
+    exit 1
+}
 
-# Verify Python version
-python --version
+echo "Python version in venv:"
+"$VENV_PY" --version
 
-# Install vLLM (this will install compatible PyTorch automatically)
-echo "Installing vLLM..."
-pip install vllm --no-cache-dir
+# Install vLLM (includes compatible PyTorch on supported platforms)
+echo "Installing vLLM in venv..."
+"$VENV_PY" -m pip install vllm --no-cache-dir || {
+    echo "❌ Failed to install vLLM in virtual environment."
+    exit 1
+}
 
-# Verify PyTorch CUDA access
-echo "Verifying PyTorch CUDA access..."
-python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}'); print(f'GPU count: {torch.cuda.device_count()}')"
+# Verify PyTorch + CUDA + vLLM import
+echo "Verifying PyTorch and vLLM in venv..."
+"$VENV_PY" -c "import torch; import vllm; print(f'PyTorch version: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}'); print(f'GPU count: {torch.cuda.device_count()}'); print(f'vLLM version: {vllm.__version__}')" || {
+    echo "❌ PyTorch/vLLM verification failed in venv."
+    exit 1
+}
 
 # Phase 5: CUDA Error 802 Resolution (if needed)
 echo ""
@@ -465,12 +499,12 @@ echo "=== Phase 6: Model Preparation ==="
 
 # Get model name and path from environment variables (with defaults)
 # Scaleway instances typically run as root and have /scratch with more space
-MODEL_NAME="${MODEL_NAME:-RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic}"
+MODEL_NAME="${MODEL_NAME:-Qwen/Qwen3.5-9B}"
 # Use /scratch if available (5.8TB), otherwise fall back to /root
 if [ -d "/scratch" ] && [ -w "/scratch" ]; then
-    MODEL_PATH="${MODEL_PATH:-/scratch/BM/models/scout17b-fp8dyn}"
+    MODEL_PATH="${MODEL_PATH:-/scratch/BM/models/Qwen3.5-9B}"
 else
-    MODEL_PATH="${MODEL_PATH:-/root/BM/models/scout17b-fp8dyn}"
+    MODEL_PATH="${MODEL_PATH:-/root/BM/models/Qwen3.5-9B}"
 fi
 
 echo "Model Configuration:"
@@ -489,35 +523,50 @@ sudo chown -R root:root "$MODEL_PATH" 2>/dev/null || chown -R root:root "$MODEL_
 cd "$MODEL_DIR"
 pwd
 
-# Activate virtual environment (ensure it's active for Hugging Face operations)
-VENV_DIR="$HOME/h100_benchmark_env"
+# Ensure virtual environment exists for Hugging Face and runtime checks
 if [ -f "$VENV_DIR/bin/activate" ]; then
-    echo "Activating virtual environment for model download..."
-    source "$VENV_DIR/bin/activate"
+    echo "Using existing virtual environment for model download..."
 else
-    echo "⚠️  Warning: Virtual environment not found at $VENV_DIR. Creating one..."
-    python3 -m venv "$VENV_DIR"
-    source "$VENV_DIR/bin/activate"
-    pip install --upgrade pip
-    # Reinstall vLLM if venv was recreated (it includes PyTorch)
-    echo "Installing vLLM (includes PyTorch)..."
-    pip install vllm --no-cache-dir || echo "⚠️  vLLM installation had issues, but continuing..."
+    echo "❌ Virtual environment not found at $VENV_DIR."
+    echo "Recreating virtual environment..."
+    python3 -m venv "$VENV_DIR" || {
+        echo "❌ Failed to create virtual environment at $VENV_DIR."
+        exit 1
+    }
+    "$VENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel || {
+        echo "❌ Failed to bootstrap pip in recreated virtual environment."
+        exit 1
+    }
+    echo "Installing vLLM in recreated virtual environment..."
+    "$VENV_DIR/bin/python" -m pip install vllm --no-cache-dir || {
+        echo "❌ Failed to install vLLM in recreated virtual environment."
+        exit 1
+    }
 fi
 
-# Verify we're using the venv Python
-echo "Using Python: $(which python)"
-echo "Python version: $(python --version)"
+VENV_PY="$VENV_DIR/bin/python"
+if [ ! -x "$VENV_PY" ]; then
+    echo "❌ Virtual environment python missing at $VENV_PY."
+    exit 1
+fi
+
+echo "Using venv Python: $VENV_PY"
+echo "Python version: $($VENV_PY --version)"
 
 # Install Hugging Face CLI
 echo "Installing Hugging Face CLI..."
-pip install huggingface_hub
+"$VENV_PY" -m pip install huggingface_hub || {
+    echo "❌ Failed to install huggingface_hub."
+    exit 1
+}
 
 # Login to Hugging Face with token
 echo "Logging in to Hugging Face..."
-if [ -z "${HF_TOKEN:-}" ]; then
-    echo "Warning: HF_TOKEN is not set. Public models may still download, but gated/private models will fail."
+HF_TOKEN="${HF_TOKEN:-}"
+if [ -n "$HF_TOKEN" ]; then
+    huggingface-cli login --token "$HF_TOKEN" --add-to-git-credential
 else
-    huggingface-cli login --token "$HF_TOKEN" --add-to-git-credential || echo "Warning: Hugging Face login had issues, continuing..."
+    echo "HF_TOKEN not set; skipping login (required for gated/private models)."
 fi
 
 echo ""
@@ -527,23 +576,22 @@ echo "=========================================="
 
 # Download model using Python API (more reliable for permissions)
 echo "Downloading $MODEL_NAME to $MODEL_PATH..."
-python << EOF
+"$VENV_PY" << EOF
 import os
 from huggingface_hub import snapshot_download
 
+os.environ['HF_TOKEN'] = '$HF_TOKEN'
 model_name = os.environ.get('MODEL_NAME', '$MODEL_NAME')
 model_path = os.environ.get('MODEL_PATH', '$MODEL_PATH')
-hf_token = os.environ.get('HF_TOKEN')
 
 print(f'Starting model download for {model_name}...')
 print(f'Destination: {model_path}')
-print('Using Hugging Face token from environment:' + (' yes' if hf_token else ' no'))
 
 try:
     snapshot_download(
         repo_id=model_name,
         local_dir=model_path,
-        token=hf_token,
+        token=os.environ['HF_TOKEN'],
         local_dir_use_symlinks=False
     )
     print('✅ Model download complete!')
@@ -823,20 +871,27 @@ nvidia-smi
 nvcc --version
 
 # Check Python environment
-python --version
+echo "System Python: $(python3 --version 2>/dev/null || python --version)"
+echo "Venv Python: $($VENV_PY --version)"
 
 # Check PyTorch CUDA
-python -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}'); print(f'GPU count: {torch.cuda.device_count()}')"
+"$VENV_PY" -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}'); print(f'GPU count: {torch.cuda.device_count()}')" || {
+    echo "❌ PyTorch is not importable from virtual environment: $VENV_PY"
+    exit 1
+}
 
 # Check vLLM
-python -c "import vllm; print(f'vLLM version: {vllm.__version__}')"
+"$VENV_PY" -c "import vllm; print(f'vLLM version: {vllm.__version__}')" || {
+    echo "❌ vLLM is not importable from virtual environment: $VENV_PY"
+    exit 1
+}
 
 echo ""
 echo "=========================================="
 echo "Setup Complete!"
 echo "=========================================="
-echo "Virtual environment: $SCRIPT_DIR/h100_benchmark_env"
-echo "To activate: source $SCRIPT_DIR/h100_benchmark_env/bin/activate"
+echo "Virtual environment: $VENV_DIR"
+echo "To activate: source $VENV_DIR/bin/activate"
 echo ""
 echo "Next steps:"
 echo "1. Model $MODEL_NAME is available at $MODEL_PATH"

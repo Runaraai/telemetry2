@@ -119,6 +119,7 @@ async def deploy_instance(
         )
     
     ingest_token = ""
+    created_run_in_request = False
     run = await repo.get_run(payload.run_id, current_user.user_id)
     if run:
         run_id = run.run_id
@@ -131,6 +132,7 @@ async def deploy_instance(
         run, ingest_token = await repo.create_run(run_payload, current_user.user_id)
         run_id = run.run_id
         payload.run_id = run_id
+        created_run_in_request = True
     
     # For agent deployment, SSH fields are not required
     if deployment_type == "agent":
@@ -148,6 +150,12 @@ async def deploy_instance(
         # Use mode='json' to serialize UUIDs and other non-JSON types to strings
         job_payload = payload.model_dump(mode='json')
     
+    # If we created a fallback run in this request, commit it before enqueueing.
+    # The queue manager uses a separate DB session; without this commit, FK checks
+    # against deployment_jobs.run_id can fail.
+    if created_run_in_request:
+        await repo.session.commit()
+
     # Enqueue deployment job instead of starting directly
     job_data = DeploymentJobCreate(
         instance_id=instance_id,

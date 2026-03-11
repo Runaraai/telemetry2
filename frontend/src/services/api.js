@@ -28,10 +28,18 @@ const BASE = API_BASE_URL; // For the postJSON function
 const stripTrail = (value) => value.replace(/\/+$/, '');
 
 const buildWsUrl = (path) => {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+  // When API_BASE_URL is relative (empty string), derive websocket host from the page origin.
+  if (!API_BASE_URL && typeof window !== 'undefined') {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}${normalizedPath}`;
+  }
+
   try {
     const url = new URL(API_BASE_URL);
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-    url.pathname = path;
+    url.pathname = normalizedPath;
     url.search = '';
     url.hash = '';
     return url.toString();
@@ -39,7 +47,7 @@ const buildWsUrl = (path) => {
     const normalized = stripTrail(API_BASE_URL);
     const host = normalized.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
     const protocol = normalized.startsWith('https://') ? 'wss://' : 'ws://';
-    return `${protocol}${host}${path}`;
+    return `${protocol}${host}${normalizedPath}`;
   }
 };
 
@@ -311,6 +319,11 @@ export const apiService = {
 
   getTelemetryRun: async (runId) => {
     const response = await api.get(`/api/runs/${runId}`);
+    return response.data;
+  },
+
+  getTelemetryRunProfile: async (runId) => {
+    const response = await api.get(`/api/telemetry/profiling/runs/${runId}`);
     return response.data;
   },
 
@@ -1146,8 +1159,27 @@ export const apiService = {
   },
 
   getAgentStatus: async (instanceId) => {
-    const response = await api.get(`/api/telemetry/provision/callbacks/${instanceId}/status`);
-    return response.data;
+    try {
+      const response = await api.get(`/api/telemetry/provision/instances/${instanceId}/status`);
+      return response.data;
+    } catch (error) {
+      if (error?.response?.status === 404) {
+        // Backward-compatible fallback for older backend route shape.
+        try {
+          const legacy = await api.get(`/api/telemetry/provision/callbacks/${instanceId}/status`);
+          return legacy.data;
+        } catch (legacyError) {
+          if (legacyError?.response?.status === 404) {
+            return null;
+          }
+          throw legacyError;
+        }
+      }
+      if (error?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   // API Key Management

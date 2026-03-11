@@ -42,7 +42,7 @@ Usage examples
   python agent.py                                    # standard, auto-detect
   python agent.py --mode kernel                      # kernel breakdown only
   python agent.py --mode full                        # both passes
-  python agent.py --model Qwen/Qwen2.5-3B-Instruct  # specify model
+  python agent.py --model Qwen/Qwen3.5-9B  # specify model
   python agent.py --server http://10.0.0.2:8000      # remote server
   python agent.py --no-start-vllm                    # skip vLLM auto-start
   python agent.py --num-requests 100 --concurrency 8 # larger load test
@@ -129,7 +129,7 @@ def _is_dc_gpu(name: str) -> bool:
     return any(k in n for k in _DC_GPU_NAMES)
 
 
-_DEFAULT_MODEL = "Qwen/Qwen2.5-3B-Instruct"
+_DEFAULT_MODEL = "Qwen/Qwen3.5-9B"
 
 
 def _load_runara_config() -> dict:
@@ -1444,7 +1444,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--server",        default="http://localhost:8000",
                    help="vLLM / OpenAI-compatible server URL")
     p.add_argument("--model",         default="",
-                   help="Model name for vLLM (defaults to config/env or Qwen/Qwen2.5-3B-Instruct)")
+                   help="Model name for vLLM (defaults to config/env or Qwen/Qwen3.5-9B)")
     p.add_argument("--no-start-vllm", action="store_true",
                    help="Do not attempt to start vLLM automatically")
 

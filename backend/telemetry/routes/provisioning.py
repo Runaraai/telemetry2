@@ -35,6 +35,7 @@ from ..schemas import (
 from .runs import get_repository
 
 router = APIRouter(prefix="/provision", tags=["Provisioning"])
+DEFAULT_WORKLOAD_MODEL = "Qwen/Qwen3.5-9B"
 
 
 @router.post("/manifests/{deployment_job_id}", response_model=ProvisioningTokenResponse)
@@ -262,6 +263,15 @@ async def get_agent_status_by_instance(
     return result
 
 
+@router.get("/callbacks/{instance_id}/status", response_model=Dict[str, Any], include_in_schema=False)
+async def get_agent_status_by_instance_legacy(
+    instance_id: str,
+    repo: TelemetryRepository = Depends(get_repository),
+) -> Dict[str, Any]:
+    """Legacy compatibility alias for older frontend clients."""
+    return await get_agent_status_by_instance(instance_id=instance_id, repo=repo)
+
+
 @router.post("/instances/{instance_id}/stop")
 async def stop_agent(
     instance_id: str,
@@ -461,9 +471,8 @@ async def get_deployment_config(
         "ingest_token": ingest_token,
         "auth_header": "X-Ingest-Token",
         "mode": profiling_mode,
+        "model": (payload.workload_model or DEFAULT_WORKLOAD_MODEL).strip(),
     }
-    if payload.workload_model:
-        profiling_upload["model"] = payload.workload_model
     if payload.workload_concurrency is not None:
         profiling_upload["concurrency"] = payload.workload_concurrency
 

@@ -437,6 +437,7 @@ function Sidebar() {
   const { user, logout } = useAuth();
 
   const menuItems = [
+    { text: 'Run Workload', path: '/profiling' },
     { text: 'Manage Instances', path: '/instances' },
     { text: 'Running Instances', path: '/running-instances' },
     { text: 'Workload', path: '/workload' },

@@ -1608,7 +1608,7 @@ class SetupInstanceRequest(BaseModel):
     ssh_host: str
     ssh_user: str = "ubuntu"
     pem_base64: Optional[str] = None
-    model_name: str = "RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic"
+    model_name: str = "Qwen/Qwen3.5-9B"
     model_path: Optional[str] = None  # Will default to /home/ubuntu/BM/models/{model_name_basename}
     cloud_provider: str = "lambda"  # "lambda" or "scaleway" - determines which scripts to use
     hf_token: Optional[str] = None  # Optional HF token to place on the remote host
@@ -1645,7 +1645,7 @@ class DeployVLLMRequest(BaseModel):
     ssh_host: str
     ssh_user: str = "ubuntu"
     pem_base64: Optional[str] = None
-    model_path: str = "/home/ubuntu/BM/models/scout17b-fp8dyn"
+    model_path: str = "/home/ubuntu/BM/models/Qwen3.5-9B"
     max_model_len: Optional[int] = None
     max_num_seqs: Optional[int] = None
     gpu_memory_utilization: Optional[float] = None
@@ -1657,7 +1657,7 @@ class RunBenchmarkRequest(BaseModel):
     ssh_host: str
     ssh_user: str = "ubuntu"
     pem_base64: Optional[str] = None
-    model_path: str = "/home/ubuntu/BM/models/scout17b-fp8dyn"
+    model_path: str = "/home/ubuntu/BM/models/Qwen3.5-9B"
     cloud_provider: str = "lambda"  # "lambda" or "scaleway"
     input_seq_len: int = 1000
     output_seq_len: int = 1000
@@ -1673,8 +1673,8 @@ class VLLMBenchmarkRequest(BaseModel):
     pem_base64: Optional[str] = None  # Base64 encoded SSH key
     
     # Model selection and download
-    model_name: str = "RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic"  # HuggingFace model name
-    model_path: str = "/home/ubuntu/BM/models/scout17b-fp8dyn"  # Path to model on remote instance
+    model_name: str = "Qwen/Qwen3.5-9B"  # HuggingFace model name
+    model_path: str = "/home/ubuntu/BM/models/Qwen3.5-9B"  # Path to model on remote instance
     download_model: bool = True  # Whether to download model if not present
     
     # vLLM parameters
@@ -6933,42 +6933,106 @@ PYEOF
 # 🌐 Workflow Endpoints (Step-by-step)
 # ---------------------------------------
 
+def _resolve_workflow_pem_file(
+    ssh_host: str,
+    ssh_user: str,
+    pem_base64: Optional[str],
+) -> str:
+    """
+    Resolve SSH key for workflow endpoints.
+
+    Priority:
+    1. Decode pem_base64 from request and persist as host+user-scoped PEM
+    2. Reuse host+user-scoped PEM in backend/temp_pem
+    3. Reuse legacy global PEM file if available
+    """
+    import base64
+    import hashlib
+
+    backend_dir = os.path.dirname(os.path.abspath(__file__))
+    temp_dir = os.path.join(backend_dir, "temp_pem")
+    os.makedirs(temp_dir, exist_ok=True)
+
+    pem_hash = hashlib.md5(f"{ssh_host}_{ssh_user}".encode()).hexdigest()
+    saved_pem_path = os.path.join(temp_dir, f"pem_{pem_hash}.pem")
+    legacy_saved_pem_path = "/tmp/uploaded_key.pem"
+
+    if pem_base64:
+        try:
+            if os.path.exists(saved_pem_path):
+                try:
+                    os.chmod(saved_pem_path, 0o600)
+                except Exception:
+                    pass
+
+            pem_base64_clean = pem_base64
+            if pem_base64_clean.startswith("data:"):
+                comma_index = pem_base64_clean.find(",")
+                if comma_index != -1:
+                    pem_base64_clean = pem_base64_clean[comma_index + 1:]
+
+            pem_content = base64.b64decode(pem_base64_clean).decode("utf-8")
+            with open(saved_pem_path, "w", encoding="utf-8") as f:
+                f.write(pem_content)
+            os.chmod(saved_pem_path, 0o400)
+            return saved_pem_path
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Failed to decode PEM: {str(exc)}")
+
+    if os.path.exists(saved_pem_path):
+        try:
+            os.chmod(saved_pem_path, 0o400)
+        except Exception:
+            pass
+        logger.warning(
+            "Workflow request missing pem_base64; reusing saved PEM for host=%s user=%s (%s)",
+            ssh_host,
+            ssh_user,
+            saved_pem_path,
+        )
+        return saved_pem_path
+
+    if os.path.exists(legacy_saved_pem_path):
+        try:
+            os.chmod(legacy_saved_pem_path, 0o400)
+        except Exception:
+            pass
+        logger.warning(
+            "Workflow request missing pem_base64; using legacy saved PEM for host=%s user=%s (%s)",
+            ssh_host,
+            ssh_user,
+            legacy_saved_pem_path,
+        )
+        return legacy_saved_pem_path
+
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "PEM file not found. Please provide pem_base64 in the request or upload/save a PEM first."
+        ),
+    )
+
+
 @app.post("/api/workflow/setup-instance")
 async def workflow_setup_instance(request: SetupInstanceRequest, background_tasks: BackgroundTasks):
     """
     Setup phase: Run h100_fp8.sh to install drivers, CUDA, DCGM, and download model.
     """
-    import hashlib
-    import paramiko
-    import base64
+    logger.warning(
+        "Workflow setup request received: host=%s user=%s provider=%s has_pem_base64=%s pem_len=%s model=%s",
+        request.ssh_host,
+        request.ssh_user,
+        request.cloud_provider,
+        bool(request.pem_base64),
+        len(request.pem_base64) if request.pem_base64 else 0,
+        request.model_name,
+    )
     
-    backend_dir = os.path.dirname(os.path.abspath(__file__))
-    temp_dir = os.path.join(backend_dir, "temp_pem")
-    os.makedirs(temp_dir, exist_ok=True)
-    
-    # Handle PEM file
-    pem_hash = hashlib.md5(f"{request.ssh_host}_{request.ssh_user}".encode()).hexdigest()
-    saved_pem_path = os.path.join(temp_dir, f"pem_{pem_hash}.pem")
-    
-    pem_file_path = None
-    if request.pem_base64:
-        try:
-            pem_base64_clean = request.pem_base64
-            if pem_base64_clean.startswith('data:'):
-                comma_index = pem_base64_clean.find(',')
-                if comma_index != -1:
-                    pem_base64_clean = pem_base64_clean[comma_index + 1:]
-            pem_content = base64.b64decode(pem_base64_clean).decode('utf-8')
-            with open(saved_pem_path, 'w') as f:
-                f.write(pem_content)
-            os.chmod(saved_pem_path, 0o400)
-            pem_file_path = saved_pem_path
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Failed to decode PEM: {str(e)}")
-    elif os.path.exists(saved_pem_path):
-        pem_file_path = saved_pem_path
-    else:
-        raise HTTPException(status_code=400, detail="PEM file not found. Please provide pem_base64.")
+    pem_file_path = _resolve_workflow_pem_file(
+        ssh_host=request.ssh_host,
+        ssh_user=request.ssh_user,
+        pem_base64=request.pem_base64,
+    )
     
     # Determine model path
     if not request.model_path:
@@ -6996,35 +7060,20 @@ async def workflow_check_instance(request: CheckInstanceRequest, background_task
     """
     Check phase: Run lol.sh to verify nvidia-smi and restart DCGM.
     """
-    import hashlib
-    import base64
+    logger.warning(
+        "Workflow check request received: host=%s user=%s provider=%s has_pem_base64=%s pem_len=%s",
+        request.ssh_host,
+        request.ssh_user,
+        request.cloud_provider,
+        bool(request.pem_base64),
+        len(request.pem_base64) if request.pem_base64 else 0,
+    )
     
-    backend_dir = os.path.dirname(os.path.abspath(__file__))
-    temp_dir = os.path.join(backend_dir, "temp_pem")
-    os.makedirs(temp_dir, exist_ok=True)
-    
-    pem_hash = hashlib.md5(f"{request.ssh_host}_{request.ssh_user}".encode()).hexdigest()
-    saved_pem_path = os.path.join(temp_dir, f"pem_{pem_hash}.pem")
-    
-    pem_file_path = None
-    if request.pem_base64:
-        try:
-            pem_base64_clean = request.pem_base64
-            if pem_base64_clean.startswith('data:'):
-                comma_index = pem_base64_clean.find(',')
-                if comma_index != -1:
-                    pem_base64_clean = pem_base64_clean[comma_index + 1:]
-            pem_content = base64.b64decode(pem_base64_clean).decode('utf-8')
-            with open(saved_pem_path, 'w') as f:
-                f.write(pem_content)
-            os.chmod(saved_pem_path, 0o400)
-            pem_file_path = saved_pem_path
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Failed to decode PEM: {str(e)}")
-    elif os.path.exists(saved_pem_path):
-        pem_file_path = saved_pem_path
-    else:
-        raise HTTPException(status_code=400, detail="PEM file not found.")
+    pem_file_path = _resolve_workflow_pem_file(
+        ssh_host=request.ssh_host,
+        ssh_user=request.ssh_user,
+        pem_base64=request.pem_base64,
+    )
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     workflow_id = f"workflow_{request.ssh_host}_{timestamp}"
@@ -7045,35 +7094,21 @@ async def workflow_deploy_vllm(request: DeployVLLMRequest, background_tasks: Bac
     """
     Deploy phase: Run lol4.sh to start vLLM server with adaptive GPU parameters.
     """
-    import hashlib
-    import base64
+    logger.warning(
+        "Workflow deploy request received: host=%s user=%s provider=%s has_pem_base64=%s pem_len=%s model_path=%s",
+        request.ssh_host,
+        request.ssh_user,
+        request.cloud_provider,
+        bool(request.pem_base64),
+        len(request.pem_base64) if request.pem_base64 else 0,
+        request.model_path,
+    )
     
-    backend_dir = os.path.dirname(os.path.abspath(__file__))
-    temp_dir = os.path.join(backend_dir, "temp_pem")
-    os.makedirs(temp_dir, exist_ok=True)
-    
-    pem_hash = hashlib.md5(f"{request.ssh_host}_{request.ssh_user}".encode()).hexdigest()
-    saved_pem_path = os.path.join(temp_dir, f"pem_{pem_hash}.pem")
-    
-    pem_file_path = None
-    if request.pem_base64:
-        try:
-            pem_base64_clean = request.pem_base64
-            if pem_base64_clean.startswith('data:'):
-                comma_index = pem_base64_clean.find(',')
-                if comma_index != -1:
-                    pem_base64_clean = pem_base64_clean[comma_index + 1:]
-            pem_content = base64.b64decode(pem_base64_clean).decode('utf-8')
-            with open(saved_pem_path, 'w') as f:
-                f.write(pem_content)
-            os.chmod(saved_pem_path, 0o400)
-            pem_file_path = saved_pem_path
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Failed to decode PEM: {str(e)}")
-    elif os.path.exists(saved_pem_path):
-        pem_file_path = saved_pem_path
-    else:
-        raise HTTPException(status_code=400, detail="PEM file not found.")
+    pem_file_path = _resolve_workflow_pem_file(
+        ssh_host=request.ssh_host,
+        ssh_user=request.ssh_user,
+        pem_base64=request.pem_base64,
+    )
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     workflow_id = f"workflow_{request.ssh_host}_{timestamp}"
@@ -7094,35 +7129,21 @@ async def workflow_run_benchmark(request: RunBenchmarkRequest, background_tasks:
     """
     Benchmark phase: Run run_benchmark.sh with user parameters and GPU monitoring.
     """
-    import hashlib
-    import base64
+    logger.warning(
+        "Workflow benchmark request received: host=%s user=%s provider=%s has_pem_base64=%s pem_len=%s model_path=%s",
+        request.ssh_host,
+        request.ssh_user,
+        request.cloud_provider,
+        bool(request.pem_base64),
+        len(request.pem_base64) if request.pem_base64 else 0,
+        request.model_path,
+    )
     
-    backend_dir = os.path.dirname(os.path.abspath(__file__))
-    temp_dir = os.path.join(backend_dir, "temp_pem")
-    os.makedirs(temp_dir, exist_ok=True)
-    
-    pem_hash = hashlib.md5(f"{request.ssh_host}_{request.ssh_user}".encode()).hexdigest()
-    saved_pem_path = os.path.join(temp_dir, f"pem_{pem_hash}.pem")
-    
-    pem_file_path = None
-    if request.pem_base64:
-        try:
-            pem_base64_clean = request.pem_base64
-            if pem_base64_clean.startswith('data:'):
-                comma_index = pem_base64_clean.find(',')
-                if comma_index != -1:
-                    pem_base64_clean = pem_base64_clean[comma_index + 1:]
-            pem_content = base64.b64decode(pem_base64_clean).decode('utf-8')
-            with open(saved_pem_path, 'w') as f:
-                f.write(pem_content)
-            os.chmod(saved_pem_path, 0o400)
-            pem_file_path = saved_pem_path
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Failed to decode PEM: {str(e)}")
-    elif os.path.exists(saved_pem_path):
-        pem_file_path = saved_pem_path
-    else:
-        raise HTTPException(status_code=400, detail="PEM file not found.")
+    pem_file_path = _resolve_workflow_pem_file(
+        ssh_host=request.ssh_host,
+        ssh_user=request.ssh_user,
+        pem_base64=request.pem_base64,
+    )
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     workflow_id = f"workflow_{request.ssh_host}_{timestamp}"
@@ -7772,6 +7793,8 @@ def workflow_deploy_task(request: DeployVLLMRequest, pem_file_path: str, log_dir
         
         # Upload detect_gpu_info.sh
         cloud_provider = getattr(request, 'cloud_provider', 'lambda').lower()
+        remote_home = "/root" if cloud_provider == "scaleway" else "/home/ubuntu"
+        deploy_log_path = f"{remote_home}/deploy.log"
         if cloud_provider == 'scaleway':
             remote_detect = "/root/detect_gpu_info.sh"  # Scaleway uses root user
             remote_deploy = "/root/lol4_custom.sh"
@@ -7878,7 +7901,7 @@ def workflow_deploy_task(request: DeployVLLMRequest, pem_file_path: str, log_dir
             json.dump({"status": "running", "message": "Executing deploy script..."}, f)
         
         # Execute deploy script
-        cmd = f"bash {remote_deploy} 2>&1 | tee /home/ubuntu/deploy.log"
+        cmd = f"bash {remote_deploy} 2>&1 | tee {deploy_log_path}"
         stdin, stdout, stderr = ssh.exec_command(cmd)
         
         log_file = os.path.join(log_dir, "deploy.log")
@@ -8031,7 +8054,7 @@ def workflow_deploy_task(request: DeployVLLMRequest, pem_file_path: str, log_dir
         
         # Fetch deploy log
         try:
-            stdin, stdout, stderr = ssh.exec_command("cat /home/ubuntu/deploy.log")
+            stdin, stdout, stderr = ssh.exec_command(f"cat {deploy_log_path}")
             remote_log = stdout.read().decode()
             with open(log_file, 'w') as f:
                 f.write(remote_log)
@@ -8121,10 +8144,14 @@ def workflow_benchmark_task(request: RunBenchmarkRequest, pem_file_path: str, lo
         
         backend_dir = os.path.dirname(os.path.abspath(__file__))
         local_benchmark = os.path.join(backend_dir, "scripts", "run_benchmark.sh")
+        cloud_provider = getattr(request, 'cloud_provider', 'lambda').lower()
+        remote_home = "/root" if cloud_provider == "scaleway" else "/home/ubuntu"
+        benchmark_log_path = f"{remote_home}/benchmark.log"
+        benchmark_exit_code_path = f"{remote_home}/benchmark_exit_code"
         # Use a unique filename with timestamp to avoid caching issues
         import time
         timestamp = int(time.time())
-        remote_benchmark = f"/home/ubuntu/run_benchmark_{timestamp}.sh"
+        remote_benchmark = f"{remote_home}/run_benchmark_{timestamp}.sh"
         
         if not os.path.exists(local_benchmark):
             raise FileNotFoundError(f"run_benchmark.sh not found at {local_benchmark}")
@@ -8223,6 +8250,9 @@ export VLLM_URL="http://localhost:8000"
         
         # Upload the script
         logger.info(f"Uploading benchmark script to {remote_benchmark}...")
+
+        if remote_home != "/home/ubuntu":
+            benchmark_content = benchmark_content.replace("/home/ubuntu/", f"{remote_home}/")
         
         # Debug: Check if the content has the problematic code before upload
         if 'echo "1" > /home/ubuntu/benchmark_exit_code' in benchmark_content:
@@ -8305,7 +8335,7 @@ export VLLM_URL="http://localhost:8000"
                 raise ValueError("Uploaded script verification failed - bash command found in Python heredoc")
         
         # Also check for the correct Python code
-        if 'with open(\'/home/ubuntu/benchmark_exit_code\', \'w\')' not in script_preview:
+        if f"with open('{benchmark_exit_code_path}', 'w')" not in script_preview:
             logger.warning("⚠️ Correct Python exit code writing not found in preview (may be in later lines)")
         
         logger.info("✅ Script read-back verification passed")
@@ -8315,12 +8345,12 @@ export VLLM_URL="http://localhost:8000"
         
         # Execute benchmark script with environment variables (HTTP-based benchmark)
         # Clear any old exit code file
-        ssh.exec_command("rm -f /home/ubuntu/benchmark_exit_code")
+        ssh.exec_command(f"rm -f {benchmark_exit_code_path}")
         
         # Clean up old benchmark scripts EXCEPT the current one
         try:
             script_basename = os.path.basename(remote_benchmark)
-            ssh.exec_command(f"find /home/ubuntu -name 'run_benchmark_*.sh' ! -name '{script_basename}' -delete 2>/dev/null; echo 'CLEANUP_DONE'")
+            ssh.exec_command(f"find {remote_home} -name 'run_benchmark_*.sh' ! -name '{script_basename}' -delete 2>/dev/null; echo 'CLEANUP_DONE'")
             time.sleep(0.5)
         except:
             pass
@@ -8338,14 +8368,14 @@ export VLLM_URL="http://localhost:8000"
         logger.info("✅ Script verified - safe to execute")
         
         cmd = (
-            f"cd /home/ubuntu && "
+            f"cd {remote_home} && "
             f"VLLM_URL='http://localhost:8000' "
             f"NUM_REQUESTS={request.num_requests} "
             f"INPUT_SEQ_LEN={request.input_seq_len} "
             f"OUTPUT_SEQ_LEN={request.output_seq_len} "
             f"MAX_CONCURRENCY={request.max_concurrency} "
-            f"bash {remote_benchmark} 2>&1 | tee /home/ubuntu/benchmark.log; "
-            f"echo $? > /home/ubuntu/benchmark_exit_code"
+            f"bash {remote_benchmark} 2>&1 | tee {benchmark_log_path}; "
+            f"echo $? > {benchmark_exit_code_path}"
         )
         
         log_file = os.path.join(log_dir, "benchmark.log")
@@ -8369,7 +8399,7 @@ export VLLM_URL="http://localhost:8000"
         
         # Get exit status from the exit code file (wait a moment for it to be written)
         time.sleep(2)  # Wait for file to be written
-        stdin, stdout, stderr = ssh.exec_command("cat /home/ubuntu/benchmark_exit_code 2>/dev/null || echo '1'")
+        stdin, stdout, stderr = ssh.exec_command(f"cat {benchmark_exit_code_path} 2>/dev/null || echo '1'")
         exit_code_str = stdout.read().decode().strip()
         
         try:
@@ -8398,13 +8428,13 @@ export VLLM_URL="http://localhost:8000"
         
         # Fetch log and metrics files
         try:
-            stdin, stdout, stderr = ssh.exec_command("cat /home/ubuntu/benchmark.log")
+            stdin, stdout, stderr = ssh.exec_command(f"cat {benchmark_log_path}")
             remote_log = stdout.read().decode()
             with open(log_file, 'w') as f:
                 f.write(remote_log)
             
             # Try to fetch GPU metrics CSV files
-            stdin, stdout, stderr = ssh.exec_command("ls -t /home/ubuntu/gpu_metrics_*.csv 2>/dev/null | head -2")
+            stdin, stdout, stderr = ssh.exec_command(f"ls -t {remote_home}/gpu_metrics_*.csv 2>/dev/null | head -2")
             csv_files = stdout.read().decode().strip().split('\n')
             for csv_file in csv_files:
                 if csv_file:
