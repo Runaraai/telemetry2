@@ -94,6 +94,154 @@ import { alpha, useTheme } from '@mui/material';
 import { useUI } from '../components/ui/UIProvider';
 import RefreshControl from '../components/ui/RefreshControl';
 
+// Inline results card for benchmark (workload metrics)
+const BenchmarkResultsCard = ({ runId }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchResults = async () => {
+      try {
+        setLoading(true);
+        const result = await apiService.getTelemetryRunProfile(runId);
+        if (!cancelled) setData(result);
+      } catch (e) {
+        if (!cancelled) setError(e.message || 'Failed to load results');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchResults();
+    return () => { cancelled = true; };
+  }, [runId]);
+
+  if (loading) return <Box sx={{ mt: 2, textAlign: 'center' }}><CircularProgress size={24} /><Typography variant="body2" sx={{ mt: 1 }}>Loading benchmark results...</Typography></Box>;
+  if (error) return <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>{error}</Alert>;
+  if (!data) return null;
+
+  const wm = data.workload_metrics || {};
+  const metrics = [
+    { label: 'TTFT (avg)', value: wm.ttft_avg_ms != null ? `${Number(wm.ttft_avg_ms).toFixed(1)} ms` : 'N/A' },
+    { label: 'TTFT (p99)', value: wm.ttft_p99_ms != null ? `${Number(wm.ttft_p99_ms).toFixed(1)} ms` : 'N/A' },
+    { label: 'TPOT (avg)', value: wm.tpot_avg_ms != null ? `${Number(wm.tpot_avg_ms).toFixed(1)} ms` : 'N/A' },
+    { label: 'TPOT (p99)', value: wm.tpot_p99_ms != null ? `${Number(wm.tpot_p99_ms).toFixed(1)} ms` : 'N/A' },
+    { label: 'Throughput (req/s)', value: wm.throughput_req_sec != null ? Number(wm.throughput_req_sec).toFixed(2) : 'N/A' },
+    { label: 'Throughput (tok/s)', value: wm.throughput_tok_sec != null ? Number(wm.throughput_tok_sec).toFixed(1) : 'N/A' },
+    { label: 'Requests', value: wm.successful_requests != null ? `${wm.successful_requests}/${wm.num_requests || '?'}` : 'N/A' },
+    { label: 'E2E Latency (avg)', value: wm.e2e_latency_avg_ms != null ? `${Number(wm.e2e_latency_avg_ms).toFixed(0)} ms` : 'N/A' },
+  ];
+
+  return (
+    <Box sx={{ mt: 3 }}>
+      <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>Benchmark Results</Typography>
+      <Grid container spacing={1.5}>
+        {metrics.map((m) => (
+          <Grid item xs={6} sm={3} key={m.label}>
+            <Paper sx={{ p: 1.5, borderRadius: 2, textAlign: 'center', backgroundColor: 'rgba(30, 69, 48, 0.3)' }}>
+              <Typography variant="caption" color="text.secondary">{m.label}</Typography>
+              <Typography variant="h6" fontWeight={700} sx={{ fontSize: '1.1rem' }}>{m.value}</Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+};
+
+// Inline results card for kernel profiling
+const KernelResultsCard = ({ runId }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchResults = async () => {
+      try {
+        setLoading(true);
+        const result = await apiService.getTelemetryRunProfile(runId);
+        if (!cancelled) setData(result);
+      } catch (e) {
+        if (!cancelled) setError(e.message || 'Failed to load results');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchResults();
+    return () => { cancelled = true; };
+  }, [runId]);
+
+  if (loading) return <Box sx={{ mt: 2, textAlign: 'center' }}><CircularProgress size={24} /><Typography variant="body2" sx={{ mt: 1 }}>Loading kernel results...</Typography></Box>;
+  if (error) return <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>{error}</Alert>;
+  if (!data) return null;
+
+  const kp = data.kernel_profile || {};
+  const ba = data.bottleneck_analysis || {};
+  const categories = kp.categories || [];
+
+  return (
+    <Box sx={{ mt: 3 }}>
+      <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>Kernel Profile Results</Typography>
+      <Grid container spacing={1.5} sx={{ mb: 2 }}>
+        <Grid item xs={6} sm={3}>
+          <Paper sx={{ p: 1.5, borderRadius: 2, textAlign: 'center', backgroundColor: 'rgba(46, 26, 74, 0.3)' }}>
+            <Typography variant="caption" color="text.secondary">Total CUDA Time</Typography>
+            <Typography variant="h6" fontWeight={700} sx={{ fontSize: '1.1rem' }}>{kp.total_cuda_time_ms != null ? `${Number(kp.total_cuda_time_ms).toFixed(1)} ms` : 'N/A'}</Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <Paper sx={{ p: 1.5, borderRadius: 2, textAlign: 'center', backgroundColor: 'rgba(46, 26, 74, 0.3)' }}>
+            <Typography variant="caption" color="text.secondary">Est. TFLOPS</Typography>
+            <Typography variant="h6" fontWeight={700} sx={{ fontSize: '1.1rem' }}>{kp.estimated_tflops != null ? Number(kp.estimated_tflops).toFixed(1) : 'N/A'}</Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <Paper sx={{ p: 1.5, borderRadius: 2, textAlign: 'center', backgroundColor: 'rgba(46, 26, 74, 0.3)' }}>
+            <Typography variant="caption" color="text.secondary">Primary Bottleneck</Typography>
+            <Typography variant="h6" fontWeight={700} sx={{ fontSize: '1.1rem' }}>{ba.primary_bottleneck || 'N/A'}</Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <Paper sx={{ p: 1.5, borderRadius: 2, textAlign: 'center', backgroundColor: 'rgba(46, 26, 74, 0.3)' }}>
+            <Typography variant="caption" color="text.secondary">Compute Util</Typography>
+            <Typography variant="h6" fontWeight={700} sx={{ fontSize: '1.1rem' }}>{ba.compute_utilization_pct != null ? `${Number(ba.compute_utilization_pct).toFixed(1)}%` : 'N/A'}</Typography>
+          </Paper>
+        </Grid>
+      </Grid>
+
+      {categories.length > 0 && (
+        <>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>Kernel Categories</Typography>
+          <TableContainer component={Paper} sx={{ borderRadius: 2, backgroundColor: 'rgba(46, 26, 74, 0.15)' }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Category</TableCell>
+                  <TableCell align="right">Count</TableCell>
+                  <TableCell align="right">Total (ms)</TableCell>
+                  <TableCell align="right">% of Total</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {categories.map((cat, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell>{cat.category_name}</TableCell>
+                    <TableCell align="right">{cat.kernel_count ?? cat.count ?? 'N/A'}</TableCell>
+                    <TableCell align="right">{cat.total_time_ms != null ? Number(cat.total_time_ms).toFixed(2) : 'N/A'}</TableCell>
+                    <TableCell align="right">{cat.percentage != null ? `${Number(cat.percentage).toFixed(1)}%` : 'N/A'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
+      )}
+    </Box>
+  );
+};
+
 const Benchmarking = () => {
   const theme = useTheme();
   
@@ -179,21 +327,24 @@ const Benchmarking = () => {
   const [workflowSetupStatus, setWorkflowSetupStatus] = useState({ loading: false, status: null, message: null, workflowId: null, logs: '' });
   const [workflowCheckStatus, setWorkflowCheckStatus] = useState({ loading: false, status: null, message: null, workflowId: null, logs: '' });
   const [workflowDeployStatus, setWorkflowDeployStatus] = useState({ loading: false, status: null, message: null, workflowId: null, logs: '' });
-  const [workflowBenchmarkStatus, setWorkflowBenchmarkStatus] = useState({ loading: false, status: null, message: null, workflowId: null, logs: '', errorDetails: null });
+  const [workflowBenchmarkStatus, setWorkflowBenchmarkStatus] = useState({ loading: false, status: null, message: null, workflowId: null, logs: '', errorDetails: null, runId: null });
+  const [workflowKernelStatus, setWorkflowKernelStatus] = useState({ loading: false, status: null, message: null, workflowId: null, logs: '', errorDetails: null, runId: null });
   const [workflowEvents, setWorkflowEvents] = useState([]);
   const workflowProgressRef = useRef({
     setup: '',
     check: '',
     deploy: '',
     benchmark: '',
+    kernel_profile: '',
   });
   
   // Benchmark parameters for workflow
   const [workflowInputSeqLen, setWorkflowInputSeqLen] = useState(1000);
-  const [workflowOutputSeqLen, setWorkflowOutputSeqLen] = useState(1000);
-  const [workflowNumRequests, setWorkflowNumRequests] = useState(10000);
+  const [workflowOutputSeqLen, setWorkflowOutputSeqLen] = useState(200);
+  const [workflowNumRequests, setWorkflowNumRequests] = useState(50);
   const [workflowRequestRate, setWorkflowRequestRate] = useState(25.0);
-  const [workflowMaxConcurrency, setWorkflowMaxConcurrency] = useState(256);
+  const [workflowMaxConcurrency, setWorkflowMaxConcurrency] = useState(4);
+  const [workflowKernelRequests, setWorkflowKernelRequests] = useState(20);
   const [lastUpdated, setLastUpdated] = useState(null);
   const { showToast } = useUI();
 
@@ -2161,12 +2312,13 @@ const Benchmarking = () => {
                               try {
                                 const result = await apiService.getWorkflowLogs(response.workflow_id, 'benchmark');
                                 trackWorkflowProgress('benchmark', result.status, result.message);
-                                setWorkflowBenchmarkStatus(prev => ({ 
-                                  ...prev, 
+                                setWorkflowBenchmarkStatus(prev => ({
+                                  ...prev,
                                   logs: result.logs || '',
                                   status: result.status || prev.status,
                                   message: result.message || prev.message,
-                                  errorDetails: result.error_details || prev.errorDetails
+                                  errorDetails: result.error_details || prev.errorDetails,
+                                  runId: result.run_id || prev.runId
                                 }));
                                 
                                 // Show error alert if failed
@@ -2236,6 +2388,157 @@ const Benchmarking = () => {
                             </AccordionDetails>
                           </Accordion>
                         </Box>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Benchmark Results (inline after completion) */}
+                  {workflowBenchmarkStatus.status === 'completed' && workflowBenchmarkStatus.runId && (
+                    <BenchmarkResultsCard runId={workflowBenchmarkStatus.runId} />
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Phase 5: Kernel Profile */}
+              <Card sx={{ borderRadius: 3, backgroundColor: alpha(theme.palette.background.paper, 0.6) }}>
+                <CardContent>
+                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+                    <Chip label="Phase 5" size="small" color="secondary" />
+                    <Typography variant="h6" fontWeight={600}>Kernel Profile</Typography>
+                    {workflowKernelStatus.status === 'completed' && <CheckCircleIcon color="success" fontSize="small" />}
+                    {workflowKernelStatus.status === 'failed' && <ErrorIcon color="error" fontSize="small" />}
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Run kernel-level profiling to get CUDA kernel breakdown, compute/memory utilization, and bottleneck analysis.
+                    This is a separate run from the benchmark.
+                  </Typography>
+
+                  <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                    <TextField
+                      label="Kernel Requests"
+                      type="number"
+                      size="small"
+                      value={workflowKernelRequests}
+                      onChange={(e) => setWorkflowKernelRequests(Number(e.target.value))}
+                      sx={{ width: 160 }}
+                      inputProps={{ min: 1, max: 100 }}
+                    />
+                  </Stack>
+
+                  {workflowKernelStatus.message && (
+                    <Alert
+                      severity={workflowKernelStatus.status === 'failed' ? 'error' : workflowKernelStatus.status === 'completed' ? 'success' : 'info'}
+                      sx={{ mb: 2, borderRadius: 2 }}
+                    >
+                      {workflowKernelStatus.message}
+                    </Alert>
+                  )}
+
+                  <Card variant="outlined" sx={{ borderRadius: 2, p: 2 }}>
+                    <CardContent sx={{ p: '0 !important' }}>
+                      <Button
+                        variant="contained"
+                        color="secondary"
+                        startIcon={workflowKernelStatus.loading ? <CircularProgress size={18} color="inherit" /> : <SpeedIcon />}
+                        onClick={async () => {
+                          try {
+                            setWorkflowKernelStatus({ loading: true, status: 'running', message: 'Starting kernel profiling...', workflowId: null, logs: '', errorDetails: null, runId: null });
+                            const pemBase64 = rwSshKey ? btoa(rwSshKey) : null;
+                            const modelPath = getWorkflowModelPath(selectedModel);
+                            const response = await apiService.workflowKernelProfile({
+                              cloud_provider: rwCloudProvider,
+                              ssh_host: rwSshHost,
+                              ssh_user: rwSshUser,
+                              pem_base64: pemBase64,
+                              model_path: modelPath,
+                              kernel_requests: workflowKernelRequests
+                            });
+                            setWorkflowKernelStatus({
+                              loading: false,
+                              status: 'started',
+                              message: response.message,
+                              workflowId: response.workflow_id,
+                              logs: '',
+                              errorDetails: null,
+                              runId: null
+                            });
+                            appendWorkflowEvent('kernel_profile', 'info', `Kernel profiling started: ${response.workflow_id}`);
+
+                            const pollLogs = setInterval(async () => {
+                              try {
+                                const result = await apiService.getWorkflowLogs(response.workflow_id, 'kernel_profile');
+                                trackWorkflowProgress('kernel_profile', result.status, result.message);
+                                setWorkflowKernelStatus(prev => ({
+                                  ...prev,
+                                  logs: result.logs || '',
+                                  status: result.status || prev.status,
+                                  message: result.message || prev.message,
+                                  errorDetails: result.error_details || prev.errorDetails,
+                                  runId: result.run_id || prev.runId
+                                }));
+
+                                if (result.status === 'failed') {
+                                  clearInterval(pollLogs);
+                                  appendWorkflowEvent('kernel_profile', 'error', result.message || 'Kernel profiling failed');
+                                } else if (result.status === 'completed') {
+                                  clearInterval(pollLogs);
+                                  appendWorkflowEvent('kernel_profile', 'success', 'Kernel profiling completed');
+                                }
+                              } catch (e) {
+                                console.error('Failed to fetch kernel profile logs:', e);
+                              }
+                            }, 2000);
+                            setTimeout(() => clearInterval(pollLogs), 1800000);
+                          } catch (e) {
+                            setWorkflowKernelStatus({ loading: false, status: 'error', message: e.response?.data?.detail || e.message, workflowId: null, logs: '', errorDetails: null, runId: null });
+                            appendWorkflowEvent('kernel_profile', 'error', e.response?.data?.detail || e.message);
+                          }
+                        }}
+                        disabled={workflowKernelStatus.loading || !rwSshHost || !rwSshKey || workflowDeployStatus.status !== 'completed'}
+                        sx={{ borderRadius: 2, minWidth: 160 }}
+                      >
+                        {workflowKernelStatus.loading ? 'Profiling...' : 'Run Kernel Profile'}
+                      </Button>
+
+                      {workflowKernelStatus.logs && (
+                        <Box sx={{ mt: 3 }}>
+                          <Accordion sx={{ borderRadius: 2, '&:before': { display: 'none' } }}>
+                            <AccordionSummary
+                              expandIcon={<ExpandMoreIcon />}
+                              sx={{ backgroundColor: alpha('#2E1A4A', 0.5), borderRadius: '8px' }}
+                            >
+                              <Stack direction="row" spacing={1.5} alignItems="center">
+                                <TerminalIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                  View Logs ({workflowKernelStatus.logs.split('\n').length} lines)
+                                </Typography>
+                              </Stack>
+                            </AccordionSummary>
+                            <AccordionDetails sx={{ p: 0 }}>
+                              <Paper
+                                sx={{
+                                  p: 2,
+                                  backgroundColor: '#1e1e1e',
+                                  color: '#d4d4d4',
+                                  fontFamily: 'monospace',
+                                  fontSize: '0.75rem',
+                                  maxHeight: 500,
+                                  overflow: 'auto',
+                                  borderRadius: '8px',
+                                }}
+                              >
+                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                  {workflowKernelStatus.logs}
+                                </pre>
+                              </Paper>
+                            </AccordionDetails>
+                          </Accordion>
+                        </Box>
+                      )}
+
+                      {/* Kernel Results (inline after completion) */}
+                      {workflowKernelStatus.status === 'completed' && workflowKernelStatus.runId && (
+                        <KernelResultsCard runId={workflowKernelStatus.runId} />
                       )}
                     </CardContent>
                   </Card>

@@ -1653,7 +1653,7 @@ class DeployVLLMRequest(BaseModel):
     cloud_provider: str = "lambda"  # "lambda" or "scaleway"
 
 class RunBenchmarkRequest(BaseModel):
-    """Request model for benchmark execution (run_benchmark.sh)"""
+    """Request model for workload benchmark (agent.py --mode standard)"""
     ssh_host: str
     ssh_user: str = "ubuntu"
     pem_base64: Optional[str] = None
@@ -1661,9 +1661,19 @@ class RunBenchmarkRequest(BaseModel):
     cloud_provider: str = "lambda"  # "lambda" or "scaleway"
     input_seq_len: int = 1000
     output_seq_len: int = 1000
-    num_requests: int = 10000
+    num_requests: int = 50
     request_rate: float = 25.0
-    max_concurrency: int = 256
+    max_concurrency: int = 4
+
+
+class KernelProfileRequest(BaseModel):
+    """Request model for kernel profiling (agent.py --mode kernel)"""
+    ssh_host: str
+    ssh_user: str = "ubuntu"
+    pem_base64: Optional[str] = None
+    model_path: str = "/home/ubuntu/BM/models/Qwen3.5-9B"
+    cloud_provider: str = "lambda"
+    kernel_requests: int = 20
 
 class VLLMBenchmarkRequest(BaseModel):
     """Request model for vLLM benchmark with user parameters"""
@@ -7127,35 +7137,66 @@ async def workflow_deploy_vllm(request: DeployVLLMRequest, background_tasks: Bac
 @app.post("/api/workflow/run-benchmark")
 async def workflow_run_benchmark(request: RunBenchmarkRequest, background_tasks: BackgroundTasks):
     """
-    Benchmark phase: Run run_benchmark.sh with user parameters and GPU monitoring.
+    Benchmark phase: Upload agent.py to the instance and run workload profiling.
+    Collects TTFT, TPOT, throughput, latency, bottleneck analysis.
+    Results are uploaded to the profiling API and stored in the database.
     """
-    logger.warning(
-        "Workflow benchmark request received: host=%s user=%s provider=%s has_pem_base64=%s pem_len=%s model_path=%s",
-        request.ssh_host,
-        request.ssh_user,
-        request.cloud_provider,
-        bool(request.pem_base64),
-        len(request.pem_base64) if request.pem_base64 else 0,
-        request.model_path,
+    logger.info(
+        "Workflow benchmark request: host=%s user=%s provider=%s model=%s num_requests=%d concurrency=%d",
+        request.ssh_host, request.ssh_user, request.cloud_provider,
+        request.model_path, request.num_requests, request.max_concurrency,
     )
-    
+
     pem_file_path = _resolve_workflow_pem_file(
         ssh_host=request.ssh_host,
         ssh_user=request.ssh_user,
         pem_base64=request.pem_base64,
     )
-    
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     workflow_id = f"workflow_{request.ssh_host}_{timestamp}"
     log_dir = f"logs/{workflow_id}"
     os.makedirs(log_dir, exist_ok=True)
-    
+
     background_tasks.add_task(workflow_benchmark_task, request, pem_file_path, log_dir)
-    
+
     return {
         "status": "started",
         "workflow_id": workflow_id,
         "message": f"Benchmark started on {request.ssh_host}",
+        "log_directory": log_dir
+    }
+
+
+@app.post("/api/workflow/kernel-profile")
+async def workflow_kernel_profile(request: KernelProfileRequest, background_tasks: BackgroundTasks):
+    """
+    Kernel profiling phase: Upload agent.py and run kernel-level profiling.
+    Captures CUDA kernel breakdown (matmul, attention, activation, etc.).
+    Separate from standard benchmark to avoid contaminating hardware metrics.
+    """
+    logger.info(
+        "Workflow kernel profile request: host=%s user=%s provider=%s kernel_requests=%d",
+        request.ssh_host, request.ssh_user, request.cloud_provider, request.kernel_requests,
+    )
+
+    pem_file_path = _resolve_workflow_pem_file(
+        ssh_host=request.ssh_host,
+        ssh_user=request.ssh_user,
+        pem_base64=request.pem_base64,
+    )
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    workflow_id = f"workflow_{request.ssh_host}_{timestamp}"
+    log_dir = f"logs/{workflow_id}"
+    os.makedirs(log_dir, exist_ok=True)
+
+    background_tasks.add_task(workflow_kernel_profile_task, request, pem_file_path, log_dir)
+
+    return {
+        "status": "started",
+        "workflow_id": workflow_id,
+        "message": f"Kernel profiling started on {request.ssh_host}",
         "log_directory": log_dir
     }
 
@@ -7194,11 +7235,12 @@ async def get_workflow_logs(workflow_id: str, phase: Optional[str] = None):
                 pass
         
         result = {
-            "logs": logs, 
-            "phase": phase, 
-            "status": status.get("status", "unknown"), 
+            "logs": logs,
+            "phase": phase,
+            "status": status.get("status", "unknown"),
             "message": status.get("message", ""),
-            "error_details": status.get("error_details", "")
+            "error_details": status.get("error_details", ""),
+            "run_id": status.get("run_id", ""),
         }
         if container_logs:
             result["container_logs"] = container_logs
@@ -7206,7 +7248,7 @@ async def get_workflow_logs(workflow_id: str, phase: Optional[str] = None):
     else:
         # Return all logs and statuses
         result = {"logs": {}, "statuses": {}}
-        for phase_name in ["setup", "check", "deploy", "benchmark"]:
+        for phase_name in ["setup", "check", "deploy", "benchmark", "kernel_profile"]:
             log_file = os.path.join(log_dir, f"{phase_name}.log")
             status_file = os.path.join(log_dir, f"{phase_name}_status.json")
             
@@ -8123,372 +8165,343 @@ def workflow_deploy_task(request: DeployVLLMRequest, pem_file_path: str, log_dir
         except:
             pass
 
+def _upload_agent_package_via_ssh(ssh, remote_home: str, log_func=None):
+    """Upload agent.py + telemetry/ package to remote instance via SFTP.
+
+    Returns the remote directory path where agent.py was placed.
+    """
+    import os as _os
+    from pathlib import Path as _Path
+
+    _log = log_func or logger.info
+    backend_dir = _os.path.dirname(_os.path.abspath(__file__))
+    scripts_dir = _os.path.join(backend_dir, "scripts", "scripts")
+    remote_dir = f"{remote_home}/omni-agent"
+
+    _log(f"Uploading agent package to {remote_dir} ...")
+    ssh.exec_command(f"rm -rf {remote_dir} && mkdir -p {remote_dir}")
+    import time; time.sleep(0.5)
+
+    sftp = ssh.open_sftp()
+    try:
+        # Upload main scripts
+        for fname in ["agent.py", "upload.py"]:
+            local = _os.path.join(scripts_dir, fname)
+            if _os.path.exists(local):
+                sftp.put(local, f"{remote_dir}/{fname}")
+                _log(f"  Uploaded {fname}")
+
+        # Upload telemetry package recursively
+        tel_dir = _os.path.join(scripts_dir, "telemetry")
+        if _os.path.isdir(tel_dir):
+            for root, dirs, files in _os.walk(tel_dir):
+                rel = _os.path.relpath(root, scripts_dir).replace("\\", "/")
+                remote_sub = f"{remote_dir}/{rel}"
+                try:
+                    sftp.mkdir(remote_sub)
+                except IOError:
+                    pass
+                for f in files:
+                    if f.endswith(".py"):
+                        sftp.put(_os.path.join(root, f), f"{remote_sub}/{f}")
+            _log("  Uploaded telemetry/ package")
+    finally:
+        sftp.close()
+
+    return remote_dir
+
+
+def _create_run_for_workflow(ssh_host: str, mode: str = "workload") -> tuple:
+    """Create a telemetry run and return (run_id, ingest_token).
+
+    Uses a direct HTTP call to the local backend API.
+    """
+    import urllib.request
+    import json as _json
+
+    api_base = os.getenv("API_BASE_URL", "http://localhost:8000").rstrip("/")
+
+    # We need a JWT token. Use a service-level approach:
+    # First login as demo user to get a token, then create the run.
+    demo_email = os.getenv("DEMO_ACCOUNT_EMAIL", "demo@omniference.com")
+    demo_password = os.getenv("DEMO_ACCOUNT_PASSWORD", "demo")
+
+    # Login
+    login_req = urllib.request.Request(
+        f"{api_base}/api/telemetry/auth/login",
+        method="POST",
+        headers={"Content-Type": "application/json"},
+        data=_json.dumps({"email": demo_email, "password": demo_password}).encode(),
+    )
+    with urllib.request.urlopen(login_req, timeout=10) as resp:
+        login_data = _json.loads(resp.read())
+    jwt_token = login_data["access_token"]
+
+    # Create run
+    create_req = urllib.request.Request(
+        f"{api_base}/api/telemetry/runs",
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {jwt_token}",
+        },
+        data=_json.dumps({
+            "instance_id": ssh_host,
+            "run_type": mode,
+        }).encode(),
+    )
+    with urllib.request.urlopen(create_req, timeout=10) as resp:
+        run_data = _json.loads(resp.read())
+
+    run_id = run_data["run_id"]
+    ingest_token = run_data["ingest_token"]
+    logger.info(f"Created {mode} run: run_id={run_id}")
+    return run_id, ingest_token
+
+
+def _run_agent_via_ssh(
+    ssh, remote_dir: str, mode: str, run_id: str, ingest_token: str,
+    backend_url: str, num_requests: int = 50, concurrency: int = 4,
+    max_tokens: int = 200, kernel_requests: int = 20,
+    log_file: str = "", status_file: str = "",
+):
+    """Execute agent.py on the remote instance and stream logs.
+
+    Returns (exit_code, output_tail).
+    """
+    import json as _json
+    import time
+
+    extra_args = ""
+    if mode == "standard":
+        extra_args = f"--num-requests {num_requests} --concurrency {concurrency} --max-tokens {max_tokens}"
+    elif mode == "kernel":
+        extra_args = f"--kernel-requests {kernel_requests}"
+
+    cmd = (
+        f"cd {remote_dir} && python3 agent.py"
+        f" --mode {mode}"
+        f" {extra_args}"
+        f" --backend-url {backend_url}"
+        f" --run-id {run_id}"
+        f" --ingest-token {ingest_token}"
+        f" --skip-runara"
+        f" --no-start-vllm"
+        f" --skip-dcgm"
+        f" 2>&1"
+    )
+
+    logger.info(f"Executing agent.py --mode {mode} on remote (run_id={run_id})")
+    if status_file:
+        with open(status_file, 'w') as f:
+            _json.dump({"status": "running", "message": f"Running agent.py --mode {mode} ..."}, f)
+
+    stdin, stdout, stderr = ssh.exec_command(cmd, timeout=1800)
+
+    # Stream output to log file
+    output_lines = []
+    if log_file:
+        with open(log_file, 'w') as f:
+            for line in stdout:
+                output_lines.append(line)
+                f.write(line)
+                f.flush()
+                line_lower = line.lower().strip()
+                if any(kw in line_lower for kw in ['phase', '✓', '✗', '⚠', 'error', 'upload', 'complete', 'bottleneck']):
+                    logger.info(f"Agent [{mode}]: {line.strip()}")
+    else:
+        for line in stdout:
+            output_lines.append(line)
+
+    exit_code = stdout.channel.recv_exit_status()
+    output_tail = "".join(output_lines[-50:])
+
+    logger.info(f"Agent --mode {mode} exited with code {exit_code}")
+    return exit_code, output_tail
+
+
 def workflow_benchmark_task(request: RunBenchmarkRequest, pem_file_path: str, log_dir: str):
-    """Background task for benchmark phase"""
+    """Background task for benchmark phase — runs agent.py --mode standard.
+
+    Uploads agent.py + telemetry/ package to the instance, creates a run,
+    and executes agent.py to collect workload metrics (TTFT, TPOT, throughput,
+    bottleneck analysis). Results are uploaded to the profiling API.
+    """
     import paramiko
-    import re
     import json
-    
+    import time
+
     status_file = os.path.join(log_dir, "benchmark_status.json")
-    
+    log_file = os.path.join(log_dir, "benchmark.log")
+
     try:
         with open(status_file, 'w') as f:
-            json.dump({"status": "running", "message": "Starting benchmark..."}, f)
-        
-        logger.info(f"📊 Starting benchmark on {request.ssh_host}")
-        
+            json.dump({"status": "running", "message": "Connecting to instance..."}, f)
+
+        cloud_provider = getattr(request, 'cloud_provider', 'lambda').lower()
+        remote_home = "/root" if cloud_provider == "scaleway" else "/home/ubuntu"
+
+        logger.info(f"Connecting to {request.ssh_host} as {request.ssh_user} ...")
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(request.ssh_host, username=request.ssh_user, key_filename=pem_file_path, timeout=30)
-        sftp = ssh.open_sftp()
-        
-        backend_dir = os.path.dirname(os.path.abspath(__file__))
-        local_benchmark = os.path.join(backend_dir, "scripts", "run_benchmark.sh")
-        cloud_provider = getattr(request, 'cloud_provider', 'lambda').lower()
-        remote_home = "/root" if cloud_provider == "scaleway" else "/home/ubuntu"
-        benchmark_log_path = f"{remote_home}/benchmark.log"
-        benchmark_exit_code_path = f"{remote_home}/benchmark_exit_code"
-        # Use a unique filename with timestamp to avoid caching issues
-        import time
-        timestamp = int(time.time())
-        remote_benchmark = f"{remote_home}/run_benchmark_{timestamp}.sh"
-        
-        if not os.path.exists(local_benchmark):
-            raise FileNotFoundError(f"run_benchmark.sh not found at {local_benchmark}")
-        
-        # Remove old cached script on remote instance first (force removal)
-        logger.info(f"Removing old script from {remote_benchmark}...")
-        try:
-            # Try multiple removal methods
-            stdin, stdout, stderr = ssh.exec_command(f"rm -f {remote_benchmark} 2>&1; echo 'REMOVAL_ATTEMPT'")
-            removal_output = stdout.read().decode()
-            logger.info(f"Removal output: {removal_output[:200]}")
-            time.sleep(1)
-            
-            # Verify it's actually gone
-            stdin, stdout, stderr = ssh.exec_command(f"test -f {remote_benchmark} && echo 'EXISTS' || echo 'REMOVED'")
-            verify_result = stdout.read().decode().strip()
-            logger.info(f"Script existence check: {verify_result}")
-            
-            if verify_result == 'EXISTS':
-                logger.warning(f"⚠️ Old script still exists, trying sudo removal...")
-                stdin, stdout, stderr = ssh.exec_command(f"sudo rm -f {remote_benchmark} 2>&1 || rm -f {remote_benchmark} 2>&1; echo 'FORCE_REMOVAL_ATTEMPT'")
-                force_removal_output = stdout.read().decode()
-                logger.info(f"Force removal output: {force_removal_output[:200]}")
-                time.sleep(1)
-                
-                # Final check
-                stdin, stdout, stderr = ssh.exec_command(f"test -f {remote_benchmark} && echo 'STILL_EXISTS' || echo 'FINALLY_REMOVED'")
-                final_check = stdout.read().decode().strip()
-                logger.info(f"Final existence check: {final_check}")
-                
-                if final_check == 'STILL_EXISTS':
-                    logger.error(f"❌ Could not remove old script! It may be in use or permission denied.")
-                    # Try to overwrite it anyway
-        except Exception as e:
-            logger.warning(f"Could not remove old script: {e}")
-            # Continue anyway - we'll overwrite it
-        
-        with open(local_benchmark, 'r') as f:
-            benchmark_content = f.read()
-        
-        # Verify the local script doesn't have the old problematic code
-        if 'echo "1" > /home/ubuntu/benchmark_exit_code' in benchmark_content and 'PYTHON_SCRIPT' in benchmark_content:
-            # Check if it's inside the Python script section (between python3 << and PYTHON_SCRIPT)
-            python_start = benchmark_content.find('python3 <<')
-            python_end = benchmark_content.find('PYTHON_SCRIPT', python_start)
-            echo_pos = benchmark_content.find('echo "1" > /home/ubuntu/benchmark_exit_code', python_start)
-            if python_start < echo_pos < python_end:
-                logger.error("❌ Local script still contains bash echo command inside Python section!")
-                raise ValueError("Script file has bash command inside Python heredoc - this is invalid")
-        
-        # Verify the script doesn't have old vllm CLI checks
-        if "command -v vllm" in benchmark_content:
-            logger.error("❌ Script still contains old vllm CLI check! This should not happen.")
-            raise ValueError("Script file contains old vllm CLI code - please check run_benchmark.sh")
-        
-        # Set environment variables in the script (for HTTP-based benchmark)
-        # Add export statements at the beginning of the Python script section
-        benchmark_content = re.sub(
-            r'num_requests = int\(os\.environ\.get\("NUM_REQUESTS", \d+\)\)',
-            f'num_requests = int(os.environ.get("NUM_REQUESTS", {request.num_requests}))',
-            benchmark_content
-        )
-        benchmark_content = re.sub(
-            r'input_seq_len = int\(os\.environ\.get\("INPUT_SEQ_LEN", \d+\)\)',
-            f'input_seq_len = int(os.environ.get("INPUT_SEQ_LEN", {request.input_seq_len}))',
-            benchmark_content
-        )
-        benchmark_content = re.sub(
-            r'output_seq_len = int\(os\.environ\.get\("OUTPUT_SEQ_LEN", \d+\)\)',
-            f'output_seq_len = int(os.environ.get("OUTPUT_SEQ_LEN", {request.output_seq_len}))',
-            benchmark_content
-        )
-        benchmark_content = re.sub(
-            r'max_concurrency = int\(os\.environ\.get\("MAX_CONCURRENCY", \d+\)\)',
-            f'max_concurrency = int(os.environ.get("MAX_CONCURRENCY", {request.max_concurrency}))',
-            benchmark_content
-        )
-        
-        # Also set environment variables before the Python script runs
-        env_vars = f"""export NUM_REQUESTS={request.num_requests}
-export INPUT_SEQ_LEN={request.input_seq_len}
-export OUTPUT_SEQ_LEN={request.output_seq_len}
-export MAX_CONCURRENCY={request.max_concurrency}
-export VLLM_URL="http://localhost:8000"
-"""
-        # Insert environment variables before the Python script
-        benchmark_content = re.sub(
-            r'(python3 << \'PYTHON_SCRIPT\')',
-            env_vars + r'\1',
-            benchmark_content
-        )
-        
-        # Remove any old CLI parameter patterns if they exist (for backward compatibility)
-        # These won't match anything in the new HTTP-based script, but keep for safety
-        # (No old CLI patterns to remove in HTTP-based script)
-        
-        # Upload the script
-        logger.info(f"Uploading benchmark script to {remote_benchmark}...")
 
-        if remote_home != "/home/ubuntu":
-            benchmark_content = benchmark_content.replace("/home/ubuntu/", f"{remote_home}/")
-        
-        # Debug: Check if the content has the problematic code before upload
-        if 'echo "1" > /home/ubuntu/benchmark_exit_code' in benchmark_content:
-            python_start = benchmark_content.find('python3 <<')
-            python_end = benchmark_content.find('PYTHON_SCRIPT', python_start) if python_start >= 0 else -1
-            echo_pos = benchmark_content.find('echo "1" > /home/ubuntu/benchmark_exit_code', python_start)
-            if python_start >= 0 and python_end >= 0 and python_start < echo_pos < python_end:
-                logger.error("❌ CRITICAL: Script content has bash echo in Python section BEFORE upload!")
-                logger.error(f"Python section: lines {python_start} to {python_end}, echo at {echo_pos}")
-                # Show context around the problematic line
-                lines = benchmark_content.split('\n')
-                for i, line in enumerate(lines[echo_pos-5:echo_pos+5], start=echo_pos-4):
-                    logger.error(f"  Line {i}: {line}")
-                raise ValueError("Script content has bash command in Python heredoc - cannot upload")
-        
-        with sftp.file(remote_benchmark, 'w') as f:
-            f.write(benchmark_content)
-        ssh.exec_command(f"chmod +x {remote_benchmark}")
-        
-        # Debug: Verify what was actually written
-        logger.info("Reading back uploaded script to verify...")
-        stdin, stdout, stderr = ssh.exec_command(f"head -200 {remote_benchmark} | tail -50")
-        uploaded_preview = stdout.read().decode()
-        logger.info(f"Uploaded script preview (lines 150-200):\n{uploaded_preview[:500]}")
-        
-        # Verify the uploaded script doesn't have the problematic code
-        logger.info("Verifying uploaded script content...")
-        stdin, stdout, stderr = ssh.exec_command(f"grep -n 'echo.*benchmark_exit_code' {remote_benchmark} 2>/dev/null | head -5")
-        problematic_lines = stdout.read().decode().strip()
-        if problematic_lines:
-            # Check if any are inside the Python script section
-            python_start_line = None
-            python_end_line = None
-            stdin, stdout, stderr = ssh.exec_command(f"grep -n \"python3 <<\" {remote_benchmark} | head -1")
-            python_start_match = stdout.read().decode().strip()
-            if python_start_match:
-                python_start_line = int(python_start_match.split(':')[0])
-            stdin, stdout, stderr = ssh.exec_command(f"grep -n \"^PYTHON_SCRIPT\" {remote_benchmark} | head -1")
-            python_end_match = stdout.read().decode().strip()
-            if python_end_match:
-                python_end_line = int(python_end_match.split(':')[0])
-            
-            if python_start_line and python_end_line:
-                for line_info in problematic_lines.split('\n'):
-                    if ':' in line_info:
-                        line_num = int(line_info.split(':')[0])
-                        if python_start_line < line_num < python_end_line:
-                            logger.error(f"❌ Uploaded script has bash echo command inside Python section at line {line_num}!")
-                            logger.error(f"Problematic line: {line_info}")
-                            raise ValueError(f"Uploaded script contains bash command inside Python heredoc at line {line_num}")
-        
-        logger.info("✅ Uploaded script verified - no bash commands in Python section")
-        
-        # Verify the uploaded script exists and is executable
-        logger.info("Verifying uploaded script...")
-        stdin, stdout, stderr = ssh.exec_command(f"test -f {remote_benchmark} && test -x {remote_benchmark} && echo 'OK' || echo 'FAIL'")
-        verify_output = stdout.read().decode().strip()
-        if verify_output != "OK":
-            error_msg = f"Script verification failed: {verify_output}"
-            logger.error(f"❌ {error_msg}")
-            raise ValueError(error_msg)
-        logger.info("✅ Uploaded script verified")
-        
-        sftp.close()
-        
-        # Read back the uploaded script to verify it's correct
-        logger.info("Reading back uploaded script to verify content...")
-        stdin, stdout, stderr = ssh.exec_command(f"head -200 {remote_benchmark} | tail -50")
-        script_preview = stdout.read().decode()
-        logger.info(f"Script preview (lines 150-200):\n{script_preview[:500]}")
-        
-        # Check for the problematic code in the read-back script
-        if 'echo "1" > /home/ubuntu/benchmark_exit_code' in script_preview:
-            # Check if it's in Python section
-            python_start_pos = script_preview.find('python3 <<')
-            python_end_pos = script_preview.find('PYTHON_SCRIPT', python_start_pos) if python_start_pos >= 0 else -1
-            echo_pos = script_preview.find('echo "1" > /home/ubuntu/benchmark_exit_code')
-            if python_start_pos >= 0 and python_end_pos >= 0 and python_start_pos < echo_pos < python_end_pos:
-                logger.error("❌ CRITICAL: Read-back verification shows bash echo in Python section!")
-                raise ValueError("Uploaded script verification failed - bash command found in Python heredoc")
-        
-        # Also check for the correct Python code
-        if f"with open('{benchmark_exit_code_path}', 'w')" not in script_preview:
-            logger.warning("⚠️ Correct Python exit code writing not found in preview (may be in later lines)")
-        
-        logger.info("✅ Script read-back verification passed")
-        
+        # Step 1: Upload agent package
         with open(status_file, 'w') as f:
-            json.dump({"status": "running", "message": "Executing benchmark script..."}, f)
-        
-        # Execute benchmark script with environment variables (HTTP-based benchmark)
-        # Clear any old exit code file
-        ssh.exec_command(f"rm -f {benchmark_exit_code_path}")
-        
-        # Clean up old benchmark scripts EXCEPT the current one
-        try:
-            script_basename = os.path.basename(remote_benchmark)
-            ssh.exec_command(f"find {remote_home} -name 'run_benchmark_*.sh' ! -name '{script_basename}' -delete 2>/dev/null; echo 'CLEANUP_DONE'")
-            time.sleep(0.5)
-        except:
-            pass
-        
-        # Final verification: Check the script one more time before execution
-        logger.info(f"Final pre-execution verification of {remote_benchmark}...")
-        stdin, stdout, stderr = ssh.exec_command(f"python_start=\$(grep -n \"python3 <<\" {remote_benchmark} | head -1 | cut -d: -f1); python_end=\$(grep -n \"^PYTHON_SCRIPT\" {remote_benchmark} | head -1 | cut -d: -f1); sed -n \"\${{python_start}},\${{python_end}}p\" {remote_benchmark} | grep -n 'echo.*benchmark_exit_code' || echo 'NO_ECHO_IN_PYTHON'")
-        final_check = stdout.read().decode().strip()
-        logger.info(f"Final check result: {final_check}")
-        
-        if 'NO_ECHO_IN_PYTHON' not in final_check and final_check:
-            logger.error(f"❌ CRITICAL: Script still has echo in Python section: {final_check}")
-            raise ValueError(f"Cannot execute - script has bash command in Python section: {final_check}")
-        
-        logger.info("✅ Script verified - safe to execute")
-        
-        cmd = (
-            f"cd {remote_home} && "
-            f"VLLM_URL='http://localhost:8000' "
-            f"NUM_REQUESTS={request.num_requests} "
-            f"INPUT_SEQ_LEN={request.input_seq_len} "
-            f"OUTPUT_SEQ_LEN={request.output_seq_len} "
-            f"MAX_CONCURRENCY={request.max_concurrency} "
-            f"bash {remote_benchmark} 2>&1 | tee {benchmark_log_path}; "
-            f"echo $? > {benchmark_exit_code_path}"
-        )
-        
-        log_file = os.path.join(log_dir, "benchmark.log")
-        
-        logger.info(f"Executing benchmark command...")
-        stdin, stdout, stderr = ssh.exec_command(cmd, timeout=3600)  # 1 hour timeout
-        
-        # Read output in real-time and write to log file
-        output_buffer = []
-        with open(log_file, 'w') as f:
-            # Read from stdout line by line
-            for line in stdout:
-                if line:
-                    output_buffer.append(line)
-                    f.write(line)
-                    f.flush()
-                    # Log important lines
-                    line_lower = line.lower()
-                    if any(keyword in line_lower for keyword in ['error', 'failed', 'completed', 'benchmark', 'starting']):
-                        logger.info(f"Benchmark: {line.strip()}")
-        
-        # Get exit status from the exit code file (wait a moment for it to be written)
-        time.sleep(2)  # Wait for file to be written
-        stdin, stdout, stderr = ssh.exec_command(f"cat {benchmark_exit_code_path} 2>/dev/null || echo '1'")
-        exit_code_str = stdout.read().decode().strip()
-        
-        try:
-            exit_status = int(exit_code_str) if exit_code_str.isdigit() else 1
-        except:
-            exit_status = 1
-        
-        # Also check the channel exit status as fallback
-        try:
-            channel_exit = stdout.channel.recv_exit_status()
-            # Use channel exit status if exit code file wasn't found or is invalid
-            if exit_code_str == '1' and channel_exit != -1:
-                exit_status = channel_exit
-        except:
-            pass
-        
-        # Read any remaining stderr
-        try:
-            stderr_output = stderr.read().decode()
-            if stderr_output:
-                with open(log_file, 'a') as f:
-                    f.write(f"\n\n=== STDERR ===\n{stderr_output}\n")
-                logger.warning(f"Benchmark stderr: {stderr_output[:500]}")
-        except:
-            pass
-        
-        # Fetch log and metrics files
-        try:
-            stdin, stdout, stderr = ssh.exec_command(f"cat {benchmark_log_path}")
-            remote_log = stdout.read().decode()
-            with open(log_file, 'w') as f:
-                f.write(remote_log)
-            
-            # Try to fetch GPU metrics CSV files
-            stdin, stdout, stderr = ssh.exec_command(f"ls -t {remote_home}/gpu_metrics_*.csv 2>/dev/null | head -2")
-            csv_files = stdout.read().decode().strip().split('\n')
-            for csv_file in csv_files:
-                if csv_file:
-                    try:
-                        sftp = ssh.open_sftp()
-                        local_csv = os.path.join(log_dir, os.path.basename(csv_file))
-                        sftp.get(csv_file, local_csv)
-                        sftp.close()
-                        logger.info(f"✅ Fetched metrics file: {os.path.basename(csv_file)}")
-                    except:
-                        pass
-        except:
-            pass
-        
-        ssh.close()
-        
-        if exit_status == 0:
-            with open(status_file, 'w') as f:
-                json.dump({"status": "completed", "message": "Benchmark completed successfully"}, f)
-            logger.info("✅ Benchmark completed successfully")
-        else:
-            with open(status_file, 'w') as f:
-                json.dump({"status": "failed", "message": f"Benchmark failed with exit status {exit_status}"}, f)
-            logger.error(f"❌ Benchmark failed with exit status {exit_status}")
-            
-    except Exception as e:
-        error_message = str(e)
-        error_details = f"{type(e).__name__}: {error_message}"
-        
-        # Try to get more context from stderr if available
-        try:
-            if hasattr(e, '__traceback__'):
-                import traceback
-                tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-                error_details += f"\n\nTraceback:\n{tb_str[-1000:]}"  # Last 1000 chars
-        except:
-            pass
-        
+            json.dump({"status": "running", "message": "Uploading agent package..."}, f)
+        remote_dir = _upload_agent_package_via_ssh(ssh, remote_home)
+
+        # Step 2: Create a run in the backend
+        with open(status_file, 'w') as f:
+            json.dump({"status": "running", "message": "Creating profiling run..."}, f)
+        backend_url = os.getenv("API_BASE_URL", "http://localhost:8000").rstrip("/")
+        run_id, ingest_token = _create_run_for_workflow(request.ssh_host, mode="workload")
+
+        # Step 3: Execute agent.py --mode standard
         with open(status_file, 'w') as f:
             json.dump({
-                "status": "failed", 
-                "message": error_message,
-                "error_details": error_details
+                "status": "running",
+                "message": f"Running workload benchmark ({request.num_requests} requests, concurrency {request.max_concurrency})...",
+                "run_id": run_id,
             }, f)
-        
-        # Also write to log file if it exists
-        log_file = os.path.join(log_dir, "benchmark.log")
+
+        exit_code, output_tail = _run_agent_via_ssh(
+            ssh, remote_dir, mode="standard",
+            run_id=run_id, ingest_token=ingest_token,
+            backend_url=backend_url,
+            num_requests=request.num_requests,
+            concurrency=request.max_concurrency,
+            max_tokens=request.output_seq_len,
+            log_file=log_file, status_file=status_file,
+        )
+
+        ssh.close()
+
+        if exit_code == 0:
+            with open(status_file, 'w') as f:
+                json.dump({
+                    "status": "completed",
+                    "message": "Benchmark completed successfully",
+                    "run_id": run_id,
+                }, f)
+            logger.info(f"Benchmark completed: run_id={run_id}")
+        else:
+            with open(status_file, 'w') as f:
+                json.dump({
+                    "status": "failed",
+                    "message": f"Agent exited with code {exit_code}",
+                    "run_id": run_id,
+                    "error_details": output_tail[-500:] if output_tail else "",
+                }, f)
+            logger.error(f"Benchmark failed: exit_code={exit_code}")
+
+    except Exception as e:
+        error_message = str(e)
+        import traceback
+        error_details = traceback.format_exc()[-1500:]
+        with open(status_file, 'w') as f:
+            json.dump({
+                "status": "failed",
+                "message": error_message,
+                "error_details": error_details,
+            }, f)
         try:
             with open(log_file, 'a') as f:
                 f.write(f"\n\n=== ERROR ===\n{error_details}\n")
         except:
             pass
-        
-        logger.error(f"❌ Benchmark failed: {error_message}", exc_info=True)
+        logger.error(f"Benchmark failed: {error_message}", exc_info=True)
+
+
+
+def workflow_kernel_profile_task(request: KernelProfileRequest, pem_file_path: str, log_dir: str):
+    """Background task for kernel profiling — runs agent.py --mode kernel.
+
+    Uploads agent.py + telemetry/ to the instance, creates a kernel-type run,
+    and executes agent.py --mode kernel to capture CUDA kernel breakdown.
+    """
+    import paramiko
+    import json
+
+    status_file = os.path.join(log_dir, "kernel_profile_status.json")
+    log_file = os.path.join(log_dir, "kernel_profile.log")
+
+    try:
+        with open(status_file, 'w') as f:
+            json.dump({"status": "running", "message": "Connecting to instance..."}, f)
+
+        cloud_provider = getattr(request, 'cloud_provider', 'lambda').lower()
+        remote_home = "/root" if cloud_provider == "scaleway" else "/home/ubuntu"
+
+        logger.info(f"Connecting to {request.ssh_host} for kernel profiling ...")
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(request.ssh_host, username=request.ssh_user, key_filename=pem_file_path, timeout=30)
+
+        # Step 1: Upload agent package
+        with open(status_file, 'w') as f:
+            json.dump({"status": "running", "message": "Uploading agent package..."}, f)
+        remote_dir = _upload_agent_package_via_ssh(ssh, remote_home)
+
+        # Step 2: Create a kernel run
+        with open(status_file, 'w') as f:
+            json.dump({"status": "running", "message": "Creating kernel profiling run..."}, f)
+        backend_url = os.getenv("API_BASE_URL", "http://localhost:8000").rstrip("/")
+        run_id, ingest_token = _create_run_for_workflow(request.ssh_host, mode="kernel")
+
+        # Step 3: Execute agent.py --mode kernel
+        with open(status_file, 'w') as f:
+            json.dump({
+                "status": "running",
+                "message": f"Running kernel profiling ({request.kernel_requests} requests)...",
+                "run_id": run_id,
+            }, f)
+
+        exit_code, output_tail = _run_agent_via_ssh(
+            ssh, remote_dir, mode="kernel",
+            run_id=run_id, ingest_token=ingest_token,
+            backend_url=backend_url,
+            kernel_requests=request.kernel_requests,
+            log_file=log_file, status_file=status_file,
+        )
+
+        ssh.close()
+
+        if exit_code == 0:
+            with open(status_file, 'w') as f:
+                json.dump({
+                    "status": "completed",
+                    "message": "Kernel profiling completed successfully",
+                    "run_id": run_id,
+                }, f)
+            logger.info(f"Kernel profiling completed: run_id={run_id}")
+        else:
+            with open(status_file, 'w') as f:
+                json.dump({
+                    "status": "failed",
+                    "message": f"Agent exited with code {exit_code}",
+                    "run_id": run_id,
+                    "error_details": output_tail[-500:] if output_tail else "",
+                }, f)
+            logger.error(f"Kernel profiling failed: exit_code={exit_code}")
+
+    except Exception as e:
+        error_message = str(e)
+        import traceback
+        error_details = traceback.format_exc()[-1500:]
+        with open(status_file, 'w') as f:
+            json.dump({
+                "status": "failed",
+                "message": error_message,
+                "error_details": error_details,
+            }, f)
+        try:
+            with open(log_file, 'a') as f:
+                f.write(f"\n\n=== ERROR ===\n{error_details}\n")
+        except:
+            pass
+        logger.error(f"Kernel profiling failed: {error_message}", exc_info=True)
+
 
 if __name__ == "__main__":
     import uvicorn

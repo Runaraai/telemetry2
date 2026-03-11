@@ -1046,6 +1046,11 @@ export const apiService = {
     return response.data;
   },
 
+  workflowKernelProfile: async (params) => {
+    const response = await api.post('/api/workflow/kernel-profile', params);
+    return response.data;
+  },
+
   getWorkflowLogs: async (workflowId, phase = null) => {
     const params = phase ? `?phase=${phase}` : '';
     const response = await api.get(`/api/workflow/logs/${workflowId}${params}`);
