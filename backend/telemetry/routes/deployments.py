@@ -635,10 +635,14 @@ async def get_component_status(
 @router.post("/{instance_id}/run-profiling", status_code=status.HTTP_202_ACCEPTED)
 async def run_profiling(
     instance_id: str,
-    run_id: UUID,
+    run_id: Optional[UUID] = None,
     mode: str = Query("standard", description="Profiling mode: standard, kernel, or full"),
     num_requests: int = Query(50, ge=1, le=500, description="Number of requests"),
     concurrency: int = Query(4, ge=1, le=32, description="Max concurrent requests"),
+    max_tokens: int = Query(256, ge=1, le=4096, description="Max tokens per request"),
+    vllm_server: Optional[str] = Query(None, description="vLLM server URL (e.g. http://localhost:8000)"),
+    model_name: Optional[str] = Query(None, description="Model name to benchmark"),
+    create_new_run: bool = Query(False, description="Create a new run record (used for kernel mode)"),
     current_user: User = Depends(get_current_user),
     repo: TelemetryRepository = Depends(get_repository),
 ) -> Dict[str, Any]:
@@ -648,7 +652,13 @@ async def run_profiling(
     agent.py with --backend-url, --run-id, and --ingest-token to upload
     profiling results directly to the backend.
 
-    Requires an active deployment with SSH credentials.
+    - mode=standard: Runs workload benchmark collecting TTFT/ITL/throughput via vLLM's streaming API.
+      Attaches results to an existing run (pass run_id) or creates a new 'workload' run.
+    - mode=kernel: Always creates a NEW separate run with run_type='kernel'. Returns the new run_id.
+      Requires vLLM was started with --profiler-config.
+    - mode=full: Runs standard then kernel sequentially on the same run.
+
+    Requires an active SSH deployment for the instance (SSH credentials come from deployment record).
     """
     if mode not in ("standard", "kernel", "full"):
         raise HTTPException(
@@ -656,7 +666,7 @@ async def run_profiling(
             detail="mode must be 'standard', 'kernel', or 'full'",
         )
 
-    # Find deployment record for this instance
+    # Find deployment record for this instance (provides SSH credentials)
     deployment_record = None
     async with deployment_manager._lock:
         for record in deployment_manager._records.values():
@@ -667,26 +677,57 @@ async def run_profiling(
     if not deployment_record:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active deployment found for this instance. Deploy monitoring first.",
-        )
-
-    # Get run and regenerate ingest token for the profiling upload
-    run = await repo.get_run(run_id, current_user.user_id)
-    if not run:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Run not found",
-        )
-
-    ingest_token = await repo.regenerate_ingest_token(run_id, current_user.user_id)
-    if not ingest_token:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot generate ingest token for this run",
+            detail="No active deployment found for this instance. Start GPU monitoring first (it provides the SSH connection).",
         )
 
     request = deployment_record.request
     backend_url = request.backend_url
+
+    # -----------------------------------------------------------------------
+    # Kernel mode: always create a NEW separate run with run_type='kernel'
+    # -----------------------------------------------------------------------
+    if mode == "kernel" or create_new_run:
+        run_type_value = "kernel" if mode == "kernel" else "workload"
+        new_run, ingest_token = await repo.create_run(
+            RunCreate(
+                instance_id=instance_id,
+                status="active",
+                run_type=run_type_value,
+            ),
+            current_user.user_id,
+        )
+        await repo.session.commit()
+        effective_run_id = new_run.run_id
+    # -----------------------------------------------------------------------
+    # Standard/full mode: use existing run_id or create a workload run
+    # -----------------------------------------------------------------------
+    else:
+        if run_id:
+            run = await repo.get_run(run_id, current_user.user_id)
+            if not run:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Run not found",
+                )
+            ingest_token = await repo.regenerate_ingest_token(run_id, current_user.user_id)
+            if not ingest_token:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Cannot generate ingest token for this run",
+                )
+            effective_run_id = run_id
+        else:
+            # No run_id provided — create a standalone workload run
+            new_run, ingest_token = await repo.create_run(
+                RunCreate(
+                    instance_id=instance_id,
+                    status="active",
+                    run_type="workload",
+                ),
+                current_user.user_id,
+            )
+            await repo.session.commit()
+            effective_run_id = new_run.run_id
 
     def _run_profiling_sync():
         import os as _os
@@ -694,7 +735,7 @@ async def run_profiling(
 
         ssh = deployment_manager._connect(request)
         try:
-            remote_dir = f"/tmp/omni-profiling-{run_id}"
+            remote_dir = f"/tmp/omni-profiling-{effective_run_id}"
             ssh.exec_command(
                 f"mkdir -p {remote_dir}/telemetry/gpu"
                 f" {remote_dir}/telemetry/kernel"
@@ -732,20 +773,27 @@ async def run_profiling(
             finally:
                 sftp.close()
 
-            # Run agent.py
-            cmd = (
-                f"cd {shlex.quote(remote_dir)} && python3 agent.py"
-                f" --mode {shlex.quote(mode)}"
-                f" --num-requests {num_requests}"
-                f" --concurrency {concurrency}"
-                f" --backend-url {shlex.quote(str(backend_url))}"
-                f" --run-id {shlex.quote(str(run_id))}"
-                f" --ingest-token {shlex.quote(str(ingest_token))}"
-                f" --skip-runara"
-                f" --no-start-vllm"
-                f" --skip-dcgm"
-                f" 2>&1"
-            )
+            # Build agent.py command
+            cmd_parts = [
+                f"cd {shlex.quote(remote_dir)} && python3 agent.py",
+                f"--mode {shlex.quote(mode)}",
+                f"--num-requests {num_requests}",
+                f"--concurrency {concurrency}",
+                f"--max-tokens {max_tokens}",
+                f"--backend-url {shlex.quote(str(backend_url))}",
+                f"--run-id {shlex.quote(str(effective_run_id))}",
+                f"--ingest-token {shlex.quote(str(ingest_token))}",
+                "--skip-runara",
+                "--no-start-vllm",
+                "--skip-dcgm",
+            ]
+            if vllm_server:
+                cmd_parts.append(f"--server {shlex.quote(vllm_server)}")
+            if model_name:
+                cmd_parts.append(f"--model {shlex.quote(model_name)}")
+            cmd_parts.append("2>&1")
+
+            cmd = " ".join(cmd_parts)
             stdin, stdout, stderr = ssh.exec_command(cmd, timeout=600)
             exit_code = stdout.channel.recv_exit_status()
             output = (stdout.read() + stderr.read()).decode("utf-8", errors="replace")[-2000:]
@@ -762,10 +810,23 @@ async def run_profiling(
         None, _run_profiling_sync
     )
 
+    # Mark kernel/standalone workload runs as completed after agent finishes
+    if mode == "kernel" or create_new_run or not run_id:
+        from datetime import datetime as _dt, timezone as _tz
+        await repo.update_run(
+            effective_run_id,
+            RunUpdate(
+                status="completed" if result["success"] else "failed",
+                end_time=_dt.now(_tz.utc),
+            ),
+        )
+        await repo.session.commit()
+
     return {
         "status": "completed" if result["success"] else "failed",
-        "run_id": str(run_id),
+        "run_id": str(effective_run_id),
         "mode": mode,
+        "run_type": "kernel" if mode == "kernel" else "workload" if (create_new_run or not run_id) else "monitoring",
         "exit_code": result["exit_code"],
         "output_tail": result["output_tail"],
     }

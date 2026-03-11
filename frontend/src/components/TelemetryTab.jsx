@@ -1232,6 +1232,22 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
   const [profilingResultRunId, setProfilingResultRunId] = useState(null);
   const [kernelRunLoading, setKernelRunLoading] = useState(false);
 
+  // Workload benchmark state
+  const [benchmarkConfig, setBenchmarkConfig] = useState({
+    vllmServer: 'http://localhost:8000',
+    model: '',
+    numRequests: 50,
+    concurrency: 4,
+    maxTokens: 256,
+  });
+  const [benchmarkLoading, setBenchmarkLoading] = useState(false);
+  const [benchmarkResult, setBenchmarkResult] = useState(null);
+
+  // Kernel profiling state (separate run)
+  const [kernelProfileLoading, setKernelProfileLoading] = useState(false);
+  const [kernelProfileResult, setKernelProfileResult] = useState(null);
+  const [kernelProfileRunId, setKernelProfileRunId] = useState(null);
+
   const appendLog = useCallback((level, msg) => {
     const ts = new Date().toLocaleTimeString();
     setActivityLog((prev) => {
@@ -2051,6 +2067,93 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
     }
   }, [instanceId, profilingResultRunId, appendLog]);
 
+  const handleRunWorkloadBenchmark = useCallback(async () => {
+    if (!instanceId) return;
+    setBenchmarkLoading(true);
+    setBenchmarkResult(null);
+    appendLog('info', `Starting workload benchmark (${benchmarkConfig.numRequests} requests, concurrency ${benchmarkConfig.concurrency})...`);
+    setError('');
+    try {
+      const result = await apiService.runProfiling(
+        instanceId,
+        activeRun?.run_id || null,
+        'standard',
+        benchmarkConfig.numRequests,
+        benchmarkConfig.concurrency,
+        {
+          maxTokens: benchmarkConfig.maxTokens,
+          vllmServer: benchmarkConfig.vllmServer || undefined,
+          modelName: benchmarkConfig.model || undefined,
+          createNewRun: !activeRun,
+        }
+      );
+      appendLog(
+        result.status === 'completed' ? 'info' : 'error',
+        `Workload benchmark ${result.status}: exit_code=${result.exit_code ?? '?'}`
+      );
+      if (result.status === 'completed') {
+        const targetRunId = result.run_id || activeRun?.run_id;
+        if (targetRunId) {
+          const profile = await apiService.getTelemetryRunProfile(targetRunId);
+          setBenchmarkResult(profile);
+          if (!profilingResultRunId) {
+            setProfilingResultRunId(targetRunId);
+          }
+          appendLog('info', 'Workload metrics loaded.');
+        }
+      } else {
+        setError(result.output_tail || `Benchmark failed (exit ${result.exit_code})`);
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err?.message || 'Workload benchmark failed';
+      appendLog('error', msg);
+      setError(msg);
+    } finally {
+      setBenchmarkLoading(false);
+    }
+  }, [instanceId, activeRun, benchmarkConfig, appendLog, profilingResultRunId]);
+
+  const handleRunKernelProfile = useCallback(async () => {
+    if (!instanceId) return;
+    setKernelProfileLoading(true);
+    setKernelProfileResult(null);
+    appendLog('info', 'Starting kernel profiling run (separate run, expect 5–10% overhead)...');
+    setError('');
+    try {
+      const result = await apiService.runProfiling(
+        instanceId,
+        null,
+        'kernel',
+        benchmarkConfig.numRequests,
+        benchmarkConfig.concurrency,
+        {
+          maxTokens: benchmarkConfig.maxTokens,
+          vllmServer: benchmarkConfig.vllmServer || undefined,
+          modelName: benchmarkConfig.model || undefined,
+          createNewRun: true,
+        }
+      );
+      appendLog(
+        result.status === 'completed' ? 'info' : 'error',
+        `Kernel profiling ${result.status}: run ${result.run_id?.substring(0, 8)}... exit_code=${result.exit_code ?? '?'}`
+      );
+      if (result.status === 'completed' && result.run_id) {
+        setKernelProfileRunId(result.run_id);
+        const profile = await apiService.getTelemetryRunProfile(result.run_id);
+        setKernelProfileResult(profile);
+        appendLog('info', 'Kernel profile loaded.');
+      } else {
+        setError(result.output_tail || `Kernel profiling failed (exit ${result.exit_code})`);
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err?.message || 'Kernel profiling failed';
+      appendLog('error', msg);
+      setError(msg);
+    } finally {
+      setKernelProfileLoading(false);
+    }
+  }, [instanceId, benchmarkConfig, appendLog]);
+
   const selectHistoricalRun = useCallback(
     async (run) => {
       setSelectedHistoricalRun(run);
@@ -2510,6 +2613,297 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                   </Grid>
                 )}
               </Grid>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ================================================================ */}
+        {/* Workload Benchmark Card                                         */}
+        {/* ================================================================ */}
+        {instanceId && (monitoringState === 'running' || monitoringState === 'idle' || monitoringState === 'stopping') && (
+          <Card variant="outlined">
+            <CardHeader
+              title={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <SpeedIcon color="primary" fontSize="small" />
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>Workload Benchmark</Typography>
+                </Box>
+              }
+              subheader="Collect TTFT, inter-token latency and throughput from vLLM via streaming API"
+            />
+            <CardContent>
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={12} md={5}>
+                  <TextField
+                    label="vLLM Server URL"
+                    fullWidth
+                    size="small"
+                    value={benchmarkConfig.vllmServer}
+                    onChange={(e) => setBenchmarkConfig((p) => ({ ...p, vllmServer: e.target.value }))}
+                    placeholder="http://localhost:8000"
+                    helperText="Accessible from the GPU instance"
+                    disabled={benchmarkLoading}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    label="Model Name"
+                    fullWidth
+                    size="small"
+                    value={benchmarkConfig.model}
+                    onChange={(e) => setBenchmarkConfig((p) => ({ ...p, model: e.target.value }))}
+                    placeholder="auto-detect"
+                    helperText="Leave blank to auto-detect"
+                    disabled={benchmarkLoading}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                  />
+                </Grid>
+                <Grid item xs={6} md={2}>
+                  <TextField
+                    label="Requests"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    value={benchmarkConfig.numRequests}
+                    onChange={(e) => setBenchmarkConfig((p) => ({ ...p, numRequests: parseInt(e.target.value) || 50 }))}
+                    inputProps={{ min: 1, max: 500 }}
+                    disabled={benchmarkLoading}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                  />
+                </Grid>
+                <Grid item xs={6} md={2}>
+                  <TextField
+                    label="Concurrency"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    value={benchmarkConfig.concurrency}
+                    onChange={(e) => setBenchmarkConfig((p) => ({ ...p, concurrency: parseInt(e.target.value) || 4 }))}
+                    inputProps={{ min: 1, max: 32 }}
+                    disabled={benchmarkLoading}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                  />
+                </Grid>
+              </Grid>
+
+              {monitoringState === 'running' && activeRun && (
+                <Alert severity="info" sx={{ mb: 2, borderRadius: '8px' }}>
+                  Results will be attached to the active monitoring run <code>{activeRun.run_id?.substring(0, 8)}...</code>
+                </Alert>
+              )}
+              {monitoringState !== 'running' && (
+                <Alert severity="info" sx={{ mb: 2, borderRadius: '8px' }}>
+                  GPU monitoring is not active. A standalone workload run will be created.
+                </Alert>
+              )}
+
+              <Button
+                variant="contained"
+                onClick={handleRunWorkloadBenchmark}
+                disabled={benchmarkLoading || !instanceId}
+                startIcon={benchmarkLoading ? <CircularProgress size={16} /> : <PlayIcon />}
+                sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+              >
+                {benchmarkLoading ? 'Benchmarking...' : 'Run Benchmark'}
+              </Button>
+
+              {/* Benchmark Results */}
+              {benchmarkResult?.workload && (
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600 }}>Results</Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={6} sm={3}>
+                      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
+                        <Typography variant="caption" color="text.secondary" display="block">TTFT P50</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                          {benchmarkResult.workload.ttft_p50_ms != null ? `${Number(benchmarkResult.workload.ttft_p50_ms).toFixed(1)} ms` : '—'}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
+                        <Typography variant="caption" color="text.secondary" display="block">TTFT P95</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                          {benchmarkResult.workload.ttft_p95_ms != null ? `${Number(benchmarkResult.workload.ttft_p95_ms).toFixed(1)} ms` : '—'}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
+                        <Typography variant="caption" color="text.secondary" display="block">ITL P50</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                          {benchmarkResult.workload.tpot_p50_ms != null ? `${Number(benchmarkResult.workload.tpot_p50_ms).toFixed(1)} ms` : '—'}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
+                        <Typography variant="caption" color="text.secondary" display="block">Throughput</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                          {benchmarkResult.workload.throughput_tok_sec != null ? `${Number(benchmarkResult.workload.throughput_tok_sec).toFixed(1)} tok/s` : '—'}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                    {benchmarkResult.workload.tpot_p95_ms != null && (
+                      <Grid item xs={6} sm={3}>
+                        <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
+                          <Typography variant="caption" color="text.secondary" display="block">ITL P95</Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                            {Number(benchmarkResult.workload.tpot_p95_ms).toFixed(1)} ms
+                          </Typography>
+                        </Paper>
+                      </Grid>
+                    )}
+                    {benchmarkResult.workload.throughput_req_sec != null && (
+                      <Grid item xs={6} sm={3}>
+                        <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
+                          <Typography variant="caption" color="text.secondary" display="block">Req/s</Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                            {Number(benchmarkResult.workload.throughput_req_sec).toFixed(2)}
+                          </Typography>
+                        </Paper>
+                      </Grid>
+                    )}
+                    {benchmarkResult.workload.num_requests > 0 && (
+                      <Grid item xs={6} sm={3}>
+                        <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
+                          <Typography variant="caption" color="text.secondary" display="block">Success</Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                            {Math.round((benchmarkResult.workload.successful_requests / benchmarkResult.workload.num_requests) * 100)}%
+                          </Typography>
+                        </Paper>
+                      </Grid>
+                    )}
+                  </Grid>
+                  {benchmarkResult.bottleneck && (
+                    <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                      <Typography variant="caption" color="text.secondary">Bottleneck:</Typography>
+                      <Chip label={benchmarkResult.bottleneck.primary_bottleneck || 'unknown'} size="small" color="warning" />
+                      {benchmarkResult.bottleneck.mfu_pct != null && (
+                        <Typography variant="body2">MFU: {Number(benchmarkResult.bottleneck.mfu_pct).toFixed(1)}%</Typography>
+                      )}
+                    </Box>
+                  )}
+                  {Array.isArray(benchmarkResult.bottleneck?.recommendations) && benchmarkResult.bottleneck.recommendations.length > 0 && (
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>Recommendations</Typography>
+                      {benchmarkResult.bottleneck.recommendations.map((r, i) => (
+                        <Typography key={i} variant="body2" sx={{ color: 'text.secondary' }}>• {r}</Typography>
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ================================================================ */}
+        {/* Kernel Profiling Card (separate run, overhead warning)           */}
+        {/* ================================================================ */}
+        {instanceId && (monitoringState === 'running' || monitoringState === 'idle' || monitoringState === 'stopping') && (
+          <Card variant="outlined" sx={{ borderColor: 'warning.main' }}>
+            <CardHeader
+              title={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <BoltIcon color="warning" fontSize="small" />
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>Kernel Profiling</Typography>
+                  <Chip
+                    label="Separate run • ~5–10% overhead"
+                    size="small"
+                    color="warning"
+                    variant="outlined"
+                    sx={{ fontSize: '0.7rem' }}
+                  />
+                </Box>
+              }
+              subheader="Uses Chrome trace from vLLM to break down kernel time by category (attention, matmul, layernorm, etc.)"
+            />
+            <CardContent>
+              <Alert severity="warning" sx={{ mb: 2, borderRadius: '8px' }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>Prerequisites</Typography>
+                <Typography variant="body2">
+                  vLLM must be running with <code>--profiler-config</code>. This creates a <strong>new separate run</strong> — it does not share data with the active GPU monitoring run. Kernel profiling adds tracing overhead.
+                </Typography>
+              </Alert>
+
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Uses the vLLM server and model settings from the Workload Benchmark config above.
+              </Typography>
+
+              <Button
+                variant="outlined"
+                color="warning"
+                onClick={handleRunKernelProfile}
+                disabled={kernelProfileLoading || !instanceId}
+                startIcon={kernelProfileLoading ? <CircularProgress size={16} /> : <BoltIcon />}
+                sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+              >
+                {kernelProfileLoading ? 'Profiling kernels...' : 'Run Kernel Profile'}
+              </Button>
+
+              {kernelProfileRunId && (
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+                  Run: {kernelProfileRunId.substring(0, 8)}...
+                </Typography>
+              )}
+
+              {/* Kernel Results */}
+              {kernelProfileResult && (
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600 }}>Kernel Breakdown</Typography>
+
+                  {Array.isArray(kernelProfileResult.kernel_profiles) && kernelProfileResult.kernel_profiles.length > 0 &&
+                   kernelProfileResult.kernel_profiles[0].categories?.length > 0 ? (
+                    <Box>
+                      {/* Bar chart using inline widths */}
+                      <Stack spacing={0.75}>
+                        {kernelProfileResult.kernel_profiles[0].categories
+                          .slice()
+                          .sort((a, b) => b.pct - a.pct)
+                          .map((cat, i) => (
+                            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                              <Typography variant="caption" sx={{ width: 120, flexShrink: 0, textTransform: 'capitalize' }}>
+                                {cat.category}
+                              </Typography>
+                              <Box sx={{ flex: 1, bgcolor: 'grey.100', borderRadius: 1, overflow: 'hidden', height: 18 }}>
+                                <Box
+                                  sx={{
+                                    width: `${Math.min(100, Number(cat.pct))}%`,
+                                    height: '100%',
+                                    bgcolor: i === 0 ? 'primary.main' : i === 1 ? 'secondary.main' : 'grey.400',
+                                    borderRadius: 1,
+                                    transition: 'width 0.4s ease',
+                                  }}
+                                />
+                              </Box>
+                              <Typography variant="caption" sx={{ width: 48, textAlign: 'right', flexShrink: 0, fontWeight: 600 }}>
+                                {Number(cat.pct).toFixed(1)}%
+                              </Typography>
+                            </Box>
+                          ))}
+                      </Stack>
+
+                      {/* Chip summary */}
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1.5 }}>
+                        {kernelProfileResult.kernel_profiles[0].categories.map((c, i) => (
+                          <Chip key={i} label={`${c.category}: ${Number(c.pct).toFixed(1)}%`} size="small" variant="outlined" />
+                        ))}
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">No kernel category data returned.</Typography>
+                  )}
+
+                  {kernelProfileResult.bottleneck && (
+                    <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="caption" color="text.secondary">Bottleneck:</Typography>
+                      <Chip label={kernelProfileResult.bottleneck.primary_bottleneck || 'unknown'} size="small" color="warning" />
+                    </Box>
+                  )}
+                </Box>
+              )}
             </CardContent>
           </Card>
         )}

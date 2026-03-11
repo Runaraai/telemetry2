@@ -27,6 +27,7 @@ class RunCreate(RunBase):
 
     start_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: str = Field(default="active", max_length=20)
+    run_type: Optional[str] = Field(default="monitoring", max_length=20)
 
 
 class RunUpdate(BaseModel):
@@ -62,6 +63,7 @@ class RunRead(RunBase):
     start_time: datetime
     end_time: Optional[datetime]
     status: str
+    run_type: Optional[str] = "monitoring"
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

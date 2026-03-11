@@ -1127,12 +1127,16 @@ export const apiService = {
     return response.data;
   },
 
-  runProfiling: async (instanceId, runId, mode = 'kernel', numRequests = 20, concurrency = 4) => {
+  runProfiling: async (instanceId, runId, mode = 'kernel', numRequests = 20, concurrency = 4, options = {}) => {
     const params = new URLSearchParams();
-    params.append('run_id', runId);
+    if (runId) params.append('run_id', runId);
     params.append('mode', mode);
     params.append('num_requests', numRequests);
     params.append('concurrency', concurrency);
+    if (options.maxTokens) params.append('max_tokens', options.maxTokens);
+    if (options.vllmServer) params.append('vllm_server', options.vllmServer);
+    if (options.modelName) params.append('model_name', options.modelName);
+    if (options.createNewRun) params.append('create_new_run', 'true');
     const response = await api.post(`/api/instances/${instanceId}/run-profiling?${params.toString()}`);
     return response.data;
   },

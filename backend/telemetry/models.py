@@ -50,6 +50,7 @@ class Run(Base):
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(20), nullable=False)
+    run_type: Mapped[Optional[str]] = mapped_column(String(20), default="monitoring")
     tags: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
     notes: Mapped[Optional[str]] = mapped_column(Text())
     gpu_summary: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
