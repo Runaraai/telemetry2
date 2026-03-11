@@ -246,6 +246,9 @@ async def run_bootstrap(
         # Add workload/kernel/bottleneck profiling tables
         await _migrate_profiling_tables(conn, safe_schema)
 
+        # Add gpu_summary column to runs for agent upload GPU aggregates
+        await _migrate_runs_gpu_summary(conn, safe_schema)
+
 
 async def _migrate_runs_ingest_token(conn, schema: str) -> None:
     """Add ingest_token_hash, token_created_at columns and composite index to runs table."""
@@ -970,3 +973,26 @@ async def _migrate_profiling_tables(conn, schema: str) -> None:
         print("Profiling tables (workload_metrics, kernel_profiles, kernel_categories, bottleneck_analyses) created.")
     except Exception as e:
         print(f"Note: profiling tables migration: {e}")
+
+
+async def _migrate_runs_gpu_summary(conn, schema: str) -> None:
+    """Add gpu_summary JSONB column to runs table for agent profile uploads."""
+    try:
+        check_stmt = text(f"""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = '{schema}'
+            AND table_name = 'runs'
+            AND column_name = 'gpu_summary'
+        """)
+        result = await conn.execute(check_stmt)
+        exists = result.scalar_one_or_none()
+
+        if not exists:
+            await conn.execute(text(f"""
+                ALTER TABLE {schema}.runs
+                ADD COLUMN gpu_summary JSONB;
+            """))
+            print("Added gpu_summary column to runs table")
+    except Exception as e:
+        print(f"Note: gpu_summary migration: {e}")

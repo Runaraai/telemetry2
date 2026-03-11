@@ -55,6 +55,7 @@ import argparse
 import asyncio
 import atexit
 import json
+import logging
 import os
 import shutil
 import signal
@@ -62,6 +63,19 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+# Structured logging: file + stream, timestamps
+_log_dir = Path(__file__).resolve().parent
+_log_file = _log_dir / "agent.log"
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+    handlers=[
+        logging.FileHandler(_log_file, encoding="utf-8"),
+        logging.StreamHandler(),
+    ],
+)
+logger = logging.getLogger("agent")
 
 # ── Colour helpers ────────────────────────────────────────────────────────────
 
@@ -77,7 +91,9 @@ def _ok(msg):    print(f"  {GREEN}✓{RESET}  {msg}")
 def _warn(msg):  print(f"  {YELLOW}⚠{RESET}  {msg}")
 def _fail(msg):  print(f"  {RED}✗{RESET}  {msg}")
 def _info(msg):  print(f"  {CYAN}·{RESET}  {msg}")
-def _head(msg):  print(f"\n{BOLD}{msg}{RESET}")
+def _head(msg: str) -> None:
+    print(f"\n{BOLD}{msg}{RESET}")
+    logger.info("=== %s ===", msg)
 def _cmd(cmd):   print(f"     {CYAN}${RESET} {cmd}")
 def _sep():      print(f"  {'─' * 54}")
 
@@ -1526,7 +1542,9 @@ def main() -> None:
     kernel_path:   Path | None = None
 
     # ── Phase 1: system check ─────────────────────────────────────────────────
+    t0 = time.time()
     gpu_info = phase_system_check()
+    logger.info("Phase 1 done in %.1fs", time.time() - t0)
     checks["python"] = gpu_info["python_ok"]
     checks["driver"] = gpu_info["driver_ok"]
 
@@ -1536,17 +1554,22 @@ def main() -> None:
         sys.exit(1)
 
     # ── Phase 2: Python dependencies ──────────────────────────────────────────
+    t0 = time.time()
     checks["deps"] = phase_install_deps()
+    logger.info("Phase 2 done in %.1fs", time.time() - t0)
     if not checks["deps"]:
         _fail("Dependency installation failed — cannot continue")
         phase_final_summary(checks, None, None)
         sys.exit(1)
 
     # ── Phase 3: DCGM exporter ────────────────────────────────────────────────
+    t0 = time.time()
     dcgm_ok = phase_setup_dcgm(gpu_info, args.dcgm_url, args.skip_dcgm)
+    logger.info("Phase 3 done in %.1fs; DCGM ok=%s", time.time() - t0, dcgm_ok)
     checks["dcgm"] = dcgm_ok if (gpu_info["is_dc"] and not args.skip_dcgm) else None
 
     # ── Phase 4: vLLM ─────────────────────────────────────────────────────────
+    t0 = time.time()
     vllm = phase_ensure_vllm(
         server_url=args.server,
         model=args.model,
@@ -1557,6 +1580,8 @@ def main() -> None:
     )
     checks["vllm_running"]  = vllm["running"]
     checks["vllm_profiler"] = vllm["has_profiler"] if vllm["running"] else False
+    logger.info("Phase 4 done in %.1fs; vLLM url=%s model=%s profiler=%s",
+                time.time() - t0, args.server, vllm.get("model") or args.model, vllm.get("has_profiler"))
 
     if not vllm["running"]:
         _fail("vLLM is not running — cannot profile. Start it and re-run agent.py")
@@ -1567,6 +1592,7 @@ def main() -> None:
 
     # ── Phase 5a: standard run ────────────────────────────────────────────────
     if args.mode in ("standard", "full"):
+        t0 = time.time()
         standard_path = phase_run_standard(
             server_url=args.server,
             model=model,
@@ -1579,6 +1605,7 @@ def main() -> None:
             output_path=args.output,
             title=args.title,
         )
+        logger.info("Phase 5a done in %.1fs; output=%s", time.time() - t0, standard_path)
 
     # ── Phase 5b: kernel run ──────────────────────────────────────────────────
     if args.mode in ("kernel", "full"):
@@ -1586,6 +1613,7 @@ def main() -> None:
             _warn("Skipping kernel run — vLLM profiler endpoint not available")
             _info("Restart vLLM with --profiler-config to enable kernel mode")
         else:
+            t0 = time.time()
             kernel_path = phase_run_kernel(
                 server_url=args.server,
                 model=model,
@@ -1597,6 +1625,7 @@ def main() -> None:
                 output_path=args.output,
                 title=args.title,
             )
+            logger.info("Phase 5b done in %.1fs; output=%s", time.time() - t0, kernel_path)
 
     # ── Phase 6: summary ──────────────────────────────────────────────────────
     phase_final_summary(checks, standard_path, kernel_path,
@@ -1604,6 +1633,7 @@ def main() -> None:
 
     # ── Phase 7: upload ─────────────────────────────────────────────────────
     if not args.no_upload:
+        t0 = time.time()
         _phase_upload(
             standard_path, kernel_path,
             backend_url=args.backend_url,
@@ -1611,6 +1641,7 @@ def main() -> None:
             ingest_token=args.ingest_token,
             skip_runara=args.skip_runara,
         )
+        logger.info("Phase 7 done in %.1fs", time.time() - t0)
 
 
 def _phase_upload(

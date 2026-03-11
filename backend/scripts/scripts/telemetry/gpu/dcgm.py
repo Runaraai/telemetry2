@@ -17,7 +17,9 @@ supports it and the exporter is configured to export the relevant metric IDs.
 
 from __future__ import annotations
 
+import logging
 import re
+import subprocess
 import time
 from typing import Optional
 
@@ -58,6 +60,8 @@ _METRIC_MAP = {
 
 _MODEL_LABEL_RE = re.compile(r'modelName="([^"]+)"')
 
+logger = logging.getLogger(__name__)
+
 
 def _parse(text: str, metric: str) -> float:
     """Extract first scalar value for a metric from Prometheus text format."""
@@ -93,8 +97,10 @@ class DCGMBackend(GpuBackend):
         self.timeout = timeout
         # Fetch once on init: used for capability probing and metadata
         try:
+            logger.debug("DCGM: connecting to %s", self.url)
             self._init_text = requests.get(self.url, timeout=self.timeout).text
-        except Exception:
+        except Exception as exc:
+            logger.warning("DCGM: connection failed: %s", exc)
             self._init_text = ""
         self.capabilities = self._probe_capabilities(self._init_text)
 
@@ -149,15 +155,33 @@ class DCGMBackend(GpuBackend):
             l2_write_hit_pct=g("l2_write_hit") * 100,
         )
 
+    def _get_gpu_count(self) -> int:
+        """Query nvidia-smi for actual GPU count (DCGM Prometheus text does not expose it)."""
+        try:
+            r = subprocess.run(
+                ["nvidia-smi", "-L"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if r.returncode == 0 and r.stdout:
+                lines = [ln for ln in r.stdout.strip().splitlines() if ln.strip()]
+                return max(1, len(lines))
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as exc:
+            logger.debug("nvidia-smi -L failed, assuming gpu_count=1: %s", exc)
+        return 1
+
     def get_metadata(self) -> dict:
         gpu_name = _parse_gpu_name(self._init_text)
+        gpu_count = self._get_gpu_count()
+        logger.debug("DCGM metadata: gpu_name=%s gpu_count=%d", gpu_name, gpu_count)
 
         from .specs import get_gpu_specs
         specs = get_gpu_specs(gpu_name)
 
         return {
             "gpu_name":         gpu_name,
-            "gpu_count":        1,
+            "gpu_count":        gpu_count,
             "gpu_index":        0,
             "driver_version":   "",   # not exposed in Prometheus text format
             "cuda_version":     "",

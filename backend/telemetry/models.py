@@ -52,6 +52,7 @@ class Run(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     tags: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
     notes: Mapped[Optional[str]] = mapped_column(Text())
+    gpu_summary: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
     # Token hash for remote_write authentication (SHA256 of the token)
     # Token is generated on run creation and returned once to the user
     ingest_token_hash: Mapped[Optional[str]] = mapped_column(String(64))

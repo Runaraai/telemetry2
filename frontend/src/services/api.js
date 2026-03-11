@@ -1127,6 +1127,16 @@ export const apiService = {
     return response.data;
   },
 
+  runProfiling: async (instanceId, runId, mode = 'kernel', numRequests = 20, concurrency = 4) => {
+    const params = new URLSearchParams();
+    params.append('run_id', runId);
+    params.append('mode', mode);
+    params.append('num_requests', numRequests);
+    params.append('concurrency', concurrency);
+    const response = await api.post(`/api/instances/${instanceId}/run-profiling?${params.toString()}`);
+    return response.data;
+  },
+
   retryDeploymentJob: async (jobId) => {
     const response = await api.post(`/api/instances/jobs/${jobId}/retry`);
     return response.data;

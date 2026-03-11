@@ -1227,6 +1227,18 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
   const [jobsLoading, setJobsLoading] = useState(false);
   const [queueStats, setQueueStats] = useState(null);
   const [metricView, setMetricView] = useState('enterprise'); // 'enterprise' | 'infra'
+  const [activityLog, setActivityLog] = useState([]);
+  const [profilingResult, setProfilingResult] = useState(null);
+  const [profilingResultRunId, setProfilingResultRunId] = useState(null);
+  const [kernelRunLoading, setKernelRunLoading] = useState(false);
+
+  const appendLog = useCallback((level, msg) => {
+    const ts = new Date().toLocaleTimeString();
+    setActivityLog((prev) => {
+      const next = [{ ts, level, msg }, ...prev];
+      return next.slice(0, 100);
+    });
+  }, []);
 
   // Metric visibility toggles with localStorage persistence
   const [metricToggles, setMetricToggles] = useState(() => {
@@ -1617,7 +1629,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
       if (!runId || fallbackPollRef.current) {
         return;
       }
-
+      appendLog('warn', reason);
       setError(reason);
 
       const pollOnce = async () => {
@@ -1636,7 +1648,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
       await pollOnce();
       fallbackPollRef.current = setInterval(pollOnce, 5000);
     },
-    [enqueueRealtimeSamples]
+    [appendLog, enqueueRealtimeSamples]
   );
 
   const connectWebSocket = useCallback(
@@ -1658,6 +1670,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
         websocketRef.current = socket;
 
         socket.onopen = () => {
+          appendLog('info', `WebSocket connected to live telemetry stream (run ${runId.substring(0, 8)}...)`);
           setMonitoringState('running');
           setMessage(`Connected to live telemetry stream for run ${runId.substring(0, 8)}...`);
           setHasProfilingData(false); // Reset when connecting
@@ -1812,7 +1825,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
         );
       }
     },
-    [enqueueRealtimeSamples, startPollingFallback, monitoringState, activeRun, enableProfiling, agentStatus]
+    [appendLog, enqueueRealtimeSamples, startPollingFallback, monitoringState, activeRun, enableProfiling, agentStatus]
   );
 
   useEffect(() => {
@@ -1849,11 +1862,13 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           if (status.status === 'running') {
             setMonitoringState('running');
             setMessage('Monitoring stack is running');
+            appendLog('info', 'Deployment complete. Connecting to live telemetry stream...');
             stopDeploymentPolling();
             connectWebSocket(runId);
           } else if (status.status === 'failed') {
             setMonitoringState('failed');
             setError(status.message || 'Deployment failed');
+            appendLog('error', `Deployment failed: ${status.message || 'Unknown'}`);
             stopDeploymentPolling();
           }
         } catch (err) {
@@ -1861,15 +1876,17 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
         }
       }, 5000);
     },
-    [connectWebSocket, stopDeploymentPolling]
+    [appendLog, connectWebSocket, stopDeploymentPolling]
   );
 
   const handleStartMonitoring = useCallback(async () => {
     setError('');
     setMessage('');
+    appendLog('info', 'Creating run and starting monitoring...');
 
     if (!instanceId) {
       setError('Select an instance before starting telemetry.');
+      appendLog('error', 'Select an instance before starting.');
       return;
     }
 
@@ -1896,13 +1913,17 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
       notes: instance?.notes || null,
     };
 
+    setProfilingResult(null);
+    setProfilingResultRunId(null);
     setMonitoringState('creating');
+    appendLog('info', 'Creating telemetry run...');
     try {
       const run = await apiService.createTelemetryRun(runPayload);
       setActiveRun(run);
       setRealtimeChart({ data: [], gpuIds: [] });
       setMonitoringState('deploying');
       setMessage('Deploying monitoring stack...');
+      appendLog('info', 'Deploying monitoring stack (this may take ~60s)...');
 
       const deployment = await apiService.deployTelemetryStack(instanceId, {
         run_id: run.run_id,
@@ -1918,10 +1939,12 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
       fetchRuns(instanceId);
     } catch (err) {
       console.error('Failed to start telemetry monitoring', err);
+      appendLog('error', `Start failed: ${err?.response?.data?.detail || err?.message || 'Unknown error'}`);
       setMonitoringState('idle');
       setError(err?.response?.data?.detail || err?.message || 'Failed to start telemetry');
     }
   }, [
+    appendLog,
     instanceId,
     sshHost,
     sshUser,
@@ -1952,6 +1975,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
   const handleStopMonitoring = useCallback(async () => {
     if (!activeRun) return;
     setMonitoringState('stopping');
+    appendLog('info', 'Stopping monitoring and tearing down stack...');
     setError('');
     setMessage('');
     try {
@@ -1961,8 +1985,20 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
         end_time: new Date().toISOString(),
       });
       setMessage('Monitoring stopped. Run marked as completed.');
+      appendLog('info', 'Monitoring stopped. Run marked as completed.');
+      const runId = activeRun.run_id;
+      try {
+        const profile = await apiService.getTelemetryRunProfile(runId);
+        setProfilingResult(profile);
+        setProfilingResultRunId(runId);
+        appendLog('info', 'Loaded run profile (workload/kernel/bottleneck).');
+      } catch (profileErr) {
+        setProfilingResult(null);
+        setProfilingResultRunId(null);
+      }
     } catch (err) {
       console.error('Failed to stop telemetry', err);
+      appendLog('error', `Stop failed: ${err?.response?.data?.detail || err?.message || 'Unknown error'}`);
       setError(err?.response?.data?.detail || err?.message || 'Failed to stop telemetry');
     } finally {
       setMonitoringState('idle');
@@ -1982,11 +2018,38 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
       }
       fetchRuns();
     }
-  }, [activeRun, teardownMonitoringStack, fetchRuns]);
+  }, [activeRun, appendLog, teardownMonitoringStack, fetchRuns]);
 
   const handleRefreshRuns = useCallback(() => {
     fetchRuns();
   }, [fetchRuns]);
+
+  const handleRunKernelAnalysis = useCallback(async () => {
+    if (!instanceId || !profilingResultRunId) return;
+    setKernelRunLoading(true);
+    appendLog('info', 'Starting kernel analysis run (this may take a few minutes)...');
+    setError('');
+    try {
+      const result = await apiService.runProfiling(instanceId, profilingResultRunId, 'kernel', 20, 4);
+      appendLog(
+        result.status === 'completed' ? 'info' : 'error',
+        `Kernel analysis ${result.status}: exit_code=${result.exit_code || '?'}`
+      );
+      if (result.status === 'completed') {
+        const profile = await apiService.getTelemetryRunProfile(profilingResultRunId);
+        setProfilingResult(profile);
+        appendLog('info', 'Refreshed run profile with kernel breakdown.');
+      } else {
+        setError(result.output_tail || `Kernel analysis failed (exit ${result.exit_code})`);
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err?.message || 'Kernel analysis failed';
+      appendLog('error', msg);
+      setError(msg);
+    } finally {
+      setKernelRunLoading(false);
+    }
+  }, [instanceId, profilingResultRunId, appendLog]);
 
   const selectHistoricalRun = useCallback(
     async (run) => {
@@ -2287,6 +2350,64 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
               Refresh Runs
             </Button>
           </CardActions>
+          {activityLog.length > 0 && (
+            <Box
+              sx={{
+                px: 2,
+                pb: 2,
+                maxHeight: 150,
+                overflow: 'auto',
+                fontFamily: 'monospace',
+                fontSize: '0.75rem',
+                bgcolor: (t) => alpha(t.palette.background.default, 0.5),
+                borderRadius: 1,
+                border: (t) => `1px solid ${t.palette.divider}`,
+              }}
+            >
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                Activity log
+              </Typography>
+              {activityLog.slice(0, 10).map((entry, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    display: 'flex',
+                    gap: 1,
+                    alignItems: 'center',
+                    py: 0.25,
+                  }}
+                >
+                  <Chip
+                    label={entry.level}
+                    size="small"
+                    sx={{
+                      width: 48,
+                      height: 18,
+                      fontSize: '0.65rem',
+                      bgcolor:
+                        entry.level === 'error'
+                          ? (t) => alpha(t.palette.error.main, 0.2)
+                          : entry.level === 'warn'
+                          ? (t) => alpha(t.palette.warning.main, 0.2)
+                          : (t) => alpha(t.palette.info.main, 0.2),
+                      color:
+                        entry.level === 'error'
+                          ? 'error.main'
+                          : entry.level === 'warn'
+                          ? 'warning.main'
+                          : 'info.main',
+                    }}
+                  />
+                  <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                    {entry.ts}
+                  </Typography>
+                  <Typography component="span" sx={{ fontSize: '0.75rem', wordBreak: 'break-word' }}>
+                    {entry.msg}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
         </Card>
 
         {message && <Alert severity="success">{message}</Alert>}
@@ -2298,6 +2419,99 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
             {deploymentStatus?.status ? ` • Status: ${deploymentStatus.status}` : ''}
             {deploymentStatus?.message ? ` • ${deploymentStatus.message}` : ''}
           </Alert>
+        )}
+
+        {/* Run Summary - workload, bottleneck, kernel, GPU aggregates */}
+        {profilingResult && (
+          <Card variant="outlined" sx={{ mb: 2 }}>
+            <CardHeader
+              title="Run Summary"
+              subheader={profilingResultRunId ? `Run ${profilingResultRunId.substring(0, 8)}...` : null}
+              action={
+                instanceId && profilingResultRunId && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleRunKernelAnalysis}
+                    disabled={kernelRunLoading}
+                    startIcon={kernelRunLoading ? <CircularProgress size={14} /> : null}
+                  >
+                    {kernelRunLoading ? 'Running...' : 'Run Kernel Analysis'}
+                  </Button>
+                )
+              }
+            />
+            <CardContent>
+              <Grid container spacing={2}>
+                {profilingResult.workload && (
+                  <>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" color="text.secondary">TTFT P50</Typography>
+                      <Typography variant="h6">{profilingResult.workload.ttft_p50_ms != null ? Number(profilingResult.workload.ttft_p50_ms).toFixed(2) : '-'} ms</Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" color="text.secondary">TTFT P95</Typography>
+                      <Typography variant="h6">{profilingResult.workload.ttft_p95_ms != null ? Number(profilingResult.workload.ttft_p95_ms).toFixed(2) : '-'} ms</Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Throughput</Typography>
+                      <Typography variant="h6">{profilingResult.workload.throughput_tok_sec != null ? Number(profilingResult.workload.throughput_tok_sec).toFixed(1) : '-'} tok/s</Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Success rate</Typography>
+                      <Typography variant="h6">
+                        {profilingResult.workload.num_requests > 0
+                          ? `${Math.round((profilingResult.workload.successful_requests / profilingResult.workload.num_requests) * 100)}%`
+                          : '-'}
+                      </Typography>
+                    </Grid>
+                  </>
+                )}
+                {profilingResult.bottleneck && (
+                  <Grid item xs={12}>
+                    <Typography variant="caption" color="text.secondary">Bottleneck: </Typography>
+                    <Chip label={profilingResult.bottleneck.primary_bottleneck || 'unknown'} size="small" sx={{ ml: 0.5 }} />
+                    {profilingResult.bottleneck.mfu_pct != null && (
+                      <Typography component="span" variant="body2" sx={{ ml: 1 }}>
+                        MFU: {Number(profilingResult.bottleneck.mfu_pct).toFixed(1)}%
+                      </Typography>
+                    )}
+                  </Grid>
+                )}
+                {profilingResult.gpu && (
+                  <Grid item xs={12}>
+                    <Typography variant="caption" color="text.secondary">GPU aggregates: </Typography>
+                    <Typography component="span" variant="body2">
+                      util {profilingResult.gpu.util_mean_pct != null ? Number(profilingResult.gpu.util_mean_pct).toFixed(1) : '-'}% |
+                      SM active {profilingResult.gpu.sm_active_mean_pct != null ? Number(profilingResult.gpu.sm_active_mean_pct).toFixed(1) : '-'}% |
+                      power {profilingResult.gpu.power_mean_w != null ? Number(profilingResult.gpu.power_mean_w).toFixed(0) : '-'} W |
+                      temp {profilingResult.gpu.temp_mean_c != null ? Number(profilingResult.gpu.temp_mean_c).toFixed(0) : '-'} °C
+                    </Typography>
+                  </Grid>
+                )}
+                {Array.isArray(profilingResult.kernel_profiles) && profilingResult.kernel_profiles.length > 0 && profilingResult.kernel_profiles[0].categories?.length > 0 && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Kernel breakdown</Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {profilingResult.kernel_profiles[0].categories.map((c, i) => (
+                        <Chip key={i} label={`${c.category}: ${Number(c.pct).toFixed(1)}%`} size="small" variant="outlined" />
+                      ))}
+                    </Box>
+                  </Grid>
+                )}
+                {Array.isArray(profilingResult.bottleneck?.recommendations) && profilingResult.bottleneck.recommendations.length > 0 && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Recommendations</Typography>
+                    <Stack spacing={0.25}>
+                      {profilingResult.bottleneck.recommendations.map((r, i) => (
+                        <Typography key={i} variant="body2">• {r}</Typography>
+                      ))}
+                    </Stack>
+                  </Grid>
+                )}
+              </Grid>
+            </CardContent>
+          </Card>
         )}
 
         <Divider />

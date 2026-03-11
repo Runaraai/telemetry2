@@ -27,12 +27,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 CONFIG_PATH = Path.home() / ".runara" / "config"
 ENV_TOKEN = "RUNARA_TOKEN"
@@ -322,6 +325,10 @@ def _transform_agent_json_to_profile_payload(data: dict) -> dict:
             "total_input_tokens": w.get("total_input_tokens"),
             "total_output_tokens": w.get("total_output_tokens"),
         }
+        logger.info("Mapped workload section: num_requests=%s, throughput_tok_sec=%s",
+                    payload["workload"].get("num_requests"), payload["workload"].get("throughput_tok_sec"))
+    else:
+        logger.warning("Agent JSON missing workload section")
 
     # Kernel profile
     k = data.get("kernel")
@@ -342,6 +349,10 @@ def _transform_agent_json_to_profile_payload(data: dict) -> dict:
             "trace_source": k.get("trace_source"),
             "categories": categories,
         }
+        logger.info("Mapped kernel section: total_cuda_ms=%s, categories=%d",
+                    k.get("total_cuda_ms"), len(categories))
+    else:
+        logger.debug("Agent JSON missing kernel section")
 
     # Bottleneck analysis
     b = data.get("bottleneck")
@@ -362,6 +373,22 @@ def _transform_agent_json_to_profile_payload(data: dict) -> dict:
             "peak_tflops_bf16": gpu.get("theoretical_tflops_bf16"),
             "recommendations": b.get("recommendations"),
         }
+        logger.info("Mapped bottleneck section: primary=%s, mfu_pct=%s",
+                    payload["bottleneck"].get("primary_bottleneck"),
+                    payload["bottleneck"].get("mfu_pct"))
+    else:
+        logger.warning("Agent JSON missing bottleneck section")
+
+    # GPU aggregates and time series (full section for backend)
+    gpu_section = data.get("gpu")
+    if gpu_section:
+        payload["gpu"] = gpu_section
+        samples = gpu_section.get("samples", 0)
+        util = gpu_section.get("util_mean_pct")
+        logger.info("Mapped GPU section: samples=%s, util_mean_pct=%s",
+                    samples, util)
+    else:
+        logger.warning("Agent JSON missing GPU section - no aggregates/time_series will be stored")
 
     # Run metadata (passed through as-is)
     rm = data.get("run_metadata")

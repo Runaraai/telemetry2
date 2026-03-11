@@ -768,6 +768,7 @@ class RunDetailFull(RunDetail):
     workload: Optional[WorkloadMetricsRead] = None
     kernel_profiles: Optional[List[KernelProfileRead]] = None
     bottleneck: Optional[BottleneckAnalysisRead] = None
+    gpu: Optional[Dict[str, Any]] = None
 
 
 # Authentication schemas

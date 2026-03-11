@@ -93,14 +93,21 @@ async def upload_profile(
     x_ingest_token: str | None = Header(None, alias="X-Ingest-Token"),
     x_api_key: str | None = Header(None, alias="X-API-Key"),
 ) -> ProfileUploadResponse:
-    """Upload profiling results (workload, kernel, bottleneck) for a run.
+    """Upload profiling results (workload, kernel, bottleneck, gpu) for a run.
 
     Authenticates via X-Ingest-Token (from run creation) or X-API-Key
     (provisioning API key).
 
     This endpoint accepts the same JSON structure that agent.py produces.
     """
-    run = await _verify_run_access(run_id, session, x_ingest_token, x_api_key)
+    logger.info("Profile upload received for run %s", run_id)
+    try:
+        run = await _verify_run_access(run_id, session, x_ingest_token, x_api_key)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to verify run access for %s: %s", run_id, exc, exc_info=True)
+        raise
 
     response = ProfileUploadResponse(run_id=run_id)
 
@@ -160,13 +167,24 @@ async def upload_profile(
             run.gpu_model = gpu_name[:50]
         if gpu_count and not run.gpu_count:
             run.gpu_count = gpu_count
+        logger.debug("Run metadata applied: gpu_model=%s gpu_count=%s", run.gpu_model, run.gpu_count)
+
+    # Store GPU aggregates and time series from agent
+    if payload.gpu:
+        run.gpu_summary = payload.gpu
+        gpu_samples = payload.gpu.get("samples", 0)
+        logger.debug("GPU section stored: samples=%s util_mean_pct=%s",
+                     gpu_samples, payload.gpu.get("util_mean_pct"))
+    else:
+        logger.debug("No GPU section in payload")
 
     logger.info(
-        "Profile uploaded for run %s: workload=%s kernel=%s bottleneck=%s",
+        "Profile uploaded for run %s: workload=%s kernel=%s bottleneck=%s gpu=%s",
         run_id,
         response.workload_stored,
         response.kernel_stored,
         response.bottleneck_stored,
+        bool(payload.gpu),
     )
     return response
 
@@ -176,7 +194,8 @@ async def get_run_profile(
     run_id: UUID,
     session: AsyncSession = Depends(_get_session),
 ) -> RunDetailFull:
-    """Get full run detail including profiling data (workload, kernel, bottleneck)."""
+    """Get full run detail including profiling data (workload, kernel, bottleneck, gpu)."""
+    logger.debug("Fetching run profile for %s", run_id)
     from ..models import RunSummary
     stmt = select(Run).where(Run.run_id == run_id).options(selectinload(Run.summary))
     result = await session.execute(stmt)
@@ -217,6 +236,9 @@ async def get_run_profile(
     # Load bottleneck analysis
     bottleneck = await session.get(BottleneckAnalysis, run_id)
 
+    # GPU summary from agent upload (stored in run.gpu_summary)
+    gpu_data: Dict[str, Any] | None = getattr(run, "gpu_summary", None)
+
     return RunDetailFull(
         run_id=run.run_id,
         instance_id=run.instance_id,
@@ -233,4 +255,5 @@ async def get_run_profile(
         workload=workload,
         kernel_profiles=kernel_profiles if kernel_profiles else None,
         bottleneck=bottleneck,
+        gpu=gpu_data,
     )

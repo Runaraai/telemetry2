@@ -17,6 +17,7 @@ Architecture:
 from __future__ import annotations
 
 import asyncio
+import logging
 import threading
 import time
 from dataclasses import dataclass, field
@@ -25,6 +26,8 @@ from typing import Optional
 from .gpu.base      import GpuBackend, GpuSample
 from .kernel.base   import KernelBackend, KernelStats
 from .workload.base import WorkloadBackend, WorkloadStats, RequestResult
+
+logger = logging.getLogger(__name__)
 
 
 # ── GPU polling thread ────────────────────────────────────────────────────────
@@ -38,6 +41,7 @@ class _GpuPoller(threading.Thread):
         self.interval_s = interval_s
         self.samples: list[GpuSample] = []
         self._stop_evt  = threading.Event()
+        self._error_count: int = 0
 
     def run(self) -> None:
         while not self._stop_evt.is_set():
@@ -45,13 +49,16 @@ class _GpuPoller(threading.Thread):
                 sample = self.backend.collect()
                 if sample is not None:
                     self.samples.append(sample)
-            except Exception:
-                pass
+            except Exception as exc:
+                self._error_count += 1
+                if self._error_count <= 5:
+                    logger.warning("[gpu-poller] collection error: %s", exc)
             self._stop_evt.wait(self.interval_s)
 
     def stop(self) -> list[GpuSample]:
         self._stop_evt.set()
         self.join(timeout=5.0)
+        logger.info("[gpu-poller] collected %d samples (%d errors)", len(self.samples), self._error_count)
         return self.samples
 
 
