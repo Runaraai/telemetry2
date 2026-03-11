@@ -47,7 +47,29 @@ The app is typically deployed to:
 
 Backend runs as a systemd service (`omniference-backend`). Nginx serves the frontend and proxies `/api/` and `/ws/` to the backend.
 
-## Quick Deploy (using deploy script)
+## Quick Deploy: Git (recommended)
+
+Avoid SCP timeouts by using Git:
+
+```bash
+# 1. Push from local
+git add -A
+git commit -m "Deploy updates"
+git push origin main
+
+# 2. Pull on server and rebuild
+ssh -i omniference-key.pem ec2-user@3.19.87.64 "
+  cd /opt/omniference/app
+  git pull
+  cd frontend && npm install --legacy-peer-deps && npm run build
+  sudo systemctl restart omniference-backend
+  sudo systemctl reload nginx
+"
+```
+
+Or use the script: `./scripts/deploy-via-git.sh` (push + pull + rebuild in one go).
+
+## Quick Deploy: SCP (using deploy script)
 
 ```bash
 # From project root
