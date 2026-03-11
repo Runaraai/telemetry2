@@ -38,9 +38,12 @@ venv.bak/
 .env.test.local
 .env.production.local
 
-# IDE
+# IDE and scratch/notes (may contain tokens or secrets)
 .vscode/
 .cursor/
+Untitled*.md
+*-notes.md
+*scratch*
 
 # Local/private keys (never commit)
 nebius-sa
