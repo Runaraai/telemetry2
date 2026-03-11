@@ -375,6 +375,11 @@ const Benchmarking = () => {
   // Persisted workflow completion state from backend (setup_completed_at, etc.)
   const [persistedWorkflowState, setPersistedWorkflowState] = useState(null);
 
+  // Phase "complete" = runtime status completed OR persisted state shows it was done (unlocks later phases without re-running)
+  const setupComplete = workflowSetupStatus.status === 'completed' || workflowSetupStatus.status === 'reboot_required' || !!persistedWorkflowState?.setup_completed_at;
+  const checkComplete = workflowCheckStatus.status === 'completed' || !!persistedWorkflowState?.check_completed_at;
+  const deployComplete = workflowDeployStatus.status === 'completed' || !!persistedWorkflowState?.vllm_deployed_at;
+
   // Load saved connections on mount
   useEffect(() => {
     apiService.listConnections().then(setSavedConnections).catch(() => {});
@@ -1867,7 +1872,7 @@ const Benchmarking = () => {
                         </Box>
                       </Stack>
 
-                      {workflowSetupStatus.status !== 'completed' && (
+                      {!setupComplete && (
                         <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
                           <Typography variant="body2">
                             <strong>Prerequisite:</strong> Phase 1 (Setup) must be completed first.
@@ -1951,7 +1956,7 @@ const Benchmarking = () => {
                             appendWorkflowEvent('check', 'error', e.response?.data?.detail || e.message);
                       }
                     }}
-                        disabled={workflowCheckStatus.loading || !rwSshHost || !rwSshKey || workflowSetupStatus.status !== 'completed'}
+                        disabled={workflowCheckStatus.loading || !rwSshHost || !rwSshKey || !setupComplete}
                         sx={{ borderRadius: 2, minWidth: 140 }}
                   >
                         {workflowCheckStatus.loading ? 'Running...' : 'Run Check'}
@@ -2104,7 +2109,7 @@ const Benchmarking = () => {
                         </Box>
                       </Stack>
 
-                      {workflowCheckStatus.status !== 'completed' && (
+                      {!checkComplete && (
                         <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
                           <Typography variant="body2">
                             <strong>Prerequisite:</strong> Phase 2 (Check) must be completed first.
@@ -2198,7 +2203,7 @@ const Benchmarking = () => {
                             appendWorkflowEvent('deploy', 'error', e.response?.data?.detail || e.message);
                       }
                     }}
-                        disabled={workflowDeployStatus.loading || !rwSshHost || !rwSshKey || workflowCheckStatus.status !== 'completed'}
+                        disabled={workflowDeployStatus.loading || !rwSshHost || !rwSshKey || !checkComplete}
                         sx={{ borderRadius: 2, minWidth: 140 }}
                   >
                         {workflowDeployStatus.loading ? 'Running...' : 'Run Deploy'}
@@ -2341,7 +2346,7 @@ const Benchmarking = () => {
                     </Box>
                       </Stack>
 
-                      {workflowDeployStatus.status !== 'completed' && (
+                      {!deployComplete && (
                         <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
                           <Typography variant="body2">
                             <strong>Prerequisite:</strong> Phase 3 (Deploy) must be completed first.
@@ -2575,7 +2580,7 @@ const Benchmarking = () => {
                             appendWorkflowEvent('benchmark', 'error', e.response?.data?.detail || e.message);
                     }
                   }}
-                        disabled={workflowBenchmarkStatus.loading || !rwSshHost || !rwSshKey || workflowDeployStatus.status !== 'completed'}
+                        disabled={workflowBenchmarkStatus.loading || !rwSshHost || !rwSshKey || !deployComplete}
                         sx={{ borderRadius: 2, minWidth: 140 }}
                       >
                         {workflowBenchmarkStatus.loading ? 'Running...' : 'Run Benchmark'}
@@ -2724,7 +2729,7 @@ const Benchmarking = () => {
                             appendWorkflowEvent('kernel_profile', 'error', e.response?.data?.detail || e.message);
                           }
                         }}
-                        disabled={workflowKernelStatus.loading || !rwSshHost || !rwSshKey || workflowDeployStatus.status !== 'completed'}
+                        disabled={workflowKernelStatus.loading || !rwSshHost || !rwSshKey || !deployComplete}
                         sx={{ borderRadius: 2, minWidth: 160 }}
                       >
                         {workflowKernelStatus.loading ? 'Profiling...' : 'Run Kernel Profile'}
