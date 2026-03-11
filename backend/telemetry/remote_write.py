@@ -186,6 +186,16 @@ _FIELD_MAPPINGS: Mapping[str, _FieldMapping] = {
     "ttft_p95_ms": _FieldMapping("ttft_p95_ms", lambda v: v),
     "cost_per_watt": _FieldMapping("cost_per_watt", lambda v: v),
     "performance_per_watt": _FieldMapping("cost_per_watt", lambda v: v),
+    # vLLM built-in /metrics endpoint (scraped directly by Prometheus at 5s intervals)
+    # Throughput gauges — directly displayable, no PromQL rate() needed
+    "vllm:avg_generation_throughput_toks_per_s": _FieldMapping("tokens_per_second", lambda v: v),
+    "vllm:avg_prompt_throughput_toks_per_s": _FieldMapping("prompt_tokens_per_second", lambda v: v),
+    # Running/waiting request counts (queue depth)
+    "vllm:num_requests_running": _FieldMapping("vllm_requests_running", lambda v: v),
+    "vllm:num_requests_waiting": _FieldMapping("vllm_requests_waiting", lambda v: v),
+    # KV-cache utilization (0-1 ratio, converted to percentage)
+    "vllm:gpu_cache_usage_perc": _FieldMapping("vllm_gpu_cache_usage", lambda v: v * 100.0),
+    "vllm:cpu_cache_usage_perc": _FieldMapping("vllm_cpu_cache_usage", lambda v: v * 100.0),
 }
 
 _GPU_LABEL_CANDIDATES: Tuple[str, ...] = ("gpu", "GPU", "gpu_id", "index")
@@ -270,14 +280,17 @@ def parse_remote_write(body: bytes, *, content_encoding: Optional[str] = None) -
         # Token metrics don't have GPU labels - assign to GPU 0 for consistency
         # This allows application-level metrics to be stored alongside GPU metrics
         if gpu_id is None:
-            # Check if this is a token metric (application-level, not GPU-specific)
+            # Check if this is a token/vLLM metric (application-level, not GPU-specific)
             token_metrics = (
-                "tokens_per_second", "token_throughput_per_second", 
-                "token_total_generated", "inference_requests_per_second", 
-                "inference_total_requests", "ttft_p50_ms", "ttft_p95_ms", 
-                "cost_per_watt", "performance_per_watt"
+                "tokens_per_second", "token_throughput_per_second",
+                "token_total_generated", "inference_requests_per_second",
+                "inference_total_requests", "ttft_p50_ms", "ttft_p95_ms",
+                "cost_per_watt", "performance_per_watt",
+                # vLLM metric mapped field names
+                "prompt_tokens_per_second", "vllm_requests_running",
+                "vllm_requests_waiting", "vllm_gpu_cache_usage", "vllm_cpu_cache_usage",
             )
-            if metric_name in token_metrics:
+            if metric_name in token_metrics or mapping.field in token_metrics:
                 gpu_id = 0  # Assign to GPU 0 for application-level metrics
             else:
                 continue  # Skip metrics without GPU ID that aren't token metrics
@@ -411,12 +424,18 @@ def _build_sample(gpu_id: int, time: datetime, metrics: Mapping[str, float]) -> 
         # Additional metrics
         "fan_speed_percent": metrics.get("fan_speed_percent"),
         "pstate": metrics.get("pstate"),
-        # Application-level token metrics
+        # Application-level token metrics (from token exporter or vLLM /metrics)
         "tokens_per_second": metrics.get("tokens_per_second"),
         "requests_per_second": metrics.get("requests_per_second"),
         "ttft_p50_ms": metrics.get("ttft_p50_ms"),
         "ttft_p95_ms": metrics.get("ttft_p95_ms"),
         "cost_per_watt": metrics.get("cost_per_watt"),
+        # vLLM-specific metrics (live inference state)
+        "prompt_tokens_per_second": metrics.get("prompt_tokens_per_second"),
+        "vllm_requests_running": metrics.get("vllm_requests_running"),
+        "vllm_requests_waiting": metrics.get("vllm_requests_waiting"),
+        "vllm_gpu_cache_usage": metrics.get("vllm_gpu_cache_usage"),
+        "vllm_cpu_cache_usage": metrics.get("vllm_cpu_cache_usage"),
     }
 
     memory_used = sample_kwargs["memory_used_mb"]

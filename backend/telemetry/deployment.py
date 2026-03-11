@@ -823,6 +823,21 @@ volumes:
                       run_id: '{request.run_id}'
 
 """
+
+        # vLLM metrics scrape — added when vLLM is detected as running on port 8000.
+        # host.docker.internal resolves to the host from within Docker containers.
+        # This is optional/non-fatal: if vLLM is not running the job will produce no data.
+        vllm_scrape = f"""              - job_name: 'vllm'
+                static_configs:
+                  - targets: ['host.docker.internal:8000']
+                    labels:
+                      exporter: 'vllm'
+                      run_id: '{request.run_id}'
+                metrics_path: '/metrics'
+                scrape_interval: 5s
+                scrape_timeout: 4s
+
+"""
         
         # Build remote_write headers
         remote_write_headers = f"                  X-Run-ID: '{request.run_id}'"
@@ -857,6 +872,7 @@ volumes:
                       exporter: 'tokens'
                       run_id: '{request.run_id}'
 
+{vllm_scrape}
             remote_write:
               - url: '{request.backend_url.rstrip('/')}/api/telemetry/remote-write'
                 headers:

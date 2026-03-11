@@ -405,6 +405,18 @@ class TelemetryRepository:
                     "retired_pages_sbe": sample.retired_pages_sbe or 0,
                     "retired_pages_dbe": sample.retired_pages_dbe or 0,
                     "retired_pages_pending": sample.retired_pages_pending or 0,
+                    # Application-level token metrics (token exporter + vLLM /metrics)
+                    "tokens_per_second": sample.tokens_per_second,
+                    "requests_per_second": sample.requests_per_second,
+                    "ttft_p50_ms": sample.ttft_p50_ms,
+                    "ttft_p95_ms": sample.ttft_p95_ms,
+                    "cost_per_watt": sample.cost_per_watt,
+                    # vLLM live inference metrics
+                    "prompt_tokens_per_second": sample.prompt_tokens_per_second,
+                    "vllm_requests_running": sample.vllm_requests_running,
+                    "vllm_requests_waiting": sample.vllm_requests_waiting,
+                    "vllm_gpu_cache_usage": sample.vllm_gpu_cache_usage,
+                    "vllm_cpu_cache_usage": sample.vllm_cpu_cache_usage,
                 }
                 for sample in chunk
             ]

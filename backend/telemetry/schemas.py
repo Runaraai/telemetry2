@@ -189,6 +189,12 @@ class MetricSample(BaseModel):
     ttft_p50_ms: Optional[float] = None
     ttft_p95_ms: Optional[float] = None
     cost_per_watt: Optional[float] = None
+    # vLLM live inference metrics (from vLLM /metrics endpoint scraped by Prometheus)
+    prompt_tokens_per_second: Optional[float] = None
+    vllm_requests_running: Optional[float] = None
+    vllm_requests_waiting: Optional[float] = None
+    vllm_gpu_cache_usage: Optional[float] = None
+    vllm_cpu_cache_usage: Optional[float] = None
 
     @field_validator("time", mode="before")
     def validate_time(cls, value: datetime) -> datetime:  # noqa: D417,E0213

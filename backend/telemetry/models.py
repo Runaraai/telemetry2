@@ -167,6 +167,19 @@ class GpuMetric(Base):
     retired_pages_dbe: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     retired_pages_pending: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
+    # Application-level token metrics (from token exporter or vLLM /metrics)
+    tokens_per_second: Mapped[Optional[float]] = mapped_column(Float)
+    requests_per_second: Mapped[Optional[float]] = mapped_column(Float)
+    ttft_p50_ms: Mapped[Optional[float]] = mapped_column(Float)
+    ttft_p95_ms: Mapped[Optional[float]] = mapped_column(Float)
+    cost_per_watt: Mapped[Optional[float]] = mapped_column(Float)
+    # vLLM live inference metrics
+    prompt_tokens_per_second: Mapped[Optional[float]] = mapped_column(Float)
+    vllm_requests_running: Mapped[Optional[float]] = mapped_column(Float)
+    vllm_requests_waiting: Mapped[Optional[float]] = mapped_column(Float)
+    vllm_gpu_cache_usage: Mapped[Optional[float]] = mapped_column(Float)
+    vllm_cpu_cache_usage: Mapped[Optional[float]] = mapped_column(Float)
+
     run: Mapped[Run] = relationship(back_populates="metrics")
 
 

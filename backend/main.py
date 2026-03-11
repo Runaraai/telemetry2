@@ -102,8 +102,33 @@ DEFAULT_PEM_FILE = os.path.expanduser("../madhur.pem")
 DEFAULT_IP = "170.9.235.16"
 DEFAULT_USERNAME = "ubuntu"
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# ── Structured Logging ───────────────────────────────────────────────────────
+# Log level convention used across this codebase:
+#   DEBUG   - verbose internal state (disabled in production)
+#   INFO    - normal lifecycle events (task start, task end, metric counts)
+#   WARNING - recoverable unexpected conditions
+#   ERROR   - failed operations that need attention
+#
+# Message prefix convention:
+#   [USER]  - actions initiated by a user (visible in activity log)
+#   [SYS]   - internal system events (infra, migrations, background jobs)
+#   [METRIC] - telemetry/data ingestion events
+#   [SSH]   - SSH / remote execution events
+#   [DEPLOY] - deployment pipeline events
+#   [BENCH] - benchmarking / profiling events
+
+_LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s | %(message)s"
+_LOG_DATE_FMT = "%Y-%m-%d %H:%M:%S"
+
+logging.basicConfig(
+    level=logging.INFO,
+    format=_LOG_FORMAT,
+    datefmt=_LOG_DATE_FMT,
+)
+# Silence noisy third-party loggers
+for _noisy in ("paramiko", "httpx", "httpcore", "urllib3", "multipart"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 # --- Safe LLM call with retries and exponential backoff (using OpenRouter) ---
@@ -738,12 +763,82 @@ else:
     )
 
 
+# ── Global Exception Handler ─────────────────────────────────────────────────
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    detail = translate_error(str(exc.detail)) if exc.detail else "An unexpected error occurred."
+    logger.error("[SYS] HTTP %s on %s: %s", exc.status_code, request.url.path, exc.detail)
+    return JSONResponse(status_code=exc.status_code, content={"detail": detail, "raw": str(exc.detail)})
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    raw = str(exc)
+    detail = translate_error(raw)
+    logger.error("[SYS] Unhandled error on %s: %s", request.url.path, raw, exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": detail, "raw": raw})
+
+
+# ── User-Friendly Error Translation ──────────────────────────────────────────
+# Maps internal error substrings to user-readable messages.
+# Checked in order — first match wins.
+
+USER_FRIENDLY_ERRORS: List[Tuple[str, str]] = [
+    ("No active deployment found", "Start GPU monitoring before running a benchmark."),
+    ("Run not found", "The monitoring session expired. Start a new session."),
+    ("docker: command not found", "Docker is not installed on this instance. Run the Setup step first."),
+    ("docker: Cannot connect", "Docker daemon is not running. SSH in and run: sudo systemctl start docker"),
+    ("Connection refused", "Cannot reach the instance. Check that it's running and the IP address is correct."),
+    ("Authentication failed", "SSH authentication failed. Check your SSH key."),
+    ("No route to host", "Cannot connect to the instance. Check that the IP address is correct."),
+    ("Timeout", "Operation timed out. The instance may be overloaded or unreachable."),
+    ("Permission denied", "Permission denied. Check SSH key and sudo configuration."),
+    ("CUDA out of memory", "GPU ran out of memory. Try a smaller model or reduce batch size."),
+    ("model not found", "Model not found on the instance. Run the Setup step to download it."),
+    ("vllm server is not running", "vLLM inference server is not running. Use Deploy Inference to start it."),
+    ("No module named", "Python dependency missing on the instance. Run the Setup step first."),
+    ("401", "Authentication required. Please log in again."),
+    ("403", "Permission denied. You don't have access to this resource."),
+    ("404", "Resource not found. It may have been deleted or the ID is wrong."),
+]
+
+
+def translate_error(detail: str) -> str:
+    """Translate a raw error detail string to a user-friendly message."""
+    for substring, friendly in USER_FRIENDLY_ERRORS:
+        if substring.lower() in detail.lower():
+            return friendly
+    return detail
+
+
+def _cleanup_old_workflow_logs(max_age_days: int = 7) -> None:
+    """Delete workflow log directories older than max_age_days to prevent unbounded growth."""
+    logs_root = os.path.join(os.path.dirname(__file__), "logs")
+    if not os.path.isdir(logs_root):
+        return
+    cutoff = time.time() - max_age_days * 86400
+    deleted = 0
+    for entry in os.scandir(logs_root):
+        if entry.is_dir() and entry.stat().st_mtime < cutoff:
+            try:
+                shutil.rmtree(entry.path)
+                deleted += 1
+            except Exception as e:
+                logger.warning("Failed to delete old log dir %s: %s", entry.path, e)
+    if deleted:
+        logger.info("[USER] Cleaned up %d workflow log directories older than %d days", deleted, max_age_days)
+
+
 @app.on_event("startup")
 async def startup_telemetry() -> None:
     await init_telemetry()
     # Start deployment worker
     from telemetry.services.deployment_worker import deployment_worker
     await deployment_worker.start()
+    # Clean up old workflow logs (older than 7 days) on startup
+    _cleanup_old_workflow_logs()
 
 
 @app.on_event("shutdown")
@@ -7200,6 +7295,482 @@ async def workflow_kernel_profile(request: KernelProfileRequest, background_task
         "log_directory": log_dir
     }
 
+# ── Model Catalog ─────────────────────────────────────────────────────────────
+
+_MODELS_JSON_PATH = os.path.join(os.path.dirname(__file__), "telemetry", "data", "models.json")
+_models_cache: Optional[list] = None
+
+
+def _load_models() -> list:
+    global _models_cache
+    if _models_cache is not None:
+        return _models_cache
+    try:
+        with open(_MODELS_JSON_PATH, "r") as f:
+            _models_cache = json.load(f)
+    except Exception as e:
+        logger.warning("Failed to load models.json: %s", e)
+        _models_cache = []
+    return _models_cache
+
+
+@app.get("/api/models")
+async def list_models(
+    gpu_type: Optional[str] = None,
+    vram_gb: Optional[int] = None,
+):
+    """Return the unified model catalog, optionally filtered by GPU type or VRAM."""
+    models = _load_models()
+    if gpu_type:
+        models = [m for m in models if gpu_type in (m.get("compatible_gpus") or [])]
+    if vram_gb is not None:
+        models = [m for m in models if (m.get("vram_gb") or 0) <= vram_gb]
+    return {"models": models}
+
+
+# ── Workflow State Persistence ────────────────────────────────────────────────
+# Stores per-host completion timestamps to a JSON file so the frontend can
+# show "Completed 3 days ago" badges without re-running every phase.
+
+_WORKFLOW_STATE_FILE = os.path.join(os.path.dirname(__file__), "data", "workflow_states.json")
+
+
+def _load_workflow_states() -> dict:
+    """Load all persisted workflow states from disk."""
+    try:
+        os.makedirs(os.path.dirname(_WORKFLOW_STATE_FILE), exist_ok=True)
+        if os.path.exists(_WORKFLOW_STATE_FILE):
+            with open(_WORKFLOW_STATE_FILE, "r") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+
+def _save_workflow_states(states: dict) -> None:
+    """Persist all workflow states to disk."""
+    try:
+        os.makedirs(os.path.dirname(_WORKFLOW_STATE_FILE), exist_ok=True)
+        with open(_WORKFLOW_STATE_FILE, "w") as f:
+            json.dump(states, f, indent=2)
+    except Exception as e:
+        logger.warning("Failed to persist workflow states: %s", e)
+
+
+def _update_workflow_phase(ssh_host: str, phase: str, **extra) -> None:
+    """Mark a workflow phase as completed for the given SSH host."""
+    states = _load_workflow_states()
+    host_state = states.setdefault(ssh_host, {})
+    host_state[f"{phase}_completed_at"] = datetime.utcnow().isoformat()
+    host_state.update(extra)
+    _save_workflow_states(states)
+
+
+@app.get("/api/workflow/state/{ssh_host:path}")
+async def get_workflow_state(ssh_host: str):
+    """
+    Return the persisted workflow state for a given SSH host.
+    Shows which phases were completed and when, so the frontend can
+    display completion badges without re-running setup.
+    """
+    states = _load_workflow_states()
+    state = states.get(ssh_host, {})
+    return {
+        "ssh_host": ssh_host,
+        "setup_completed_at": state.get("setup_completed_at"),
+        "check_completed_at": state.get("check_completed_at"),
+        "vllm_deployed_at": state.get("vllm_deployed_at"),
+        "vllm_model": state.get("vllm_model"),
+        "last_verified_at": state.get("last_verified_at"),
+    }
+
+
+# ── Environment Status Check ──────────────────────────────────────────────────
+
+class EnvironmentCheckRequest(BaseModel):
+    """Request for checking instance environment readiness."""
+    ssh_host: str
+    ssh_user: str = "ubuntu"
+    pem_base64: Optional[str] = None
+    cloud_provider: str = "lambda"
+    model_path: str = "/home/ubuntu/BM/models/Qwen3.5-9B"
+
+
+@app.post("/api/workflow/state")
+async def check_environment_state(request: EnvironmentCheckRequest):
+    """
+    Check the environment state of a remote instance.
+    Runs quick SSH checks to determine what's installed and running.
+    Returns component readiness without modifying anything.
+    """
+    import paramiko
+
+    logger.info("Environment check: host=%s user=%s provider=%s", request.ssh_host, request.ssh_user, request.cloud_provider)
+
+    pem_file_path = _resolve_workflow_pem_file(
+        ssh_host=request.ssh_host,
+        ssh_user=request.ssh_user,
+        pem_base64=request.pem_base64,
+    )
+
+    result = {
+        "ssh_host": request.ssh_host,
+        "driver": False,
+        "cuda": False,
+        "docker": False,
+        "dcgm": False,
+        "model": False,
+        "vllm_running": False,
+        "vllm_model": None,
+        "gpu_type": None,
+        "gpu_count": 0,
+        "gpu_memory_gb": 0,
+        "error": None,
+    }
+
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(request.ssh_host, username=request.ssh_user, key_filename=pem_file_path, timeout=15)
+
+        def _run(cmd: str) -> tuple:
+            stdin, stdout, stderr = ssh.exec_command(cmd, timeout=10)
+            out = stdout.read().decode().strip()
+            err = stderr.read().decode().strip()
+            code = stdout.channel.recv_exit_status()
+            return code, out, err
+
+        # 1. NVIDIA driver
+        code, out, _ = _run("nvidia-smi --query-gpu=name,count,memory.total --format=csv,noheader,nounits 2>/dev/null | head -1")
+        if code == 0 and out:
+            result["driver"] = True
+            parts = [p.strip() for p in out.split(",")]
+            if len(parts) >= 3:
+                result["gpu_type"] = parts[0]
+                try:
+                    result["gpu_memory_gb"] = round(int(parts[2]) / 1024)
+                except (ValueError, IndexError):
+                    pass
+            # Get GPU count
+            code2, count_out, _ = _run("nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | wc -l")
+            if code2 == 0 and count_out.isdigit():
+                result["gpu_count"] = int(count_out)
+
+        # 2. CUDA
+        code, out, _ = _run("nvcc --version 2>/dev/null | grep 'release' || ls /usr/local/cuda/version.json 2>/dev/null")
+        result["cuda"] = code == 0 and bool(out)
+
+        # 3. Docker
+        code, _, _ = _run("docker --version 2>/dev/null")
+        result["docker"] = code == 0
+
+        # 4. DCGM
+        code, _, _ = _run("dcgmi discovery -l 2>/dev/null | head -3")
+        result["dcgm"] = code == 0
+
+        # 5. Model downloaded
+        code, _, _ = _run(f"test -d {request.model_path} && ls {request.model_path}/*.safetensors {request.model_path}/*.bin 2>/dev/null | head -1")
+        result["model"] = code == 0
+
+        # 6. vLLM running
+        code, out, _ = _run("docker inspect vllm --format '{{.State.Running}} {{.Config.Cmd}}' 2>/dev/null")
+        if code == 0 and out.startswith("true"):
+            result["vllm_running"] = True
+            # Try to get model name from container args
+            code3, model_out, _ = _run("docker inspect vllm --format '{{range .Config.Cmd}}{{.}} {{end}}' 2>/dev/null")
+            if code3 == 0 and "--model" in model_out:
+                try:
+                    parts = model_out.split()
+                    model_idx = parts.index("--model") + 1
+                    if model_idx < len(parts):
+                        result["vllm_model"] = parts[model_idx]
+                except (ValueError, IndexError):
+                    pass
+
+        ssh.close()
+        logger.info("Environment check result: host=%s driver=%s docker=%s model=%s vllm=%s gpu=%s×%d",
+                     request.ssh_host, result["driver"], result["docker"], result["model"],
+                     result["vllm_running"], result["gpu_type"], result["gpu_count"])
+
+    except Exception as e:
+        result["error"] = str(e)
+        logger.error("Environment check failed: host=%s error=%s", request.ssh_host, e)
+
+    return result
+
+
+# ── Inference Server Control ──────────────────────────────────────────────────
+
+class InferenceStartRequest(BaseModel):
+    """Request to start vLLM inference server."""
+    ssh_host: str
+    ssh_user: str = "ubuntu"
+    pem_base64: Optional[str] = None
+    model_path: str = "/home/ubuntu/BM/models/Qwen3.5-9B"
+    cloud_provider: str = "lambda"
+    # vLLM server parameters (all optional — auto-detected from GPU if not set)
+    tensor_parallel_size: Optional[int] = None
+    max_model_len: Optional[int] = None
+    max_num_seqs: Optional[int] = None
+    gpu_memory_utilization: Optional[float] = None
+    dtype: str = "auto"
+    enforce_eager: bool = True
+
+
+class InferenceStopRequest(BaseModel):
+    """Request to stop vLLM inference server."""
+    ssh_host: str
+    ssh_user: str = "ubuntu"
+    pem_base64: Optional[str] = None
+
+
+@app.post("/api/inference/start")
+async def inference_start(request: InferenceStartRequest, background_tasks: BackgroundTasks):
+    """
+    Start vLLM inference server on the remote instance.
+    Uses the existing deploy scripts (lol4.sh / lol4_scaleway.sh) with user-specified params.
+    Returns immediately; poll /api/workflow/logs/{workflow_id}?phase=deploy for progress.
+    """
+    logger.info("Inference start: host=%s model=%s provider=%s tp=%s max_len=%s",
+                request.ssh_host, request.model_path, request.cloud_provider,
+                request.tensor_parallel_size, request.max_model_len)
+
+    pem_file_path = _resolve_workflow_pem_file(
+        ssh_host=request.ssh_host,
+        ssh_user=request.ssh_user,
+        pem_base64=request.pem_base64,
+    )
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    workflow_id = f"workflow_{request.ssh_host}_{timestamp}"
+    log_dir = f"logs/{workflow_id}"
+    os.makedirs(log_dir, exist_ok=True)
+
+    # Convert to DeployVLLMRequest for the existing deploy task
+    deploy_request = DeployVLLMRequest(
+        ssh_host=request.ssh_host,
+        ssh_user=request.ssh_user,
+        pem_base64=request.pem_base64,
+        model_path=request.model_path,
+        max_model_len=request.max_model_len,
+        max_num_seqs=request.max_num_seqs,
+        gpu_memory_utilization=request.gpu_memory_utilization,
+        tensor_parallel_size=request.tensor_parallel_size,
+        cloud_provider=request.cloud_provider,
+    )
+
+    background_tasks.add_task(workflow_deploy_task, deploy_request, pem_file_path, log_dir)
+
+    inference_url = f"http://{request.ssh_host}:8000"
+    return {
+        "status": "started",
+        "workflow_id": workflow_id,
+        "message": f"Starting inference server on {request.ssh_host}",
+        "inference_url": inference_url,
+        "log_directory": log_dir,
+    }
+
+
+@app.post("/api/inference/stop")
+async def inference_stop(request: InferenceStopRequest):
+    """
+    Stop vLLM inference server on the remote instance.
+    Synchronous — waits for container to stop (usually < 10s).
+    """
+    import paramiko
+
+    logger.info("Inference stop: host=%s", request.ssh_host)
+
+    pem_file_path = _resolve_workflow_pem_file(
+        ssh_host=request.ssh_host,
+        ssh_user=request.ssh_user,
+        pem_base64=request.pem_base64,
+    )
+
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(request.ssh_host, username=request.ssh_user, key_filename=pem_file_path, timeout=15)
+
+        stdin, stdout, stderr = ssh.exec_command("docker stop vllm 2>/dev/null; docker rm vllm 2>/dev/null; echo 'STOPPED'", timeout=30)
+        out = stdout.read().decode().strip()
+        ssh.close()
+
+        logger.info("Inference stopped: host=%s output=%s", request.ssh_host, out[:100])
+        return {"status": "stopped", "message": f"Inference server stopped on {request.ssh_host}"}
+
+    except Exception as e:
+        logger.error("Inference stop failed: host=%s error=%s", request.ssh_host, e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/inference/status")
+async def inference_status(request: InferenceStopRequest):
+    """
+    Check vLLM inference server status on the remote instance.
+    Returns whether it's running, which model, uptime, etc.
+    """
+    import paramiko
+
+    pem_file_path = _resolve_workflow_pem_file(
+        ssh_host=request.ssh_host,
+        ssh_user=request.ssh_user,
+        pem_base64=request.pem_base64,
+    )
+
+    result = {
+        "running": False,
+        "model": None,
+        "url": f"http://{request.ssh_host}:8000",
+        "uptime": None,
+        "container_id": None,
+        "error": None,
+    }
+
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(request.ssh_host, username=request.ssh_user, key_filename=pem_file_path, timeout=10)
+
+        stdin, stdout, stderr = ssh.exec_command(
+            "docker inspect vllm --format '{{.State.Running}}|{{.State.StartedAt}}|{{.Id}}|{{range .Config.Cmd}}{{.}} {{end}}' 2>/dev/null",
+            timeout=10,
+        )
+        out = stdout.read().decode().strip()
+        code = stdout.channel.recv_exit_status()
+
+        if code == 0 and out:
+            parts = out.split("|", 3)
+            if len(parts) >= 4:
+                result["running"] = parts[0].lower() == "true"
+                result["uptime"] = parts[1] if parts[1] else None
+                result["container_id"] = parts[2][:12] if parts[2] else None
+                cmd_str = parts[3]
+                if "--model" in cmd_str:
+                    try:
+                        tokens = cmd_str.split()
+                        model_idx = tokens.index("--model") + 1
+                        if model_idx < len(tokens):
+                            result["model"] = tokens[model_idx]
+                    except (ValueError, IndexError):
+                        pass
+
+        ssh.close()
+
+    except Exception as e:
+        result["error"] = str(e)
+        logger.error("Inference status check failed: host=%s error=%s", request.ssh_host, e)
+
+    return result
+
+
+# ── Connection Storage ────────────────────────────────────────────────────────
+
+class SaveConnectionRequest(BaseModel):
+    """Request to save an SSH connection for reuse."""
+    name: str
+    ssh_host: str
+    ssh_user: str = "ubuntu"
+    pem_base64: Optional[str] = None
+    cloud_provider: str = "lambda"
+
+# In-memory connection store (persisted to disk as JSON)
+_CONNECTIONS_FILE = os.path.join(os.path.dirname(__file__), "data", "connections.json")
+
+
+def _load_connections() -> list:
+    if os.path.exists(_CONNECTIONS_FILE):
+        try:
+            with open(_CONNECTIONS_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+
+def _save_connections(connections: list):
+    os.makedirs(os.path.dirname(_CONNECTIONS_FILE), exist_ok=True)
+    with open(_CONNECTIONS_FILE, "w") as f:
+        json.dump(connections, f, indent=2, default=str)
+
+
+@app.get("/api/connections")
+async def list_connections():
+    """List all saved SSH connections (without PEM keys for security)."""
+    connections = _load_connections()
+    # Strip PEM content for listing
+    safe = []
+    for c in connections:
+        safe.append({
+            "id": c.get("id"),
+            "name": c.get("name"),
+            "ssh_host": c.get("ssh_host"),
+            "ssh_user": c.get("ssh_user"),
+            "cloud_provider": c.get("cloud_provider"),
+            "created_at": c.get("created_at"),
+            "last_used_at": c.get("last_used_at"),
+            "has_key": bool(c.get("pem_base64")),
+        })
+    return safe
+
+
+@app.post("/api/connections")
+async def save_connection(request: SaveConnectionRequest):
+    """Save a new SSH connection."""
+    import uuid
+    connections = _load_connections()
+
+    # Check for duplicate host
+    for c in connections:
+        if c["ssh_host"] == request.ssh_host:
+            # Update existing
+            c["name"] = request.name
+            c["ssh_user"] = request.ssh_user
+            c["pem_base64"] = request.pem_base64
+            c["cloud_provider"] = request.cloud_provider
+            c["last_used_at"] = datetime.now().isoformat()
+            _save_connections(connections)
+            logger.info("Updated connection: name=%s host=%s", request.name, request.ssh_host)
+            return {"status": "updated", "id": c["id"]}
+
+    conn = {
+        "id": str(uuid.uuid4())[:8],
+        "name": request.name,
+        "ssh_host": request.ssh_host,
+        "ssh_user": request.ssh_user,
+        "pem_base64": request.pem_base64,
+        "cloud_provider": request.cloud_provider,
+        "created_at": datetime.now().isoformat(),
+        "last_used_at": datetime.now().isoformat(),
+    }
+    connections.append(conn)
+    _save_connections(connections)
+    logger.info("Saved connection: name=%s host=%s id=%s", request.name, request.ssh_host, conn["id"])
+    return {"status": "created", "id": conn["id"]}
+
+
+@app.get("/api/connections/{connection_id}")
+async def get_connection(connection_id: str):
+    """Get a saved connection (includes PEM for use)."""
+    connections = _load_connections()
+    for c in connections:
+        if c["id"] == connection_id:
+            c["last_used_at"] = datetime.now().isoformat()
+            _save_connections(connections)
+            return c
+    raise HTTPException(status_code=404, detail="Connection not found")
+
+
+@app.delete("/api/connections/{connection_id}")
+async def delete_connection(connection_id: str):
+    """Delete a saved connection."""
+    connections = _load_connections()
+    connections = [c for c in connections if c["id"] != connection_id]
+    _save_connections(connections)
+    logger.info("Deleted connection: id=%s", connection_id)
+    return {"status": "deleted"}
+
+
 @app.get("/api/workflow/logs/{workflow_id}")
 async def get_workflow_logs(workflow_id: str, phase: Optional[str] = None):
     """
@@ -7593,20 +8164,43 @@ def workflow_setup_task(request: SetupInstanceRequest, pem_file_path: str, log_d
         
         ssh.close()
         
+        # Detect if a reboot is required (written by the setup script into the log)
+        try:
+            with open(log_file, 'r') as _lf:
+                _log_content = _lf.read()
+            reboot_required = (
+                "REBOOT_REQUIRED" in _log_content
+                or "reboot required" in _log_content.lower()
+                or "⚠️  WARNING: System reboot may be required" in _log_content
+                or "Driver installed. A reboot may be required." in _log_content
+            )
+        except Exception:
+            reboot_required = False
+
         # Write final status
         if exit_status == 0:
-            with open(status_file, 'w') as f:
-                json.dump({"status": "completed", "message": "Setup completed successfully"}, f)
-            logger.info("✅ Setup completed successfully")
+            if reboot_required:
+                msg = (
+                    "Setup completed, but a system reboot is required for the NVIDIA driver to take effect. "
+                    "SSH into the instance and run: sudo reboot — then run Check once it's back up."
+                )
+                with open(status_file, 'w') as f:
+                    json.dump({"status": "reboot_required", "message": msg}, f)
+                logger.warning("[DEPLOY] Setup finished but reboot required on %s", request.ssh_host)
+            else:
+                with open(status_file, 'w') as f:
+                    json.dump({"status": "completed", "message": "Setup completed successfully"}, f)
+                logger.info("[DEPLOY] Setup completed successfully on %s", request.ssh_host)
+                _update_workflow_phase(request.ssh_host, "setup")
         else:
             with open(status_file, 'w') as f:
                 json.dump({"status": "failed", "message": f"Setup failed with exit status {exit_status}"}, f)
-            logger.error(f"❌ Setup failed with exit status {exit_status}")
+            logger.error("[DEPLOY] Setup failed with exit status %d on %s", exit_status, request.ssh_host)
             
     except Exception as e:
         with open(status_file, 'w') as f:
-            json.dump({"status": "failed", "message": str(e)}, f)
-        logger.error(f"❌ Setup failed: {e}", exc_info=True)
+            json.dump({"status": "failed", "message": translate_error(str(e))}, f)
+        logger.error("[DEPLOY] Setup failed on %s: %s", getattr(request, 'ssh_host', '?'), e, exc_info=True)
 
 def workflow_check_task(request: CheckInstanceRequest, pem_file_path: str, log_dir: str):
     """Background task for check phase"""
@@ -7786,6 +8380,8 @@ def workflow_check_task(request: CheckInstanceRequest, pem_file_path: str, log_d
             with open(status_file, 'w') as f:
                 json.dump({"status": "completed", "message": "Check completed successfully"}, f)
             logger.info("✅ Check completed successfully")
+            _update_workflow_phase(request.ssh_host, "check",
+                                   last_verified_at=datetime.utcnow().isoformat())
         else:
             with open(status_file, 'w') as f:
                 json.dump({"status": "failed", "message": f"Check failed with exit status {exit_status}"}, f)
@@ -8141,6 +8737,10 @@ def workflow_deploy_task(request: DeployVLLMRequest, pem_file_path: str, log_dir
             with open(status_file, 'w') as f:
                 json.dump({"status": "completed", "message": "Deploy completed successfully - vLLM server is ready"}, f)
             logger.info("✅ Deploy completed successfully")
+            _update_workflow_phase(
+                request.ssh_host, "vllm",
+                vllm_model=getattr(request, "model_path", None),
+            )
         else:
             error_msg = "Deploy failed - server did not become ready within timeout"
             if not container_running:

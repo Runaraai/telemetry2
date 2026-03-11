@@ -85,7 +85,7 @@ import {
   RocketLaunch as RocketLaunchIcon,
   Speed as SpeedIcon,
 } from '@mui/icons-material';
-import apiService from '../services/api';
+import apiService, { friendlyError } from '../services/api';
 import SystemBenchmarkDashboard from '../components/SystemBenchmarkDashboard';
 import TelemetryTab from '../components/TelemetryTab';
 import ProvisioningTab from '../components/ProvisioningTab';
@@ -348,11 +348,185 @@ const Benchmarking = () => {
   const [lastUpdated, setLastUpdated] = useState(null);
   const { showToast } = useUI();
 
+  // Environment check state
+  const [envState, setEnvState] = useState(null); // null = not checked yet
+  const [envLoading, setEnvLoading] = useState(false);
+
+  // Inference server state
+  const [inferenceStatus, setInferenceStatus] = useState({ running: false, model: null, url: null, uptime: null, error: null });
+  const [inferenceLoading, setInferenceLoading] = useState(false);
+  const [inferenceAdvanced, setInferenceAdvanced] = useState(false);
+  const [infTensorParallel, setInfTensorParallel] = useState('');
+  const [infMaxModelLen, setInfMaxModelLen] = useState('');
+  const [infMaxNumSeqs, setInfMaxNumSeqs] = useState('');
+  const [infGpuMemUtil, setInfGpuMemUtil] = useState('');
+
+  // Saved connections
+  const [savedConnections, setSavedConnections] = useState([]);
+  const [selectedConnection, setSelectedConnection] = useState('new');
+  const [connectionName, setConnectionName] = useState('');
+
   const getWorkflowModelPath = (modelName = selectedModel) => (
     rwCloudProvider === 'scaleway'
       ? `/scratch/BM/models/${modelName.split('/').pop()}`
       : `/home/ubuntu/BM/models/${modelName.split('/').pop()}`
   );
+
+  // Persisted workflow completion state from backend (setup_completed_at, etc.)
+  const [persistedWorkflowState, setPersistedWorkflowState] = useState(null);
+
+  // Load saved connections on mount
+  useEffect(() => {
+    apiService.listConnections().then(setSavedConnections).catch(() => {});
+  }, []);
+
+  // Hydrate persisted workflow state whenever ssh host changes
+  useEffect(() => {
+    if (!rwSshHost) { setPersistedWorkflowState(null); return; }
+    apiService.getWorkflowState(rwSshHost).then(setPersistedWorkflowState).catch(() => {});
+  }, [rwSshHost]);
+
+  const handleSelectConnection = async (connId) => {
+    setSelectedConnection(connId);
+    if (connId === 'new') {
+      setRwSshHost(''); setRwSshUser('ubuntu'); setRwSshKey('');
+      setEnvState(null); setInferenceStatus({ running: false, model: null, url: null, uptime: null, error: null });
+      return;
+    }
+    try {
+      const conn = await apiService.getConnection(connId);
+      setRwSshHost(conn.ssh_host || '');
+      setRwSshUser(conn.ssh_user || 'ubuntu');
+      setRwCloudProvider(conn.cloud_provider || 'lambda');
+      if (conn.pem_base64) {
+        try { setRwSshKey(window.atob(conn.pem_base64)); } catch { setRwSshKey(conn.pem_base64); }
+      }
+      setConnectionName(conn.name || '');
+      // Auto-check environment
+      handleCheckEnvironment(conn.ssh_host, conn.ssh_user, conn.pem_base64, conn.cloud_provider);
+    } catch (e) {
+      console.error('Failed to load connection:', e);
+    }
+  };
+
+  const handleSaveConnection = async () => {
+    if (!rwSshHost || !connectionName) return;
+    try {
+      const pemBase64 = encodePemToBase64(rwSshKey);
+      await apiService.saveConnection({
+        name: connectionName || rwSshHost,
+        ssh_host: rwSshHost,
+        ssh_user: rwSshUser,
+        pem_base64: pemBase64,
+        cloud_provider: rwCloudProvider,
+      });
+      const updated = await apiService.listConnections();
+      setSavedConnections(updated);
+      appendWorkflowEvent('connection', 'success', `Connection "${connectionName || rwSshHost}" saved`);
+    } catch (e) {
+      appendWorkflowEvent('connection', 'error', `Failed to save: ${e.message}`);
+    }
+  };
+
+  const handleCheckEnvironment = async (host, user, pemB64, provider) => {
+    const sshHost = host || rwSshHost;
+    const sshUser = user || rwSshUser;
+    const cloudProvider = provider || rwCloudProvider;
+    const pemBase64 = pemB64 || encodePemToBase64(rwSshKey);
+    if (!sshHost || !pemBase64) return;
+
+    setEnvLoading(true);
+    setEnvState(null);
+    try {
+      const result = await apiService.checkEnvironmentState({
+        ssh_host: sshHost,
+        ssh_user: sshUser,
+        pem_base64: pemBase64,
+        cloud_provider: cloudProvider,
+        model_path: getWorkflowModelPath(selectedModel),
+      });
+      setEnvState(result);
+      if (result.vllm_running) {
+        setInferenceStatus({ running: true, model: result.vllm_model, url: `http://${sshHost}:8000`, uptime: null, error: null });
+      }
+      appendWorkflowEvent('environment', 'info', `Environment check: driver=${result.driver} docker=${result.docker} model=${result.model} vllm=${result.vllm_running}`);
+    } catch (e) {
+      setEnvState({ error: e.message });
+      appendWorkflowEvent('environment', 'error', `Environment check failed: ${e.message}`);
+    } finally {
+      setEnvLoading(false);
+    }
+  };
+
+  const handleInferenceStart = async () => {
+    if (!rwSshHost || !rwSshKey) return;
+    setInferenceLoading(true);
+    appendWorkflowEvent('inference', 'info', 'Starting inference server...');
+    try {
+      const pemBase64 = encodePemToBase64(rwSshKey);
+      const modelPath = getWorkflowModelPath(selectedModel);
+      const response = await apiService.inferenceStart({
+        ssh_host: rwSshHost,
+        ssh_user: rwSshUser,
+        pem_base64: pemBase64,
+        model_path: modelPath,
+        cloud_provider: rwCloudProvider,
+        tensor_parallel_size: infTensorParallel ? Number(infTensorParallel) : null,
+        max_model_len: infMaxModelLen ? Number(infMaxModelLen) : null,
+        max_num_seqs: infMaxNumSeqs ? Number(infMaxNumSeqs) : null,
+        gpu_memory_utilization: infGpuMemUtil ? Number(infGpuMemUtil) : null,
+      });
+      // Also update deploy status so existing benchmark buttons work
+      setWorkflowDeployStatus({ loading: false, status: 'started', message: response.message, workflowId: response.workflow_id, logs: '' });
+      appendWorkflowEvent('inference', 'info', `Starting: ${response.workflow_id}`);
+
+      // Poll for completion
+      const pollLogs = setInterval(async () => {
+        try {
+          const result = await apiService.getWorkflowLogs(response.workflow_id, 'deploy');
+          trackWorkflowProgress('deploy', result.status, result.message);
+          setWorkflowDeployStatus(prev => ({
+            ...prev,
+            logs: result.logs || '',
+            status: result.status || prev.status,
+            message: result.message || prev.message,
+          }));
+          if (result.status === 'completed') {
+            clearInterval(pollLogs);
+            setInferenceStatus({ running: true, model: modelPath, url: `http://${rwSshHost}:8000`, uptime: null, error: null });
+            setInferenceLoading(false);
+            appendWorkflowEvent('inference', 'success', 'Inference server is running');
+          } else if (result.status === 'failed') {
+            clearInterval(pollLogs);
+            setInferenceLoading(false);
+            appendWorkflowEvent('inference', 'error', result.message || 'Failed to start');
+          }
+        } catch (e) {
+          console.error('Poll inference logs failed:', e);
+        }
+      }, 3000);
+      setTimeout(() => { clearInterval(pollLogs); setInferenceLoading(false); }, 600000);
+    } catch (e) {
+      setInferenceLoading(false);
+      appendWorkflowEvent('inference', 'error', e.response?.data?.detail || e.message);
+    }
+  };
+
+  const handleInferenceStop = async () => {
+    if (!rwSshHost || !rwSshKey) return;
+    setInferenceLoading(true);
+    try {
+      const pemBase64 = encodePemToBase64(rwSshKey);
+      await apiService.inferenceStop({ ssh_host: rwSshHost, ssh_user: rwSshUser, pem_base64: pemBase64 });
+      setInferenceStatus({ running: false, model: null, url: null, uptime: null, error: null });
+      setWorkflowDeployStatus({ loading: false, status: null, message: null, workflowId: null, logs: '' });
+      appendWorkflowEvent('inference', 'info', 'Inference server stopped');
+    } catch (e) {
+      appendWorkflowEvent('inference', 'error', `Stop failed: ${e.message}`);
+    } finally {
+      setInferenceLoading(false);
+    }
+  };
 
   const appendWorkflowEvent = (phase, level, message) => {
     const entry = {
@@ -1420,6 +1594,8 @@ const Benchmarking = () => {
                                   ? 'Complete'
                                   : workflowSetupStatus.status === 'failed'
                                   ? 'Failed'
+                                  : workflowSetupStatus.status === 'reboot_required'
+                                  ? 'Reboot Required'
                                   : workflowSetupStatus.status === 'started'
                                   ? 'Starting...'
                                   : 'Not Started'
@@ -1427,15 +1603,25 @@ const Benchmarking = () => {
                               color={
                                 workflowSetupStatus.status === 'completed'
                                   ? 'success'
+                                  : workflowSetupStatus.status === 'reboot_required'
+                                  ? 'warning'
                                   : workflowSetupStatus.status === 'failed'
                                   ? 'error'
                                   : workflowSetupStatus.status === 'running' || workflowSetupStatus.status === 'started'
                                   ? 'info'
                                   : 'default'
                               }
-                          size="small"
-                              sx={{ fontWeight: 500 }}
                             />
+                            {persistedWorkflowState?.setup_completed_at && workflowSetupStatus.status !== 'completed' && (
+                              <Chip
+                                size="small"
+                                icon={<CheckCircleIcon />}
+                                label={`Done ${new Date(persistedWorkflowState.setup_completed_at + 'Z').toLocaleDateString()}`}
+                                color="success"
+                                variant="outlined"
+                                sx={{ fontWeight: 500 }}
+                              />
+                            )}
                           </Stack>
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                             Install NVIDIA drivers, CUDA, DCGM, Python environment, and download the selected model.
@@ -1448,8 +1634,14 @@ const Benchmarking = () => {
                           <LinearProgress sx={{ borderRadius: 1, height: 6 }} />
                           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
                             {workflowSetupStatus.loading ? 'Initializing...' : 'Processing...'}
-                  </Typography>
+                          </Typography>
                         </Box>
+                      )}
+
+                      {workflowSetupStatus.status === 'reboot_required' && (
+                        <Alert severity="warning" sx={{ mb: 2 }}>
+                          {workflowSetupStatus.message || 'A system reboot is required for the NVIDIA driver to take effect. SSH into the instance and run: sudo reboot — then click Check once it is back up.'}
+                        </Alert>
                       )}
 
                     <Button
@@ -1503,12 +1695,11 @@ const Benchmarking = () => {
                                   message: result.message || prev.message
                                 }));
                                 
-                                if (result.status === 'completed' || result.status === 'failed') {
-                                  appendWorkflowEvent(
-                                    'setup',
-                                    result.status === 'completed' ? 'success' : 'error',
-                                    result.message || `Setup ${result.status}`
-                                  );
+                                if (result.status === 'completed' || result.status === 'failed' || result.status === 'reboot_required') {
+                                  const evtType = result.status === 'completed' ? 'success'
+                                    : result.status === 'reboot_required' ? 'warning'
+                                    : 'error';
+                                  appendWorkflowEvent('setup', evtType, result.message || `Setup ${result.status}`);
                                   clearInterval(pollLogs);
                                 }
                               } catch (e) {
@@ -1659,6 +1850,16 @@ const Benchmarking = () => {
                               size="small"
                               sx={{ fontWeight: 500 }}
                             />
+                            {persistedWorkflowState?.check_completed_at && workflowCheckStatus.status !== 'completed' && (
+                              <Chip
+                                size="small"
+                                icon={<CheckCircleIcon />}
+                                label={`Verified ${new Date(persistedWorkflowState.check_completed_at + 'Z').toLocaleDateString()}`}
+                                color="success"
+                                variant="outlined"
+                                sx={{ fontWeight: 500 }}
+                              />
+                            )}
                           </Stack>
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                             Verify nvidia-smi and restart DCGM service.
@@ -1886,6 +2087,16 @@ const Benchmarking = () => {
                               size="small"
                               sx={{ fontWeight: 500 }}
                             />
+                            {persistedWorkflowState?.vllm_deployed_at && workflowDeployStatus.status !== 'completed' && (
+                              <Chip
+                                size="small"
+                                icon={<CheckCircleIcon />}
+                                label={`Deployed ${new Date(persistedWorkflowState.vllm_deployed_at + 'Z').toLocaleDateString()}${persistedWorkflowState.vllm_model ? ` — ${persistedWorkflowState.vllm_model.split('/').pop()}` : ''}`}
+                                color="success"
+                                variant="outlined"
+                                sx={{ fontWeight: 500 }}
+                              />
+                            )}
                           </Stack>
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                             Start inference server with adaptive GPU parameters.
@@ -2255,14 +2466,33 @@ const Benchmarking = () => {
                         </Grid>
                 </Paper>
 
-                      {(workflowBenchmarkStatus.status === 'running' || workflowBenchmarkStatus.status === 'started' || workflowBenchmarkStatus.loading) && (
-                        <Box sx={{ mb: 2 }}>
-                          <LinearProgress sx={{ borderRadius: 1, height: 6 }} />
-                          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                            {workflowBenchmarkStatus.loading ? 'Initializing...' : 'Processing...'}
-                          </Typography>
-                        </Box>
-                )}
+                      {(workflowBenchmarkStatus.status === 'running' || workflowBenchmarkStatus.status === 'started' || workflowBenchmarkStatus.loading) && (() => {
+                        // Parse "Completed X/Y" or "X/Y requests" from logs to show determinate progress
+                        let progressValue = null;
+                        if (workflowBenchmarkStatus.logs) {
+                          const matches = workflowBenchmarkStatus.logs.match(/(\d+)\s*\/\s*(\d+)\s*(requests?)?/gi);
+                          if (matches && matches.length > 0) {
+                            const lastMatch = matches[matches.length - 1].match(/(\d+)\s*\/\s*(\d+)/);
+                            if (lastMatch) {
+                              const done = parseInt(lastMatch[1], 10);
+                              const total = parseInt(lastMatch[2], 10);
+                              if (total > 0 && done <= total) progressValue = Math.round((done / total) * 100);
+                            }
+                          }
+                        }
+                        return (
+                          <Box sx={{ mb: 2 }}>
+                            <LinearProgress
+                              variant={progressValue != null ? 'determinate' : 'indeterminate'}
+                              value={progressValue}
+                              sx={{ borderRadius: 1, height: 6 }}
+                            />
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                              {workflowBenchmarkStatus.loading ? 'Initializing…' : progressValue != null ? `${progressValue}% complete` : 'Running…'}
+                            </Typography>
+                          </Box>
+                        );
+                      })()}
 
                 <Button
                   variant="contained"

@@ -1,5 +1,36 @@
 import axios from 'axios';
 
+// ── User-Friendly Error Translation ──────────────────────────────────────────
+const FRIENDLY_ERROR_MAP = [
+  ["No active deployment found", "Start GPU monitoring before running a benchmark."],
+  ["Run not found", "The monitoring session expired. Start a new session."],
+  ["docker: command not found", "Docker is not installed on this instance. Run the Setup step first."],
+  ["Connection refused", "Cannot reach the instance. Check that it's running and the IP address is correct."],
+  ["Authentication failed", "SSH authentication failed. Check your SSH key."],
+  ["No route to host", "Cannot connect to the instance. Check that the IP address is correct."],
+  ["Timeout", "Operation timed out. The instance may be overloaded or unreachable."],
+  ["Permission denied", "Permission denied. Check SSH key and sudo configuration."],
+  ["CUDA out of memory", "GPU ran out of memory. Try a smaller model or reduce batch size."],
+  ["401", "Authentication required. Please log in again."],
+  ["403", "Permission denied. You don't have access to this resource."],
+  ["404", "Resource not found. It may have been deleted or the ID is wrong."],
+];
+
+/**
+ * Returns a user-friendly error string from an Axios error or generic error.
+ * Falls back to "Something went wrong. Check the activity log for details."
+ */
+export const friendlyError = (err, fallback = 'Something went wrong. Check the activity log for details.') => {
+  const raw = err?.response?.data?.detail || err?.message || String(err || '');
+  if (!raw) return fallback;
+  for (const [substring, friendly] of FRIENDLY_ERROR_MAP) {
+    if (raw.toLowerCase().includes(substring.toLowerCase())) return friendly;
+  }
+  // Return raw message if it looks user-readable (short and no stack trace)
+  if (raw.length < 200 && !raw.includes('Traceback') && !raw.includes('File "')) return raw;
+  return fallback;
+};
+
 const deriveDefaultBaseUrl = () => {
   // If REACT_APP_API_URL is explicitly set (even if empty), use it
   if (process.env.REACT_APP_API_URL !== undefined) {
@@ -1054,6 +1085,71 @@ export const apiService = {
   getWorkflowLogs: async (workflowId, phase = null) => {
     const params = phase ? `?phase=${phase}` : '';
     const response = await api.get(`/api/workflow/logs/${workflowId}${params}`);
+    return response.data;
+  },
+
+  // Environment & Inference control
+  checkEnvironmentState: async (params) => {
+    const response = await api.post('/api/workflow/state', params);
+    return response.data;
+  },
+
+  getWorkflowState: async (sshHost) => {
+    const response = await api.get(`/api/workflow/state/${encodeURIComponent(sshHost)}`);
+    return response.data;
+  },
+
+  listModels: async ({ gpu_type, vram_gb } = {}) => {
+    const params = {};
+    if (gpu_type) params.gpu_type = gpu_type;
+    if (vram_gb != null) params.vram_gb = vram_gb;
+    const response = await api.get('/api/models', { params });
+    return response.data;
+  },
+
+  checkKernelProfilingReady: async (instanceId) => {
+    const response = await api.get(`/api/instances/${instanceId}/check-kernel-profiling-ready`);
+    return response.data;
+  },
+
+  checkProfilingModeReady: async (instanceId) => {
+    const response = await api.get(`/api/instances/${instanceId}/check-profiling-mode-ready`);
+    return response.data;
+  },
+
+  inferenceStart: async (params) => {
+    const response = await api.post('/api/inference/start', params);
+    return response.data;
+  },
+
+  inferenceStop: async (params) => {
+    const response = await api.post('/api/inference/stop', params);
+    return response.data;
+  },
+
+  inferenceStatus: async (params) => {
+    const response = await api.post('/api/inference/status', params);
+    return response.data;
+  },
+
+  // Saved connections
+  listConnections: async () => {
+    const response = await api.get('/api/connections');
+    return response.data;
+  },
+
+  saveConnection: async (params) => {
+    const response = await api.post('/api/connections', params);
+    return response.data;
+  },
+
+  getConnection: async (connectionId) => {
+    const response = await api.get(`/api/connections/${connectionId}`);
+    return response.data;
+  },
+
+  deleteConnection: async (connectionId) => {
+    const response = await api.delete(`/api/connections/${connectionId}`);
     return response.data;
   },
 

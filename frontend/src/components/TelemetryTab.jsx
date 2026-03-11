@@ -20,6 +20,7 @@ import {
   Grid,
   IconButton,
   InputLabel,
+  LinearProgress,
   Link,
   MenuItem,
   Paper,
@@ -64,7 +65,7 @@ import {
   CartesianGrid,
   ReferenceLine,
 } from 'recharts';
-import apiService, { telemetryUtils } from '../services/api';
+import apiService, { telemetryUtils, friendlyError } from '../services/api';
 import AIInsightsBox from './AIInsightsBox';
 import SMMetricsOverlay from './SMMetricsOverlay';
 
@@ -1248,6 +1249,26 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
   const [kernelProfileResult, setKernelProfileResult] = useState(null);
   const [kernelProfileRunId, setKernelProfileRunId] = useState(null);
 
+  // Inference (vLLM) start/stop control
+  const [inferenceStatus, setInferenceStatus] = useState(null); // null | 'starting' | 'running' | 'stopping' | 'stopped' | 'error'
+  const [inferenceModel, setInferenceModel] = useState('');
+  const inferenceStatusPollRef = useRef(null);
+  const inferenceStatusCheckingRef = useRef(false);
+
+  // Progress elapsed timers for long-running operations
+  const [benchmarkElapsed, setBenchmarkElapsed] = useState(0);
+  const [kernelElapsed, setKernelElapsed] = useState(0);
+  const benchmarkTimerRef = useRef(null);
+  const kernelTimerRef = useRef(null);
+
+  // Preflight check state
+  const [kernelProfilingReady, setKernelProfilingReady] = useState(null); // null | {ready, reason, fix}
+  const [profilingModeReady, setProfilingModeReady] = useState(null);
+
+  // WebSocket reconnect state
+  const [wsReconnecting, setWsReconnecting] = useState(false);
+  const wsReconnectAttemptRef = useRef(0);
+
   const appendLog = useCallback((level, msg) => {
     const ts = new Date().toLocaleTimeString();
     setActivityLog((prev) => {
@@ -1484,7 +1505,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
       await apiService.retryDeploymentJob(jobId);
       fetchDeploymentJobs();
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Failed to retry job');
+      setError(friendlyError(err, 'Failed to retry job'));
     }
   }, [fetchDeploymentJobs]);
 
@@ -1493,7 +1514,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
       await apiService.cancelDeploymentJob(jobId);
       fetchDeploymentJobs();
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Failed to cancel job');
+      setError(friendlyError(err, 'Failed to cancel job'));
     }
   }, [fetchDeploymentJobs]);
 
@@ -1692,6 +1713,8 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           setHasProfilingData(false); // Reset when connecting
           setWebsocketConnectedAt(Date.now());
           setLastDataReceivedAt(null);
+          setWsReconnecting(false);
+          wsReconnectAttemptRef.current = 0; // Reset on successful connect
           console.log('WebSocket connected to run:', runId);
           setAgentSuggestedRunId(null);
           if (fallbackPollRef.current) {
@@ -1813,14 +1836,20 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
               'WebSocket disconnected unexpectedly. Showing polling fallback while attempting to reconnect.'
             );
           }
-          // If monitoring is still supposed to be running, try to reconnect after a delay
-          if (monitoringState === 'running' && activeRun && activeRun.status === 'active' && event.code !== 1000) {
-            console.log('Attempting to reconnect WebSocket in 3 seconds...');
+          // Exponential backoff reconnect: 2s, 4s, 8s, 16s, max 30s
+          if (event.code !== 1000 && event.code !== 1005 && monitoringState === 'running' && activeRun && activeRun.status === 'active') {
+            const attempt = wsReconnectAttemptRef.current;
+            const delay = Math.min(30000, 2000 * Math.pow(2, attempt));
+            wsReconnectAttemptRef.current = attempt + 1;
+            console.log(`WebSocket reconnect attempt ${attempt + 1} in ${delay}ms...`);
+            setWsReconnecting(true);
             setTimeout(() => {
               if (monitoringState === 'running' && activeRun && activeRun.status === 'active') {
                 connectWebSocket(activeRun.run_id);
+              } else {
+                setWsReconnecting(false);
               }
-            }, 3000);
+            }, delay);
           }
         };
 
@@ -1955,9 +1984,9 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
       fetchRuns(instanceId);
     } catch (err) {
       console.error('Failed to start telemetry monitoring', err);
-      appendLog('error', `Start failed: ${err?.response?.data?.detail || err?.message || 'Unknown error'}`);
+      appendLog('error', `Start failed: ${friendlyError(err, 'Unknown error')}`);
       setMonitoringState('idle');
-      setError(err?.response?.data?.detail || err?.message || 'Failed to start telemetry');
+      setError(friendlyError(err, 'Failed to start telemetry'));
     }
   }, [
     appendLog,
@@ -2014,8 +2043,8 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
       }
     } catch (err) {
       console.error('Failed to stop telemetry', err);
-      appendLog('error', `Stop failed: ${err?.response?.data?.detail || err?.message || 'Unknown error'}`);
-      setError(err?.response?.data?.detail || err?.message || 'Failed to stop telemetry');
+      appendLog('error', `Stop failed: ${friendlyError(err, 'Unknown error')}`);
+      setError(friendlyError(err, 'Failed to stop telemetry'));
     } finally {
       setMonitoringState('idle');
       setActiveRun(null);
@@ -2059,7 +2088,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
         setError(result.output_tail || `Kernel analysis failed (exit ${result.exit_code})`);
       }
     } catch (err) {
-      const msg = err?.response?.data?.detail || err?.message || 'Kernel analysis failed';
+      const msg = friendlyError(err, 'Kernel analysis failed');
       appendLog('error', msg);
       setError(msg);
     } finally {
@@ -2071,6 +2100,8 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
     if (!instanceId) return;
     setBenchmarkLoading(true);
     setBenchmarkResult(null);
+    setBenchmarkElapsed(0);
+    benchmarkTimerRef.current = setInterval(() => setBenchmarkElapsed((s) => s + 1), 1000);
     appendLog('info', `Starting workload benchmark (${benchmarkConfig.numRequests} requests, concurrency ${benchmarkConfig.concurrency})...`);
     setError('');
     try {
@@ -2105,11 +2136,12 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
         setError(result.output_tail || `Benchmark failed (exit ${result.exit_code})`);
       }
     } catch (err) {
-      const msg = err?.response?.data?.detail || err?.message || 'Workload benchmark failed';
+      const msg = friendlyError(err, 'Workload benchmark failed');
       appendLog('error', msg);
       setError(msg);
     } finally {
       setBenchmarkLoading(false);
+      if (benchmarkTimerRef.current) { clearInterval(benchmarkTimerRef.current); benchmarkTimerRef.current = null; }
     }
   }, [instanceId, activeRun, benchmarkConfig, appendLog, profilingResultRunId]);
 
@@ -2117,6 +2149,8 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
     if (!instanceId) return;
     setKernelProfileLoading(true);
     setKernelProfileResult(null);
+    setKernelElapsed(0);
+    kernelTimerRef.current = setInterval(() => setKernelElapsed((s) => s + 1), 1000);
     appendLog('info', 'Starting kernel profiling run (separate run, expect 5–10% overhead)...');
     setError('');
     try {
@@ -2146,13 +2180,96 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
         setError(result.output_tail || `Kernel profiling failed (exit ${result.exit_code})`);
       }
     } catch (err) {
-      const msg = err?.response?.data?.detail || err?.message || 'Kernel profiling failed';
+      const msg = friendlyError(err, 'Kernel profiling failed');
       appendLog('error', msg);
       setError(msg);
     } finally {
       setKernelProfileLoading(false);
+      if (kernelTimerRef.current) { clearInterval(kernelTimerRef.current); kernelTimerRef.current = null; }
     }
   }, [instanceId, benchmarkConfig, appendLog]);
+
+  const runPreflightChecks = useCallback(async () => {
+    if (!instanceId) return;
+    try {
+      const [kernelCheck, modeCheck] = await Promise.allSettled([
+        apiService.checkKernelProfilingReady(instanceId),
+        apiService.checkProfilingModeReady(instanceId),
+      ]);
+      if (kernelCheck.status === 'fulfilled') setKernelProfilingReady(kernelCheck.value);
+      if (modeCheck.status === 'fulfilled') setProfilingModeReady(modeCheck.value);
+    } catch { /* non-critical */ }
+  }, [instanceId]);
+
+  const fetchInferenceStatus = useCallback(async () => {
+    if (!sshHost || inferenceStatusCheckingRef.current) return;
+    inferenceStatusCheckingRef.current = true;
+    try {
+      const result = await apiService.inferenceStatus({ ssh_host: sshHost, ssh_user: sshUser });
+      if (result?.status === 'running') {
+        setInferenceStatus('running');
+      } else {
+        setInferenceStatus('stopped');
+      }
+    } catch {
+      setInferenceStatus(null);
+    } finally {
+      inferenceStatusCheckingRef.current = false;
+    }
+  }, [sshHost, sshUser]);
+
+  const handleStartInference = useCallback(async () => {
+    if (!sshHost) return;
+    setInferenceStatus('starting');
+    appendLog('info', `Starting inference server on ${sshHost}...`);
+    try {
+      const pemBase64 = sshKey ? btoa(sshKey) : undefined;
+      await apiService.inferenceStart({
+        ssh_host: sshHost,
+        ssh_user: sshUser,
+        pem_base64: pemBase64,
+        model_path: inferenceModel || undefined,
+        cloud_provider: instance?.provider || 'lambda',
+      });
+      appendLog('info', 'Inference server starting — this may take 1–2 minutes.');
+      setTimeout(() => fetchInferenceStatus(), 5000);
+    } catch (err) {
+      const msg = friendlyError(err, 'Failed to start inference');
+      appendLog('error', msg);
+      setInferenceStatus('error');
+    }
+  }, [sshHost, sshUser, sshKey, inferenceModel, instance, appendLog, fetchInferenceStatus]);
+
+  const handleStopInference = useCallback(async () => {
+    if (!sshHost) return;
+    setInferenceStatus('stopping');
+    appendLog('info', `Stopping inference server on ${sshHost}...`);
+    try {
+      const pemBase64 = sshKey ? btoa(sshKey) : undefined;
+      await apiService.inferenceStop({ ssh_host: sshHost, ssh_user: sshUser, pem_base64: pemBase64 });
+      setInferenceStatus('stopped');
+      appendLog('info', 'Inference server stopped.');
+    } catch (err) {
+      const msg = friendlyError(err, 'Failed to stop inference');
+      appendLog('error', msg);
+      setInferenceStatus('error');
+    }
+  }, [sshHost, sshUser, sshKey, appendLog]);
+
+  // Poll inference status every 10s when sshHost is set
+  useEffect(() => {
+    if (!sshHost) return;
+    fetchInferenceStatus();
+    inferenceStatusPollRef.current = setInterval(fetchInferenceStatus, 10000);
+    return () => {
+      if (inferenceStatusPollRef.current) clearInterval(inferenceStatusPollRef.current);
+    };
+  }, [sshHost, fetchInferenceStatus]);
+
+  // Run preflight checks once when an active deployment is detected
+  useEffect(() => {
+    if (instanceId && activeRun) runPreflightChecks();
+  }, [instanceId, activeRun, runPreflightChecks]);
 
   const selectHistoricalRun = useCallback(
     async (run) => {
@@ -2513,6 +2630,75 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           )}
         </Card>
 
+        {/* ── Inference (vLLM) Control Card ─────────────────────────────── */}
+        {sshHost && (
+          <Card variant="outlined" sx={{ mb: 2 }}>
+            <CardHeader
+              title="Inference Server"
+              subheader="Start or stop the vLLM inference server on the connected GPU instance"
+              action={
+                <Chip
+                  label={
+                    inferenceStatus === 'running' ? 'Running' :
+                    inferenceStatus === 'starting' ? 'Starting…' :
+                    inferenceStatus === 'stopping' ? 'Stopping…' :
+                    inferenceStatus === 'stopped' ? 'Stopped' :
+                    inferenceStatus === 'error' ? 'Error' :
+                    'Unknown'
+                  }
+                  color={
+                    inferenceStatus === 'running' ? 'success' :
+                    inferenceStatus === 'error' ? 'error' :
+                    inferenceStatus === 'starting' || inferenceStatus === 'stopping' ? 'warning' :
+                    'default'
+                  }
+                  size="small"
+                />
+              }
+            />
+            <CardContent>
+              <TextField
+                label="Model path or HuggingFace ID"
+                value={inferenceModel}
+                onChange={(e) => setInferenceModel(e.target.value)}
+                fullWidth
+                size="small"
+                placeholder="e.g. mistralai/Mistral-7B-Instruct-v0.2"
+                helperText="Leave blank to use the default model configured during setup"
+                sx={{ mb: 1 }}
+              />
+            </CardContent>
+            <CardActions sx={{ px: 2, pb: 2 }}>
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={inferenceStatus === 'starting' ? <CircularProgress size={14} /> : <PlayIcon />}
+                onClick={handleStartInference}
+                disabled={!sshHost || inferenceStatus === 'starting' || inferenceStatus === 'running' || inferenceStatus === 'stopping'}
+              >
+                {inferenceStatus === 'starting' ? 'Starting…' : 'Start Inference'}
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={inferenceStatus === 'stopping' ? <CircularProgress size={14} /> : <StopIcon />}
+                onClick={handleStopInference}
+                disabled={!sshHost || inferenceStatus !== 'running'}
+              >
+                {inferenceStatus === 'stopping' ? 'Stopping…' : 'Stop Inference'}
+              </Button>
+              <Button
+                size="small"
+                onClick={fetchInferenceStatus}
+                disabled={!sshHost}
+                sx={{ ml: 'auto' }}
+              >
+                Refresh Status
+              </Button>
+            </CardActions>
+          </Card>
+        )}
+
         {message && <Alert severity="success">{message}</Alert>}
         {error && <Alert severity="error">{error}</Alert>}
 
@@ -2708,6 +2894,15 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                 {benchmarkLoading ? 'Benchmarking...' : 'Run Benchmark'}
               </Button>
 
+              {benchmarkLoading && (
+                <Box sx={{ mt: 2 }}>
+                  <LinearProgress sx={{ borderRadius: 1, height: 6 }} />
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                    Running benchmark… {benchmarkElapsed}s elapsed (typically 30–120s)
+                  </Typography>
+                </Box>
+              )}
+
               {/* Benchmark Results */}
               {benchmarkResult?.workload && (
                 <Box sx={{ mt: 3 }}>
@@ -2832,18 +3027,53 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                 Uses the vLLM server and model settings from the Workload Benchmark config above.
               </Typography>
 
+              {/* Preflight check results */}
+              {kernelProfilingReady?.ready === false && (
+                <Alert severity="error" sx={{ mb: 2, borderRadius: '8px' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                    Kernel profiling not ready: {kernelProfilingReady.reason}
+                  </Typography>
+                  {kernelProfilingReady.fix && (
+                    <Typography variant="caption" component="pre" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap', mt: 0.5, p: 1, bgcolor: 'background.default', borderRadius: 1 }}>
+                      {kernelProfilingReady.fix}
+                    </Typography>
+                  )}
+                </Alert>
+              )}
+              {profilingModeReady?.ready === false && (
+                <Alert severity="warning" sx={{ mb: 2, borderRadius: '8px' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                    Profiling mode not enabled: {profilingModeReady.reason}
+                  </Typography>
+                  {profilingModeReady.fix && (
+                    <Typography variant="caption" component="pre" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap', mt: 0.5, p: 1, bgcolor: 'background.default', borderRadius: 1 }}>
+                      {profilingModeReady.fix}
+                    </Typography>
+                  )}
+                </Alert>
+              )}
+
               <Button
                 variant="outlined"
                 color="warning"
                 onClick={handleRunKernelProfile}
-                disabled={kernelProfileLoading || !instanceId}
+                disabled={kernelProfileLoading || !instanceId || kernelProfilingReady?.ready === false}
                 startIcon={kernelProfileLoading ? <CircularProgress size={16} /> : <BoltIcon />}
                 sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
               >
                 {kernelProfileLoading ? 'Profiling kernels...' : 'Run Kernel Profile'}
               </Button>
 
-              {kernelProfileRunId && (
+              {kernelProfileLoading && (
+                <Box sx={{ mt: 2 }}>
+                  <LinearProgress color="warning" sx={{ borderRadius: 1, height: 6 }} />
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                    Running kernel profiler… {kernelElapsed}s elapsed (typically 5–10 min)
+                  </Typography>
+                </Box>
+              )}
+
+              {kernelProfileRunId && !kernelProfileLoading && (
                 <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
                   Run: {kernelProfileRunId.substring(0, 8)}...
                 </Typography>
@@ -3157,6 +3387,11 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
         </Card>
         {monitoringState === 'deploying' && (
           <Alert severity="info">Waiting for monitoring stack to become healthy...</Alert>
+        )}
+        {wsReconnecting && (
+          <Alert severity="warning" icon={<CircularProgress size={16} />} sx={{ mb: 1 }}>
+            WebSocket disconnected — reconnecting with exponential backoff (attempt {wsReconnectAttemptRef.current})...
+          </Alert>
         )}
         {monitoringState === 'running' && realtimeChart.data.length === 0 && (
           <Alert severity="warning" sx={{ mb: 2 }}>

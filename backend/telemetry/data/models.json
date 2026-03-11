@@ -1,0 +1,137 @@
+[
+  {
+    "id": "mistral-7b",
+    "name": "Mistral 7B Instruct",
+    "hf_id": "mistralai/Mistral-7B-Instruct-v0.2",
+    "size_b": 7,
+    "vram_gb": 16,
+    "min_gpus": 1,
+    "compatible_gpus": ["RTX 4090", "A10", "A100", "H100", "L40S", "L4"],
+    "vllm_config": {
+      "tensor_parallel_size": 1,
+      "max_model_len": 8192,
+      "max_num_seqs": 64,
+      "gpu_memory_utilization": 0.90
+    },
+    "recommended": true,
+    "tags": ["7B", "chat", "instruct", "public"],
+    "description": "Recommended starting point. Small, reliable, publicly available without authentication. Works on a single GPU.",
+    "tokens_per_sec_range": [80, 120]
+  },
+  {
+    "id": "llama3-8b",
+    "name": "Llama 3.1 8B Instruct",
+    "hf_id": "meta-llama/Llama-3.1-8B-Instruct",
+    "size_b": 8,
+    "vram_gb": 16,
+    "min_gpus": 1,
+    "compatible_gpus": ["A10", "A100", "H100", "L40S"],
+    "vllm_config": {
+      "tensor_parallel_size": 1,
+      "max_model_len": 8192,
+      "max_num_seqs": 64,
+      "gpu_memory_utilization": 0.90
+    },
+    "recommended": false,
+    "tags": ["8B", "chat", "instruct", "llama"],
+    "description": "Meta Llama 3.1 8B — excellent general-purpose model. Requires HuggingFace token.",
+    "tokens_per_sec_range": [80, 150]
+  },
+  {
+    "id": "llama3-70b",
+    "name": "Llama 3.1 70B Instruct",
+    "hf_id": "meta-llama/Llama-3.1-70B-Instruct",
+    "size_b": 70,
+    "vram_gb": 140,
+    "min_gpus": 2,
+    "compatible_gpus": ["H100", "A100-80G"],
+    "vllm_config": {
+      "tensor_parallel_size": 8,
+      "max_model_len": 16384,
+      "max_num_seqs": 32,
+      "gpu_memory_utilization": 0.85
+    },
+    "recommended": false,
+    "tags": ["70B", "chat", "instruct", "llama", "large"],
+    "description": "Meta Llama 3.1 70B — high-quality outputs. Requires 8× H100 or 2× A100-80G.",
+    "tokens_per_sec_range": [40, 80]
+  },
+  {
+    "id": "qwen2-5-7b",
+    "name": "Qwen 2.5 7B Instruct",
+    "hf_id": "Qwen/Qwen2.5-7B-Instruct",
+    "size_b": 7,
+    "vram_gb": 16,
+    "min_gpus": 1,
+    "compatible_gpus": ["RTX 4090", "A10", "A100", "H100", "L40S"],
+    "vllm_config": {
+      "tensor_parallel_size": 1,
+      "max_model_len": 32768,
+      "max_num_seqs": 64,
+      "gpu_memory_utilization": 0.90
+    },
+    "recommended": false,
+    "tags": ["7B", "chat", "coding", "multilingual"],
+    "description": "Alibaba Qwen 2.5 7B — strong coding and multilingual capabilities. Publicly available.",
+    "tokens_per_sec_range": [90, 130]
+  },
+  {
+    "id": "qwen2-5-32b",
+    "name": "Qwen 2.5 32B Instruct",
+    "hf_id": "Qwen/Qwen2.5-32B-Instruct",
+    "size_b": 32,
+    "vram_gb": 64,
+    "min_gpus": 1,
+    "compatible_gpus": ["H100", "A100-80G", "L40S"],
+    "vllm_config": {
+      "tensor_parallel_size": 4,
+      "max_model_len": 32768,
+      "max_num_seqs": 64,
+      "gpu_memory_utilization": 0.90
+    },
+    "recommended": false,
+    "tags": ["32B", "chat", "coding", "multilingual", "large"],
+    "description": "Alibaba Qwen 2.5 32B — excellent coding and math performance. Fits on 1× H100 80G.",
+    "tokens_per_sec_range": [50, 100]
+  },
+  {
+    "id": "mixtral-8x7b",
+    "name": "Mixtral 8×7B Instruct",
+    "hf_id": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+    "size_b": 47,
+    "vram_gb": 96,
+    "min_gpus": 2,
+    "compatible_gpus": ["H100", "A100-80G"],
+    "vllm_config": {
+      "tensor_parallel_size": 2,
+      "max_model_len": 32768,
+      "max_num_seqs": 32,
+      "gpu_memory_utilization": 0.90
+    },
+    "recommended": false,
+    "tags": ["MOE", "chat", "instruct", "efficient"],
+    "description": "Mixtral 8×7B MoE model — fast inference due to sparse activation. Requires 2× H100.",
+    "tokens_per_sec_range": [100, 200]
+  },
+  {
+    "id": "llama4-scout",
+    "name": "Llama 4 Scout 17B (Experimental)",
+    "hf_id": "RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic",
+    "size_b": 17,
+    "vram_gb": 40,
+    "min_gpus": 2,
+    "compatible_gpus": ["H100", "A100"],
+    "vllm_config": {
+      "tensor_parallel_size": 2,
+      "max_model_len": 1024,
+      "max_num_seqs": 16,
+      "gpu_memory_utilization": 0.70,
+      "enforce_eager": true
+    },
+    "recommended": false,
+    "experimental": true,
+    "tags": ["17B", "multimodal", "MOE", "experimental"],
+    "description": "⚠️ Experimental. Meta Llama 4 Scout — uses XET/compressed-tensors storage. May have download issues.",
+    "tokens_per_sec_range": [120, 150]
+  }
+]

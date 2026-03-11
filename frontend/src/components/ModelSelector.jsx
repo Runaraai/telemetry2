@@ -163,6 +163,33 @@ export default function ModelSelector({ open, onClose, orchestrationId, onDeploy
   const [deploying, setDeploying] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState({});
   const [quickModelId, setQuickModelId] = useState('');
+  const [catalogModels, setCatalogModels] = useState(null); // null = not loaded yet
+
+  // Fetch model catalog from backend; fall back to AVAILABLE_MODELS if unavailable
+  React.useEffect(() => {
+    if (!open) return;
+    apiService.listModels().then((data) => {
+      if (data?.models?.length) {
+        // Map catalog format to the format expected by this component
+        const mapped = data.models.map((m) => ({
+          id: m.id,
+          name: m.name,
+          size: m.size_b ? `${m.size_b}B` : '',
+          memory: m.vram_gb ? `${m.vram_gb} GiB` : '',
+          gpus: m.compatible_gpus || [],
+          tokensPerSec: m.tokens_per_sec_range ? m.tokens_per_sec_range.join('-') : '',
+          description: m.description || '',
+          vllm_model_path: m.hf_id,
+          vllm_config: m.vllm_config || {},
+          recommended: m.recommended || false,
+          experimental: m.experimental || false,
+        }));
+        setCatalogModels(mapped);
+      }
+    }).catch(() => setCatalogModels(null));
+  }, [open]);
+
+  const models = catalogModels || AVAILABLE_MODELS;
 
   const handleDeploy = async (model, variant = null) => {
     setDeploying(model.id);
@@ -235,7 +262,7 @@ export default function ModelSelector({ open, onClose, orchestrationId, onDeploy
   };
 
   const handleQuickDeploy = () => {
-    const model = AVAILABLE_MODELS.find((m) => m.id === quickModelId);
+    const model = models.find((m) => m.id === quickModelId);
     if (!model) return;
     const variant = model.variants && model.variants.length > 0 ? model.variants[0] : null;
     handleDeploy(model, variant);
@@ -271,9 +298,9 @@ export default function ModelSelector({ open, onClose, orchestrationId, onDeploy
               onChange={(e) => setQuickModelId(e.target.value)}
             >
               <MenuItem value=""><em>Select model</em></MenuItem>
-              <MenuItem value="qwen2.5">Qwen 2.5</MenuItem>
-              <MenuItem value="llama4-scout">Llama 4 Scout</MenuItem>
-              <MenuItem value="llama3.1">Llama 3.1</MenuItem>
+              {models.map((m) => (
+                <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+              ))}
             </Select>
           </FormControl>
           <Button
@@ -288,7 +315,7 @@ export default function ModelSelector({ open, onClose, orchestrationId, onDeploy
         </Box>
 
         <Grid container spacing={3} sx={{ mt: 1 }}>
-          {AVAILABLE_MODELS.map((model) => (
+          {models.map((model) => (
             <Grid item xs={12} md={6} key={model.id}>
               <Card
                 variant="outlined"

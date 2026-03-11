@@ -596,6 +596,12 @@ async def _migrate_gpu_metrics_table(conn, schema: str) -> None:
         ("ttft_p50_ms", "REAL"),  # Time to first token P50 (milliseconds)
         ("ttft_p95_ms", "REAL"),  # Time to first token P95 (milliseconds)
         ("cost_per_watt", "REAL"),  # Performance per watt (tokens/sec/watt)
+        # vLLM live inference metrics (from Prometheus scrape of vLLM /metrics)
+        ("prompt_tokens_per_second", "REAL"),
+        ("vllm_requests_running", "REAL"),
+        ("vllm_requests_waiting", "REAL"),
+        ("vllm_gpu_cache_usage", "REAL"),
+        ("vllm_cpu_cache_usage", "REAL"),
     ]
     
     for column_name, column_type in new_columns:

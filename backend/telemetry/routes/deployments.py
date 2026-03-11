@@ -832,6 +832,108 @@ async def run_profiling(
     }
 
 
+@router.get("/{instance_id}/check-kernel-profiling-ready")
+async def check_kernel_profiling_ready(
+    instance_id: str,
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Check whether the vLLM container on the instance was started with --profiler-config.
+
+    If VLLM_TORCH_PROFILER_DIR is missing, kernel profiling will fail silently
+    after 5 minutes. This endpoint gives an early warning with actionable fix steps.
+    """
+    deployment_record = None
+    async with deployment_manager._lock:
+        for record in deployment_manager._records.values():
+            if record.instance_id == instance_id and record.status == "running":
+                deployment_record = record
+                break
+
+    if not deployment_record:
+        return {"ready": False, "reason": "No active monitoring deployment found for this instance.",
+                "fix": "Start GPU monitoring first so SSH credentials are available."}
+
+    def _check_sync():
+        ssh = deployment_manager._connect(deployment_record.request)
+        try:
+            # Check if vllm container has the profiler env var set
+            stdin, stdout, stderr = ssh.exec_command(
+                "docker exec vllm env 2>/dev/null | grep VLLM_TORCH_PROFILER_DIR", timeout=15
+            )
+            out = stdout.read().decode().strip()
+            exit_code = stdout.channel.recv_exit_status()
+            if exit_code == 0 and out:
+                return {"ready": True, "profiler_dir": out.split("=", 1)[-1]}
+            return {
+                "ready": False,
+                "reason": "vLLM container was not started with --profiler-config / VLLM_TORCH_PROFILER_DIR.",
+                "fix": (
+                    "Stop the current vLLM container and restart with the profiler config:\n"
+                    "  docker stop vllm && docker rm vllm\n"
+                    "  <your-vllm-start-command> --tensor-parallel-size N \\\n"
+                    "    --kv-cache-dtype fp8 \\\n"
+                    "    --profile /tmp/vllm_profiles\n"
+                    "Then re-run 'Deploy Inference' from the Profiling tab."
+                ),
+            }
+        except Exception as e:
+            return {"ready": False, "reason": f"SSH check failed: {e}", "fix": "Ensure the instance is reachable."}
+        finally:
+            ssh.close()
+
+    return await asyncio.get_running_loop().run_in_executor(None, _check_sync)
+
+
+@router.get("/{instance_id}/check-profiling-mode-ready")
+async def check_profiling_mode_ready(
+    instance_id: str,
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Check whether the GPU driver NVreg_RestrictProfilingToAdminUsers flag is set to 0.
+
+    Without this, DCGM profiling metrics (SM active, tensor active, etc.) are only
+    available to root. Setting it to 0 allows the dcgm-exporter container to access them.
+    """
+    deployment_record = None
+    async with deployment_manager._lock:
+        for record in deployment_manager._records.values():
+            if record.instance_id == instance_id and record.status == "running":
+                deployment_record = record
+                break
+
+    if not deployment_record:
+        return {"ready": False, "reason": "No active monitoring deployment found for this instance.",
+                "fix": "Start GPU monitoring first."}
+
+    def _check_sync():
+        ssh = deployment_manager._connect(deployment_record.request)
+        try:
+            stdin, stdout, stderr = ssh.exec_command(
+                "cat /etc/modprobe.d/omniference-nvidia.conf 2>/dev/null || "
+                "cat /etc/modprobe.d/nvidia.conf 2>/dev/null || echo 'NOT_FOUND'",
+                timeout=10,
+            )
+            out = stdout.read().decode().strip()
+            if "NVreg_RestrictProfilingToAdminUsers=0" in out:
+                return {"ready": True}
+            fix_cmd = (
+                "echo 'options nvidia NVreg_RestrictProfilingToAdminUsers=0' | "
+                "sudo tee /etc/modprobe.d/omniference-nvidia.conf && "
+                "sudo update-initramfs -u && sudo reboot"
+            )
+            return {
+                "ready": False,
+                "reason": "NVreg_RestrictProfilingToAdminUsers is not set to 0. Profiling metrics will be unavailable.",
+                "fix": fix_cmd,
+            }
+        except Exception as e:
+            return {"ready": False, "reason": f"SSH check failed: {e}", "fix": "Ensure the instance is reachable."}
+        finally:
+            ssh.close()
+
+    return await asyncio.get_running_loop().run_in_executor(None, _check_sync)
+
+
 @router.get("/jobs", response_model=DeploymentJobListResponse)
 async def list_deployment_jobs(
     instance_id: Optional[str] = None,

@@ -36,13 +36,17 @@ else
   echo "HF_TOKEN not set; skipping login (required for gated/private models)."
 fi
 
+# Model settings — override via environment variables
+MODEL_HF_ID="${MODEL_HF_ID:-RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic}"
+MODEL_LOCAL_DIR="${MODEL_LOCAL_DIR:-./models/scout17b-fp8dyn}"
+
 # Create model directory in BM folder
-mkdir -p ./models/scout17b-fp8dyn
+mkdir -p "$MODEL_LOCAL_DIR"
 
 # Download the model
 venv/bin/hf download \
-  RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic \
-  --local-dir ./models/scout17b-fp8dyn
+  "$MODEL_HF_ID" \
+  --local-dir "$MODEL_LOCAL_DIR"
 
 
 

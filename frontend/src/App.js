@@ -13,6 +13,7 @@ import RunningInstances from './pages/RunningInstances';
 import TelemetryHistory from './components/TelemetryHistory';
 import LoginPage from './pages/Login';
 import Workload from './pages/Workload';
+import OnboardingWizard from './components/OnboardingWizard';
 
 const theme = createTheme({
   palette: {
@@ -607,6 +608,7 @@ function AppContent() {
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#0D1B13', display: 'flex' }}>
+      <OnboardingWizard />
       <Sidebar />
       <Box
         component="main"

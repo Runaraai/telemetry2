@@ -16,7 +16,7 @@ import {
   OpenInNew as OpenInNewIcon,
   DeleteOutline as DeleteOutlineIcon
 } from '@mui/icons-material';
-import apiService from '../services/api';
+import apiService, { friendlyError } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import InstanceOrchestration from '../components/InstanceOrchestration';
 import ModelSelector from '../components/ModelSelector';
@@ -2113,98 +2113,8 @@ const normalizeAvailability = (cfg, zone) => {
         setMessage('');
       }
     } catch (e) {
-      // Log error object directly
-      console.error('=== LAUNCH ERROR ===');
-      console.error('Error object:', e);
-      console.error('Error type:', typeof e);
-      console.error('Error name:', e?.name);
-      console.error('Error message:', e?.message);
-      console.error('Error code:', e?.code);
-      
-      // Log response details
-      if (e.response) {
-        console.error('=== RESPONSE DETAILS ===');
-        console.error('Response status:', e.response.status);
-        console.error('Response statusText:', e.response.statusText);
-        console.error('Response headers:', e.response.headers);
-        console.error('Response data (raw):', e.response.data);
-        console.error('Response data (stringified):', JSON.stringify(e.response.data, null, 2));
-        
-        // Try to access detail field directly
-        if (e.response.data) {
-          console.error('Response data.detail:', e.response.data.detail);
-          console.error('Response data.message:', e.response.data.message);
-          console.error('Response data keys:', Object.keys(e.response.data));
-        }
-      } else {
-        console.error('No response object in error');
-      }
-      
-      // Log request details
-      if (e.config) {
-        console.error('=== REQUEST DETAILS ===');
-        console.error('Request URL:', e.config.url);
-        console.error('Request method:', e.config.method);
-        console.error('Request headers:', e.config.headers);
-      }
-      
-      // Log full error details for debugging
-      const errorDetails = {
-        message: e.message,
-        name: e.name,
-        code: e.code,
-        status: e.response?.status,
-        statusText: e.response?.statusText,
-        responseData: e.response?.data,
-        responseHeaders: e.response?.headers,
-        requestUrl: e.config?.url,
-        requestMethod: e.config?.method,
-        requestData: e.config?.data
-      };
-      console.error('=== FULL ERROR DETAILS (JSON) ===');
-      console.error(JSON.stringify(errorDetails, null, 2));
-      
-      // Extract detailed error message
-      let errorMessage = 'Failed to launch instance';
-      const responseData = e.response?.data;
-      
-      console.error('=== EXTRACTING ERROR MESSAGE ===');
-      console.error('Response data exists:', !!responseData);
-      console.error('Response data type:', typeof responseData);
-      console.error('Response data value:', responseData);
-      
-      if (responseData) {
-        // Try different possible error message fields
-        if (responseData.detail) {
-          errorMessage = `Failed to launch instance: ${responseData.detail}`;
-          console.error('Using responseData.detail:', responseData.detail);
-        } else if (responseData.message) {
-          errorMessage = `Failed to launch instance: ${responseData.message}`;
-          console.error('Using responseData.message:', responseData.message);
-        } else if (responseData.error) {
-          errorMessage = `Failed to launch instance: ${responseData.error}`;
-          console.error('Using responseData.error:', responseData.error);
-        } else if (typeof responseData === 'string') {
-          errorMessage = `Failed to launch instance: ${responseData}`;
-          console.error('Using responseData as string:', responseData);
-        } else {
-          // If we have data but no clear message, show the status and stringify the data
-          const dataStr = JSON.stringify(responseData);
-          errorMessage = `Failed to launch instance: Server error (${e.response?.status || 'unknown'}). Response: ${dataStr.substring(0, 200)}`;
-          console.error('No clear error field, using status and data:', dataStr);
-        }
-      } else if (e.message) {
-        errorMessage = `Failed to launch instance: ${e.message}`;
-        console.error('Using e.message:', e.message);
-      } else if (e.response?.status) {
-        errorMessage = `Failed to launch instance: Server returned ${e.response.status} ${e.response.statusText || ''}`;
-        console.error('Using response status:', e.response.status);
-      }
-      
-      console.error('=== FINAL ERROR MESSAGE ===');
-      console.error('Will display to user:', errorMessage);
-      
-      setError(errorMessage);
+      console.error('[LAUNCH] Instance launch failed:', e?.response?.data || e?.message || e);
+      setError(`Failed to launch instance: ${friendlyError(e, 'Please check your API key and instance configuration.')}`);
     } finally {
       setLaunchLoading(false);
     }
