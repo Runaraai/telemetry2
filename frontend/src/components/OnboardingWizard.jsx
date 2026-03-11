@@ -31,8 +31,8 @@ const STEPS = [
     subtitle: 'Launch a cloud GPU or connect one you already have running.',
     bullets: [
       'Go to Manage Instances to add API keys for Lambda Labs, Nebius, or Scaleway.',
-      'Launch a GPU — we'll give you model-fit recommendations before you pick.',
-      'Once it's running, copy the SSH host shown in Running Instances.',
+      "Launch a GPU — we'll give you model-fit recommendations before you pick.",
+      "Once it's running, copy the SSH host shown in Running Instances.",
     ],
     cta: { label: 'Go to Manage Instances', path: '/instances' },
     tip: 'Not sure which GPU to pick? L40S (48 GB) handles most 7–34B models. H100 (80 GB) is needed for 70B+.',

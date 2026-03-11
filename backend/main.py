@@ -8828,7 +8828,7 @@ def _create_run_for_workflow(ssh_host: str, mode: str = "workload") -> tuple:
 
     # Login
     login_req = urllib.request.Request(
-        f"{api_base}/api/telemetry/auth/login",
+        f"{api_base}/api/auth/login",
         method="POST",
         headers={"Content-Type": "application/json"},
         data=_json.dumps({"email": demo_email, "password": demo_password}).encode(),
@@ -8839,7 +8839,7 @@ def _create_run_for_workflow(ssh_host: str, mode: str = "workload") -> tuple:
 
     # Create run
     create_req = urllib.request.Request(
-        f"{api_base}/api/telemetry/runs",
+        f"{api_base}/api/runs",
         method="POST",
         headers={
             "Content-Type": "application/json",
