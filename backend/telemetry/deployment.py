@@ -181,7 +181,12 @@ class DeploymentManager:
                 self._write_remote_file(sftp, f"{remote_dir}/docker-compose.yml", 
                                        self._compose_content(request, system_info))
                 # Pass system_info to prometheus config (to conditionally include DCGM)
-                self._write_remote_file(sftp, f"{remote_dir}/prometheus.yml", self._prometheus_config(request, system_info))
+                # and include ingest token so remote_write is authorized.
+                self._write_remote_file(
+                    sftp,
+                    f"{remote_dir}/prometheus.yml",
+                    self._prometheus_config(request, system_info, request.ingest_token or None),
+                )
                 self._write_remote_file(sftp, f"{remote_dir}/dcgm-collectors.csv", 
                                        self._dcgm_collectors_csv(request.enable_profiling))
                 self._write_remote_file(sftp, f"{remote_dir}/nvidia-smi-exporter.py", 
@@ -687,7 +692,9 @@ class DeploymentManager:
         dcgm_service = ""
         if has_dcgm:
             # Note: The DCGM exporter image has all necessary libraries built-in.
-            # Do NOT mount /usr/lib/x86_64-linux-gnu as it breaks the container's entrypoint.
+            # Do NOT bind-mount CUDA/NVML libraries into container library paths.
+            # On hosts using the NVIDIA container runtime hook, that causes a
+            # symlink/create conflict during container init (device or resource busy).
             dcgm_service = f"""
   dcgm-exporter:
     image: {dcgm_image}
@@ -696,8 +703,6 @@ class DeploymentManager:
     volumes:
       - ./dcgm-collectors.csv:/etc/dcgm-exporter/dcp-metrics-included.csv:ro
       - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro
-      - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:ro
-      - /usr/lib/x86_64-linux-gnu/libcuda.so.1:/usr/lib/x86_64-linux-gnu/libcuda.so.1:ro
     environment:
       LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu:/usr/local/dcgm/lib64
       DCGM_EXPORTER_LISTEN: ":9400"
@@ -734,8 +739,6 @@ services:{dcgm_service}
     volumes:
       - ./nvidia-smi-exporter.py:/app/nvidia-smi-exporter.py:ro
       - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro
-      - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:ro
-      - /usr/lib/x86_64-linux-gnu/libcuda.so.1:/usr/lib/x86_64-linux-gnu/libcuda.so.1:ro
     environment:
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
@@ -754,8 +757,6 @@ services:{dcgm_service}
     volumes:
       - ./dcgm-health-exporter.py:/app/dcgm-health-exporter.py:ro
       - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro
-      - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:ro
-      - /usr/lib/x86_64-linux-gnu/libcuda.so.1:/usr/lib/x86_64-linux-gnu/libcuda.so.1:ro
     environment:
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility

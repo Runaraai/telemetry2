@@ -140,6 +140,10 @@ class DeploymentQueueManager:
             DeploymentJobUpdate(
                 status="completed",
                 completed_at=datetime.now(timezone.utc),
+                error_message=None,
+                error_log=None,
+                locked_by=None,
+                locked_at=None,
             ),
         )
 
@@ -255,4 +259,3 @@ class DeploymentQueueManager:
 
 # Global queue manager instance
 queue_manager = DeploymentQueueManager()
-

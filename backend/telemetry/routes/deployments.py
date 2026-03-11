@@ -120,9 +120,19 @@ async def deploy_instance(
     
     ingest_token = ""
     created_run_in_request = False
+    token_updated_in_request = False
     run = await repo.get_run(payload.run_id, current_user.user_id)
     if run:
         run_id = run.run_id
+        # Existing runs store only token hash; regenerate a token so this deployment
+        # can include X-Ingest-Token in Prometheus remote_write.
+        ingest_token = await repo.regenerate_ingest_token(run_id, current_user.user_id)
+        if not ingest_token:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot generate ingest token for this run",
+            )
+        token_updated_in_request = True
     else:
         run_payload = RunCreate(
             instance_id=instance_id,
@@ -133,6 +143,10 @@ async def deploy_instance(
         run_id = run.run_id
         payload.run_id = run_id
         created_run_in_request = True
+        token_updated_in_request = True
+
+    # Ensure deployment payload carries ingest token for SSH flow.
+    payload.ingest_token = ingest_token
     
     # For agent deployment, SSH fields are not required
     if deployment_type == "agent":
@@ -153,7 +167,7 @@ async def deploy_instance(
     # If we created a fallback run in this request, commit it before enqueueing.
     # The queue manager uses a separate DB session; without this commit, FK checks
     # against deployment_jobs.run_id can fail.
-    if created_run_in_request:
+    if created_run_in_request or token_updated_in_request:
         await repo.session.commit()
 
     # Enqueue deployment job instead of starting directly

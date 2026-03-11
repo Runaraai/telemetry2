@@ -1612,6 +1612,33 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
     [flushRealtimeBuffer]
   );
 
+  const startPollingFallback = useCallback(
+    async (runId, reason = 'Live stream unavailable. Falling back to polling every 5 seconds.') => {
+      if (!runId || fallbackPollRef.current) {
+        return;
+      }
+
+      setError(reason);
+
+      const pollOnce = async () => {
+        try {
+          const response = await apiService.getTelemetryMetrics(runId, { limit: 200 });
+          const samples = response?.metrics || [];
+          if (samples.length > 0) {
+            enqueueRealtimeSamples(samples);
+            setLastDataReceivedAt(Date.now());
+          }
+        } catch (pollErr) {
+          console.warn('Telemetry polling fallback failed', pollErr);
+        }
+      };
+
+      await pollOnce();
+      fallbackPollRef.current = setInterval(pollOnce, 5000);
+    },
+    [enqueueRealtimeSamples]
+  );
+
   const connectWebSocket = useCallback(
     (runId) => {
       if (!runId) return;
@@ -1659,22 +1686,10 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                 if (samples.length > 0) {
                   enqueueRealtimeSamples(samples);
                   setLastDataReceivedAt(Date.now());
-                  setError('Live stream connected but no messages received; showing metrics via polling. If this persists, enable Redis broker or restart backend workers.');
-
-                  if (!fallbackPollRef.current) {
-                    fallbackPollRef.current = setInterval(async () => {
-                      try {
-                        const resp = await apiService.getTelemetryMetrics(runId, { limit: 200 });
-                        const batch = resp?.metrics || [];
-                        if (batch.length > 0) {
-                          enqueueRealtimeSamples(batch);
-                          setLastDataReceivedAt(Date.now());
-                        }
-                      } catch (pollErr) {
-                        console.warn('Telemetry polling fallback failed', pollErr);
-                      }
-                    }, 5000);
-                  }
+                  await startPollingFallback(
+                    runId,
+                    'Live stream connected but no messages received; showing metrics via polling. If this persists, enable Redis broker or restart backend workers.'
+                  );
                   return;
                 }
               } catch (pollErr) {
@@ -1691,7 +1706,10 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                 return;
               }
 
-              setError('WebSocket connected but no metrics received. The remote Prometheus may still be configured with a different run_id. If using the agent, restart omniference-agent on the instance. If using SSH deploy, click "Stop Monitoring" then "Start Monitoring" again.');
+              await startPollingFallback(
+                runId,
+                'WebSocket connected but no metrics received yet. Showing polling fallback while waiting for metrics.'
+              );
             })();
           }, 30000);
         };
@@ -1752,7 +1770,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
             clearTimeout(dataTimeoutRef.current);
             dataTimeoutRef.current = null;
           }
-          if (fallbackPollRef.current) {
+          if ((event.code === 1000 || event.code === 1005 || monitoringState === 'stopping') && fallbackPollRef.current) {
             clearInterval(fallbackPollRef.current);
             fallbackPollRef.current = null;
           }
@@ -1761,6 +1779,10 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           // Don't show error for normal closures or if we're stopping monitoring
           if (event.code !== 1000 && event.code !== 1005 && monitoringState !== 'stopping') {
             setError(`WebSocket connection closed unexpectedly (code: ${event.code}${event.reason ? ': ' + event.reason : ''})`);
+            startPollingFallback(
+              runId,
+              'WebSocket disconnected unexpectedly. Showing polling fallback while attempting to reconnect.'
+            );
           }
           // If monitoring is still supposed to be running, try to reconnect after a delay
           if (monitoringState === 'running' && activeRun && activeRun.status === 'active' && event.code !== 1000) {
@@ -1776,13 +1798,21 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
         socket.onerror = (event) => {
           console.error('Telemetry WebSocket error', event);
           setError(`Telemetry stream error: ${event.message || 'Connection error'}`);
+          startPollingFallback(
+            runId,
+            'Telemetry stream connection failed. Showing polling fallback while keeping metrics live.'
+          );
         };
       } catch (err) {
         console.error('Unable to connect to telemetry WebSocket', err);
         setError('Failed to connect to telemetry stream');
+        startPollingFallback(
+          runId,
+          'Unable to connect to telemetry stream. Showing polling fallback while monitoring continues.'
+        );
       }
     },
-    [enqueueRealtimeSamples, monitoringState, activeRun, enableProfiling, agentStatus]
+    [enqueueRealtimeSamples, startPollingFallback, monitoringState, activeRun, enableProfiling, agentStatus]
   );
 
   useEffect(() => {

@@ -279,6 +279,10 @@ class DeploymentRequest(BaseModel):
     backend_url: str
     ssh_port: int = Field(default=22, ge=1, le=65535)
     poll_interval: int = Field(default=5, ge=1)
+    ingest_token: str = Field(
+        default="",
+        description="Run ingest token used as X-Ingest-Token for Prometheus remote_write",
+    )
     enable_profiling: bool = Field(
         default=False,
         description="Enable DCGM profiling mode for detailed SM/Tensor/DRAM metrics. "
