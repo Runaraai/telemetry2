@@ -2677,7 +2677,7 @@ const Benchmarking = () => {
               </Card>
 
               {/* Back button for step 2 */}
-              <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
                 <Button
                   variant="outlined"
                   startIcon={<ArrowBackIcon />}
@@ -2685,6 +2685,13 @@ const Benchmarking = () => {
                   sx={{ borderRadius: 2, fontWeight: 600, px: 4 }}
                 >
                   Back
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => navigate('/telemetry')}
+                  sx={{ backgroundColor: '#16a34a', color: '#fff', borderRadius: 2, fontWeight: 600, px: 4, '&:hover': { backgroundColor: '#15803d' } }}
+                >
+                  Go to Telemetry
                 </Button>
               </Box>
               </React.Fragment>)}
