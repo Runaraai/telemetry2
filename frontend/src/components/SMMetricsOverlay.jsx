@@ -25,7 +25,7 @@ import {
 import { Warning as WarningIcon } from '@mui/icons-material';
 
 const COLOR_PALETTE = {
-  gpuLine: '#3DA866',
+  gpuLine: '#818cf8',
   smMinBand: '#26a69a',
   smMaxBand: '#ef5350',
   outlier: '#ff7043',
@@ -181,7 +181,7 @@ const SMMetricsOverlay = ({ gpuData, smData, unit, domain }) => {
       <Box sx={{ width: '100%', height: 350 }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 16, right: 24, bottom: 16, left: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1E4530" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#3d3d3a" />
             <XAxis
               dataKey="timeLabel"
               minTickGap={30}

@@ -19,116 +19,116 @@ const theme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#3DA866',
+      main: '#818cf8',
     },
     secondary: {
-      main: '#3A6B4E',
+      main: '#6366f1',
     },
     error: {
-      main: '#d32f2f',
+      main: '#f87171',
     },
     warning: {
-      main: '#ed6c02',
+      main: '#fbbf24',
     },
     info: {
-      main: '#0288d1',
+      main: '#60a5fa',
     },
     success: {
-      main: '#2e7d32',
+      main: '#34d399',
     },
     default: {
-      main: '#3A6B4E',
+      main: '#6366f1',
       contrastText: '#fff',
     },
     background: {
-      default: '#0D1B13',
-      paper: '#142B1D',
+      default: '#2d2d2a',
+      paper: '#1a1a18',
     },
     text: {
-      primary: '#e2e8f0',
-      secondary: '#94a3b8',
+      primary: '#fafaf8',
+      secondary: '#a8a8a0',
     },
-    divider: '#1E4530',
+    divider: '#3d3d3a',
   },
   typography: {
-    fontFamily: '"Inter", system-ui, sans-serif',
+    fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     h1: {
-      fontFamily: '"Inter", system-ui, sans-serif',
+      fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       fontWeight: 600,
       fontSize: '24px',
-      color: '#e2e8f0',
+      color: '#fafaf8',
     },
     h2: {
-      fontFamily: '"Inter", system-ui, sans-serif',
+      fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       fontWeight: 600,
       fontSize: '20px',
-      color: '#e2e8f0',
+      color: '#fafaf8',
     },
     h3: {
-      fontFamily: '"Inter", system-ui, sans-serif',
+      fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       fontWeight: 600,
       fontSize: '18px',
-      color: '#e2e8f0',
+      color: '#fafaf8',
     },
     h4: {
-      fontFamily: '"Inter", system-ui, sans-serif',
+      fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       fontWeight: 600,
       fontSize: '16px',
-      color: '#e2e8f0',
+      color: '#fafaf8',
     },
     h5: {
-      fontFamily: '"Inter", system-ui, sans-serif',
+      fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       fontWeight: 600,
       fontSize: '16px',
-      color: '#e2e8f0',
+      color: '#fafaf8',
     },
     h6: {
-      fontFamily: '"Inter", system-ui, sans-serif',
+      fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       fontWeight: 600,
       fontSize: '16px',
-      color: '#e2e8f0',
+      color: '#fafaf8',
     },
     body1: {
-      fontFamily: '"Inter", system-ui, sans-serif',
+      fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       fontSize: '14px',
-      color: '#e2e8f0',
+      color: '#fafaf8',
       fontWeight: 400,
     },
     body2: {
-      fontFamily: '"Inter", system-ui, sans-serif',
+      fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       fontSize: '12px',
-      color: '#e2e8f0',
+      color: '#fafaf8',
       fontWeight: 400,
     },
     button: {
-      fontFamily: '"Inter", system-ui, sans-serif',
+      fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       fontWeight: 500,
       fontSize: '14px',
       textTransform: 'none',
     },
     caption: {
-      fontFamily: '"Inter", system-ui, sans-serif',
+      fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       fontSize: '12px',
-      color: '#94a3b8',
+      color: '#a8a8a0',
       fontWeight: 400,
     },
     subtitle1: {
-      fontFamily: '"Inter", system-ui, sans-serif',
+      fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       fontSize: '14px',
-      color: '#e2e8f0',
+      color: '#fafaf8',
     },
     subtitle2: {
-      fontFamily: '"Inter", system-ui, sans-serif',
+      fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       fontSize: '12px',
-      color: '#e2e8f0',
+      color: '#fafaf8',
     },
   },
   components: {
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          backgroundColor: '#0D1B13',
-          color: '#e2e8f0',
+          backgroundColor: '#2d2d2a',
+          color: '#fafaf8',
           WebkitFontSmoothing: 'antialiased',
         },
         '::-webkit-scrollbar': {
@@ -136,10 +136,10 @@ const theme = createTheme({
           height: '6px',
         },
         '::-webkit-scrollbar-track': {
-          background: '#142B1D',
+          background: '#2d2d2a',
         },
         '::-webkit-scrollbar-thumb': {
-          background: '#1E4530',
+          background: '#5a5a56',
           borderRadius: '3px',
         },
       },
@@ -151,24 +151,24 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           textTransform: 'none',
-          fontFamily: '"Inter", system-ui, sans-serif',
+          fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           fontWeight: 500,
           borderRadius: '8px',
           fontSize: '14px',
         },
         contained: {
-          backgroundColor: '#3DA866',
+          backgroundColor: '#818cf8',
           color: '#ffffff',
           '&:hover': {
-            backgroundColor: '#22c55e',
+            backgroundColor: '#6366f1',
           },
         },
         outlined: {
-          borderColor: '#1E4530',
-          color: '#94a3b8',
+          borderColor: '#3d3d3a',
+          color: '#a8a8a0',
           '&:hover': {
-            borderColor: '#3DA866',
-            backgroundColor: 'rgba(61, 168, 102, 0.08)',
+            borderColor: '#818cf8',
+            backgroundColor: 'rgba(129, 140, 248, 0.08)',
           },
         },
         sizeSmall: {
@@ -183,8 +183,8 @@ const theme = createTheme({
         root: {
           boxShadow: 'none',
           borderRadius: '12px',
-          backgroundColor: '#142B1D',
-          border: '1px solid #1E4530',
+          backgroundColor: '#1a1a18',
+          border: '1px solid #3d3d3a',
         },
       },
     },
@@ -194,24 +194,24 @@ const theme = createTheme({
           '& .MuiOutlinedInput-root': {
             borderRadius: '8px',
             fontSize: '14px',
-            fontFamily: '"Inter", system-ui, sans-serif',
-            backgroundColor: '#0D1B13',
-            color: '#e2e8f0',
+            fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            backgroundColor: '#2d2d2a',
+            color: '#fafaf8',
             '& fieldset': {
-              borderColor: '#1E4530',
+              borderColor: '#3d3d3a',
             },
             '&:hover fieldset': {
-              borderColor: '#3A6B4E',
+              borderColor: '#6366f1',
             },
             '&.Mui-focused fieldset': {
-              borderColor: '#3DA866',
+              borderColor: '#818cf8',
             },
           },
           '& .MuiInputLabel-root': {
-            color: '#94a3b8',
+            color: '#a8a8a0',
           },
           '& .MuiInputLabel-root.Mui-focused': {
-            color: '#3DA866',
+            color: '#818cf8',
           },
         },
       },
@@ -219,7 +219,7 @@ const theme = createTheme({
     MuiChip: {
       styleOverrides: {
         root: {
-          fontFamily: '"Inter", system-ui, sans-serif',
+          fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           fontSize: '12px',
           borderRadius: '4px',
         },
@@ -228,15 +228,15 @@ const theme = createTheme({
     MuiTab: {
       styleOverrides: {
         root: {
-          fontFamily: '"Inter", system-ui, sans-serif',
+          fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           fontSize: '10px',
           fontWeight: 400,
           textTransform: 'none',
           minHeight: 'auto',
           padding: '3px 10px',
-          color: '#94a3b8',
+          color: '#a8a8a0',
           '&.Mui-selected': {
-            color: '#3DA866',
+            color: '#818cf8',
           },
         },
       },
@@ -244,14 +244,14 @@ const theme = createTheme({
     MuiTabs: {
       styleOverrides: {
         indicator: {
-          backgroundColor: '#3DA866',
+          backgroundColor: '#818cf8',
         },
       },
     },
     MuiTypography: {
       styleOverrides: {
         root: {
-          fontFamily: '"Inter", system-ui, sans-serif',
+          fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         },
       },
     },
@@ -259,8 +259,8 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: '12px',
-          border: '1px solid #1E4530',
-          backgroundColor: '#142B1D',
+          border: '1px solid #3d3d3a',
+          backgroundColor: '#1a1a18',
           backgroundImage: 'none',
         },
         elevation1: {
@@ -278,27 +278,27 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: '8px',
-          fontFamily: '"Inter", system-ui, sans-serif',
+          fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           fontSize: '14px',
         },
         standardError: {
-          backgroundColor: 'rgba(153, 27, 27, 0.3)',
-          border: '1px solid #991b1b',
+          backgroundColor: 'rgba(239, 68, 68, 0.15)',
+          border: '1px solid #ef4444',
           color: '#f87171',
         },
         standardSuccess: {
-          backgroundColor: 'rgba(22, 101, 52, 0.3)',
-          border: '1px solid #166534',
-          color: '#4ade80',
+          backgroundColor: 'rgba(16, 185, 129, 0.15)',
+          border: '1px solid #34d399',
+          color: '#34d399',
         },
         standardWarning: {
-          backgroundColor: 'rgba(146, 64, 14, 0.3)',
-          border: '1px solid #92400e',
+          backgroundColor: 'rgba(245, 158, 11, 0.15)',
+          border: '1px solid #f59e0b',
           color: '#fbbf24',
         },
         standardInfo: {
-          backgroundColor: 'rgba(30, 58, 138, 0.3)',
-          border: '1px solid #1e3a8a',
+          backgroundColor: 'rgba(59, 130, 246, 0.15)',
+          border: '1px solid #3b82f6',
           color: '#60a5fa',
         },
       },
@@ -307,8 +307,8 @@ const theme = createTheme({
       styleOverrides: {
         paper: {
           borderRadius: '12px',
-          border: '1px solid #1E4530',
-          backgroundColor: '#142B1D',
+          border: '1px solid #3d3d3a',
+          backgroundColor: '#1a1a18',
           backgroundImage: 'none',
         },
       },
@@ -316,23 +316,23 @@ const theme = createTheme({
     MuiTable: {
       styleOverrides: {
         root: {
-          fontFamily: '"Inter", system-ui, sans-serif',
+          fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         },
       },
     },
     MuiTableCell: {
       styleOverrides: {
         root: {
-          fontFamily: '"Inter", system-ui, sans-serif',
+          fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           fontSize: '14px',
-          borderBottomColor: '#1E4530',
-          color: '#e2e8f0',
+          borderBottomColor: '#3d3d3a',
+          color: '#fafaf8',
         },
         head: {
-          fontFamily: '"Inter", system-ui, sans-serif',
+          fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           fontSize: '12px',
           fontWeight: 600,
-          color: '#94a3b8',
+          color: '#a8a8a0',
           textTransform: 'uppercase',
           letterSpacing: '0.05em',
         },
@@ -342,7 +342,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           '&:hover': {
-            backgroundColor: 'rgba(61, 168, 102, 0.05)',
+            backgroundColor: 'rgba(129, 140, 248, 0.05)',
           },
         },
       },
@@ -350,7 +350,7 @@ const theme = createTheme({
     MuiSelect: {
       styleOverrides: {
         root: {
-          fontFamily: '"Inter", system-ui, sans-serif',
+          fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           fontSize: '14px',
           borderRadius: '8px',
         },
@@ -359,16 +359,16 @@ const theme = createTheme({
     MuiInputLabel: {
       styleOverrides: {
         root: {
-          fontFamily: '"Inter", system-ui, sans-serif',
+          fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           fontSize: '14px',
-          color: '#94a3b8',
+          color: '#a8a8a0',
         },
       },
     },
     MuiFormControlLabel: {
       styleOverrides: {
         label: {
-          fontFamily: '"Inter", system-ui, sans-serif',
+          fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           fontSize: '14px',
         },
       },
@@ -377,8 +377,8 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: '12px',
-          border: '1px solid #1E4530',
-          backgroundColor: '#142B1D',
+          border: '1px solid #3d3d3a',
+          backgroundColor: '#1a1a18',
           backgroundImage: 'none',
           '&:before': {
             display: 'none',
@@ -389,8 +389,8 @@ const theme = createTheme({
     MuiMenu: {
       styleOverrides: {
         paper: {
-          backgroundColor: '#142B1D',
-          border: '1px solid #1E4530',
+          backgroundColor: '#1a1a18',
+          border: '1px solid #3d3d3a',
           backgroundImage: 'none',
         },
       },
@@ -398,9 +398,9 @@ const theme = createTheme({
     MuiMenuItem: {
       styleOverrides: {
         root: {
-          color: '#e2e8f0',
+          color: '#fafaf8',
           '&:hover': {
-            backgroundColor: 'rgba(61, 168, 102, 0.1)',
+            backgroundColor: 'rgba(129, 140, 248, 0.1)',
           },
         },
       },
@@ -409,13 +409,13 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           '& fieldset': {
-            borderColor: '#1E4530',
+            borderColor: '#3d3d3a',
           },
           '&:hover fieldset': {
-            borderColor: '#3A6B4E',
+            borderColor: '#6366f1',
           },
           '&.Mui-focused fieldset': {
-            borderColor: '#3DA866',
+            borderColor: '#818cf8',
           },
         },
       },
@@ -423,7 +423,7 @@ const theme = createTheme({
     MuiDivider: {
       styleOverrides: {
         root: {
-          borderColor: '#1E4530',
+          borderColor: '#3d3d3a',
         },
       },
     },
@@ -463,8 +463,8 @@ function Sidebar() {
         position: 'fixed',
         top: 0,
         left: 0,
-        borderRight: '1px solid #1E4530',
-        backgroundColor: 'rgba(20, 43, 29, 0.5)',
+        borderRight: '1px solid #3d3d3a',
+        backgroundColor: 'rgba(26, 26, 24, 0.95)',
         backdropFilter: 'blur(12px)',
         display: 'flex',
         flexDirection: 'column',
@@ -481,7 +481,7 @@ function Sidebar() {
           textDecoration: 'none',
           px: 2.5,
           py: 2.5,
-          borderBottom: '1px solid #1E4530',
+          borderBottom: '1px solid #3d3d3a',
         }}
       >
         <img
@@ -508,14 +508,15 @@ function Sidebar() {
               transition: 'all 0.15s ease',
               ...(isActive(item.path)
                 ? {
-                    backgroundColor: 'rgba(61, 168, 102, 0.15)',
-                    color: '#3DA866',
+                    backgroundColor: '#fafaf8',
+                    color: '#1a1a18',
+                    fontWeight: 600,
                   }
                 : {
-                    color: '#94a3b8',
+                    color: '#a8a8a0',
                     '&:hover': {
-                      color: '#e2e8f0',
-                      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                      color: '#fafaf8',
+                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
                     },
                   }),
             }}
@@ -526,17 +527,17 @@ function Sidebar() {
       </Box>
 
       {/* Sign out at bottom */}
-      <Box sx={{ borderTop: '1px solid #1E4530', px: 1.5, py: 1.5 }}>
+      <Box sx={{ borderTop: '1px solid #3d3d3a', px: 1.5, py: 1.5 }}>
         <Button
           onClick={handleLogout}
           fullWidth
           sx={{
             justifyContent: 'flex-start',
             fontSize: '14px',
-            color: '#94a3b8',
+            color: '#a8a8a0',
             '&:hover': {
-              color: '#e2e8f0',
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
+              color: '#fafaf8',
+              backgroundColor: 'rgba(255, 255, 255, 0.06)',
             },
             textTransform: 'none',
             fontWeight: 400,
@@ -607,7 +608,7 @@ function AppContent() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#0D1B13', display: 'flex' }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#2d2d2a', display: 'flex' }}>
       <OnboardingWizard />
       <Sidebar />
       <Box

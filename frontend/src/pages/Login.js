@@ -56,7 +56,7 @@ function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#0D1B13',
+        backgroundColor: '#2d2d2a',
         px: 2,
       }}
     >
@@ -71,8 +71,8 @@ function LoginPage() {
           sx={{
             p: 4,
             borderRadius: '12px',
-            border: '1px solid #1E4530',
-            backgroundColor: '#142B1D',
+            border: '1px solid #3d3d3a',
+            backgroundColor: '#1a1a18',
           }}
         >
           <Typography variant="h5" component="h1" sx={{ mb: 3, fontWeight: 600, color: '#ffffff' }}>
@@ -88,12 +88,12 @@ function LoginPage() {
             sx={{
               mb: 3,
               '& .MuiTabs-indicator': {
-                backgroundColor: '#3DA866',
+                backgroundColor: '#818cf8',
               },
             }}
           >
-            <Tab label="Login" sx={{ color: '#94a3b8', '&.Mui-selected': { color: '#3DA866' } }} />
-            <Tab label="Sign Up" sx={{ color: '#94a3b8', '&.Mui-selected': { color: '#3DA866' } }} />
+            <Tab label="Login" sx={{ color: '#a8a8a0', '&.Mui-selected': { color: '#818cf8' } }} />
+            <Tab label="Sign Up" sx={{ color: '#a8a8a0', '&.Mui-selected': { color: '#818cf8' } }} />
           </Tabs>
 
           {error && (
@@ -140,8 +140,8 @@ function LoginPage() {
                 mt: 3,
                 mb: 2,
                 py: 1.5,
-                backgroundColor: '#3DA866',
-                '&:hover': { backgroundColor: '#22c55e' },
+                backgroundColor: '#818cf8',
+                '&:hover': { backgroundColor: '#6366f1' },
               }}
               disabled={loading}
             >

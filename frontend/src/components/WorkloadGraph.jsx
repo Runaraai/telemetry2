@@ -6,12 +6,12 @@ const nodeHeight = 120;
 const THEMES = {
   light: {
     canvas: "#f7f8fb",
-    panelBg: "#142B1D",
+    panelBg: "#1a1a18",
     panelBorder: "#e6e8ef",
     panelShadow: "0 8px 24px rgba(22,29,37,.08)",
     text: "#0f172a",
     textMuted: "#6b7280",
-    nodeBg: "#142B1D",
+    nodeBg: "#1a1a18",
     nodeBorder: "#d6dae4",
     blockBorder: "#3b82f6",
     blockBg: "#f8fafc",
@@ -21,7 +21,7 @@ const THEMES = {
     chipNeutralText: "#374151",
     edge: "#0ea5e9",
     edgeSelected: "#fbbf24",
-    detailsBg: "#142B1D",
+    detailsBg: "#1a1a18",
     detailsCardBg: "#f2f5fb",
     detailsBorder: "#e3e7ef",
   },
@@ -124,7 +124,7 @@ const roleForNode = (n) => {
 };
 
 const roleColors = {
-  light: { decoder: "#fce7f3", lm_head: "#dbeafe", embed_out: "#fef9c3", kernel: "#142B1D" },
+  light: { decoder: "#fce7f3", lm_head: "#dbeafe", embed_out: "#fef9c3", kernel: "#1a1a18" },
   dark: { decoder: "#831843", lm_head: "#1e3a8a", embed_out: "#78350f", kernel: "#1f2937" },
 };
 
@@ -142,7 +142,7 @@ const getDecoderNodeFill = (node, theme) => {
       'activation': '#fed7aa',     // Light orange for activations
       'layout': '#f3f4f6',         // Light gray for layout operations
       'eltwise': '#fecaca',        // Light red for element-wise operations
-      'other': '#e2e8f0'           // Light slate for other operations
+      'other': '#fafaf8'           // Light slate for other operations
     },
     dark: {
       'gemm': '#1e3a8a',           // Dark blue for matrix operations

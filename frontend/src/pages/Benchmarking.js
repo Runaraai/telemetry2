@@ -1269,7 +1269,7 @@ const Benchmarking = () => {
                     sx={{
                       p: 1.5,
                       borderRadius: 2,
-                      backgroundColor: alpha('#3DA866', 0.1),
+                      backgroundColor: alpha('#818cf8', 0.1),
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1414,7 +1414,7 @@ const Benchmarking = () => {
                         p: 2,
                         maxHeight: 280,
                         overflow: 'auto',
-                        backgroundColor: alpha('#1E4530', 0.35),
+                        backgroundColor: alpha('#3d3d3a', 0.35),
                         borderRadius: 2,
                       }}
                     >
@@ -1730,7 +1730,7 @@ const Benchmarking = () => {
                             <AccordionSummary
                               expandIcon={<ExpandMoreIcon />}
                               sx={{
-                                backgroundColor: alpha('#1E4530', 0.5),
+                                backgroundColor: alpha('#3d3d3a', 0.5),
                                 borderRadius: '8px',
                               }}
                             >
@@ -1967,7 +1967,7 @@ const Benchmarking = () => {
                             <AccordionSummary
                               expandIcon={<ExpandMoreIcon />}
                               sx={{
-                                backgroundColor: alpha('#1E4530', 0.5),
+                                backgroundColor: alpha('#3d3d3a', 0.5),
                                 borderRadius: '8px',
                               }}
                             >
@@ -2214,7 +2214,7 @@ const Benchmarking = () => {
                             <AccordionSummary
                               expandIcon={<ExpandMoreIcon />}
                               sx={{
-                                backgroundColor: alpha('#1E4530', 0.5),
+                                backgroundColor: alpha('#3d3d3a', 0.5),
                                 borderRadius: '8px',
                               }}
                             >
@@ -2390,7 +2390,7 @@ const Benchmarking = () => {
                           p: 3,
                           mb: 3,
                           borderRadius: 2,
-                          backgroundColor: alpha('#1E4530', 0.3),
+                          backgroundColor: alpha('#3d3d3a', 0.3),
                         }}
                       >
                         <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'text.secondary' }}>
@@ -2593,7 +2593,7 @@ const Benchmarking = () => {
                             <AccordionSummary
                               expandIcon={<ExpandMoreIcon />}
                               sx={{
-                                backgroundColor: alpha('#1E4530', 0.5),
+                                backgroundColor: alpha('#3d3d3a', 0.5),
                                 borderRadius: '8px',
                               }}
                             >

@@ -150,8 +150,8 @@ const SystemBenchmarkDashboard = () => {
     }
   };
 
-  const renderMetricCard = (title, value, unit, icon, color = '#3DA866', subtitle = '') => (
-    <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #142B1D 0%, #1E4530 100%)', borderRadius: '8px', '&:hover': { boxShadow: 3, transition: 'box-shadow 0.2s ease' } }}>
+  const renderMetricCard = (title, value, unit, icon, color = '#818cf8', subtitle = '') => (
+    <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #1a1a18 0%, #3d3d3a 100%)', borderRadius: '8px', '&:hover': { boxShadow: 3, transition: 'box-shadow 0.2s ease' } }}>
       <CardContent sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           {icon}
@@ -184,11 +184,11 @@ const SystemBenchmarkDashboard = () => {
           <Grid container spacing={3}>
             {Object.entries(systemSummary.system_specs).map(([key, value]) => (
               <Grid item xs={12} sm={6} md={4} key={key}>
-                <Box sx={{ p: 2, backgroundColor: '#0D1B13', borderRadius: '8px', border: '1px solid #1E4530' }}>
+                <Box sx={{ p: 2, backgroundColor: '#2d2d2a', borderRadius: '8px', border: '1px solid #3d3d3a' }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.secondary', mb: 0.5 }}>
                     {key.replace(/_/g, ' ').toUpperCase()}
                   </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#3DA866' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#818cf8' }}>
                     {value}
                   </Typography>
                 </Box>
@@ -286,7 +286,7 @@ const SystemBenchmarkDashboard = () => {
               <TableHead>
                 <TableRow>
                   {nonNullFields.map(field => (
-                    <TableCell key={field} sx={{ fontWeight: 'bold', backgroundColor: '#0D1B13' }}>
+                    <TableCell key={field} sx={{ fontWeight: 'bold', backgroundColor: '#2d2d2a' }}>
                       {getFieldLabel(field)}
                     </TableCell>
                   ))}
@@ -477,7 +477,7 @@ const SystemBenchmarkDashboard = () => {
                     summaryData.total_results,
                     "iterations",
                     <Assessment />,
-                    '#3DA866',
+                    '#818cf8',
                     `Non-null: ${summaryData.non_null_results}`
                   )}
                 </Grid>
