@@ -117,9 +117,31 @@ def _http_get(url: str, timeout: float = 4.0) -> tuple[int, str]:
         return 0, str(e)
 
 
-def _pip_install(packages: list[str]) -> bool:
-    code, _ = _run([sys.executable, "-m", "pip", "install", "--quiet", *packages])
+def _ensure_pip() -> bool:
+    """Bootstrap pip if not installed (e.g. minimal Python)."""
+    code, _ = _run([sys.executable, "-m", "pip", "--version"], timeout=10)
+    if code == 0:
+        return True
+    _info("Bootstrapping pip...")
+    code, _ = _run([sys.executable, "-m", "ensurepip", "--user"], timeout=60)
     return code == 0
+
+
+def _pip_install(packages: list[str]) -> bool:
+    """Install packages via pip. Tries --user first (no root), then with --break-system-packages (PEP 668)."""
+    if not _ensure_pip():
+        return False
+    strategies = [
+        [sys.executable, "-m", "pip", "install", "--user", "--quiet", *packages],
+        [sys.executable, "-m", "pip", "install", "--user", "--break-system-packages", "--quiet", *packages],
+        [sys.executable, "-m", "pip", "install", "--quiet", *packages],
+    ]
+    for cmd in strategies:
+        code, err = _run(cmd, timeout=120)
+        if code == 0:
+            return True
+        logger.debug("pip install failed (cmd=%s): %s", " ".join(cmd[:6]), err)
+    return False
 
 
 def _try_import(name: str) -> bool:

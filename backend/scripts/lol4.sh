@@ -105,6 +105,7 @@ sudo docker run --rm -d --gpus all --name vllm \
   vllm/vllm-openai:latest \
   --model "${CONTAINER_MODEL_PATH}" \
   --tokenizer "${CONTAINER_MODEL_PATH}" \
+  --served-model-name "${MODEL_BASENAME} ${CONTAINER_MODEL_PATH}" \
   --trust-remote-code \
   --tensor-parallel-size "$TENSOR_PARALLEL_SIZE" \
   --dtype auto \

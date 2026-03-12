@@ -3,7 +3,7 @@
     "setup_completed_at": "2026-03-11T23:00:43.824220",
     "check_completed_at": "2026-03-11T23:10:45.612112",
     "last_verified_at": "2026-03-11T23:10:45.611966",
-    "vllm_completed_at": "2026-03-11T22:57:07.142621",
+    "vllm_completed_at": "2026-03-12T01:21:27.751552",
     "vllm_model": "/scratch/BM/models/Qwen3.5-9B"
   }
 }

@@ -297,7 +297,6 @@ const Benchmarking = () => {
   
   // Setup state
   const [setupStatus, setSetupStatus] = useState({ loading: false, status: null, message: null, pid: null });
-  const [setupComplete, setSetupComplete] = useState(false);
   const [setupCheckLoading, setSetupCheckLoading] = useState(false);
   
   // vLLM benchmark state
@@ -339,10 +338,10 @@ const Benchmarking = () => {
   });
   
   // Benchmark parameters for workflow
-  const [workflowInputSeqLen, setWorkflowInputSeqLen] = useState(1000);
-  const [workflowOutputSeqLen, setWorkflowOutputSeqLen] = useState(200);
+  const [workflowInputSeqLen, setWorkflowInputSeqLen] = useState(256);
+  const [workflowOutputSeqLen, setWorkflowOutputSeqLen] = useState(128);
   const [workflowNumRequests, setWorkflowNumRequests] = useState(50);
-  const [workflowRequestRate, setWorkflowRequestRate] = useState(25.0);
+  const [workflowRequestRate, setWorkflowRequestRate] = useState(10.0);
   const [workflowMaxConcurrency, setWorkflowMaxConcurrency] = useState(4);
   const [workflowKernelRequests, setWorkflowKernelRequests] = useState(20);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -2524,9 +2523,10 @@ const Benchmarking = () => {
                             const response = await apiService.workflowRunBenchmark({
                               cloud_provider: rwCloudProvider,
                               ssh_host: rwSshHost,
-                        ssh_user: rwSshUser,
+                              ssh_user: rwSshUser,
                               pem_base64: pemBase64,
                               model_path: modelPath,
+                              model_name: selectedModel,
                               input_seq_len: workflowInputSeqLen,
                               output_seq_len: workflowOutputSeqLen,
                               num_requests: workflowNumRequests,
@@ -2553,7 +2553,8 @@ const Benchmarking = () => {
                                   status: result.status || prev.status,
                                   message: result.message || prev.message,
                                   errorDetails: result.error_details || prev.errorDetails,
-                                  runId: result.run_id || prev.runId
+                                  runId: result.run_id || prev.runId,
+                                  metrics: result.metrics || prev.metrics
                                 }));
                                 
                                 // Show error alert if failed
@@ -2627,8 +2628,51 @@ const Benchmarking = () => {
                     </CardContent>
                   </Card>
 
-                  {/* Benchmark Results (inline after completion) */}
-                  {workflowBenchmarkStatus.status === 'completed' && workflowBenchmarkStatus.runId && (
+                  {/* Benchmark Results — vLLM official metrics (throughput, TTFT, ITL) */}
+                  {workflowBenchmarkStatus.status === 'completed' && workflowBenchmarkStatus.metrics && (
+                    <Card sx={{ mt: 2, borderRadius: 2, border: `1px solid ${alpha(theme.palette.success.main, 0.3)}` }}>
+                      <CardContent>
+                        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
+                          Benchmark Results
+                        </Typography>
+                        <Grid container spacing={2}>
+                          {workflowBenchmarkStatus.metrics.output_throughput_tok_s != null && (
+                            <Grid item xs={6} sm={4}>
+                              <Typography variant="caption" color="text.secondary">Output Throughput</Typography>
+                              <Typography variant="h6" color="success.main">
+                                {workflowBenchmarkStatus.metrics.output_throughput_tok_s.toFixed(1)} tok/s
+                              </Typography>
+                            </Grid>
+                          )}
+                          {workflowBenchmarkStatus.metrics.mean_ttft_ms != null && (
+                            <Grid item xs={6} sm={4}>
+                              <Typography variant="caption" color="text.secondary">Time to First Token</Typography>
+                              <Typography variant="h6">
+                                {workflowBenchmarkStatus.metrics.mean_ttft_ms.toFixed(1)} ms
+                              </Typography>
+                            </Grid>
+                          )}
+                          {workflowBenchmarkStatus.metrics.mean_itl_ms != null && (
+                            <Grid item xs={6} sm={4}>
+                              <Typography variant="caption" color="text.secondary">Inter-token Latency</Typography>
+                              <Typography variant="h6">
+                                {workflowBenchmarkStatus.metrics.mean_itl_ms.toFixed(1)} ms
+                              </Typography>
+                            </Grid>
+                          )}
+                          {workflowBenchmarkStatus.metrics.request_throughput_req_s != null && (
+                            <Grid item xs={6} sm={4}>
+                              <Typography variant="caption" color="text.secondary">Request Throughput</Typography>
+                              <Typography variant="body1">
+                                {workflowBenchmarkStatus.metrics.request_throughput_req_s.toFixed(2)} req/s
+                              </Typography>
+                            </Grid>
+                          )}
+                        </Grid>
+                      </CardContent>
+                    </Card>
+                  )}
+                  {workflowBenchmarkStatus.status === 'completed' && workflowBenchmarkStatus.runId && !workflowBenchmarkStatus.metrics && (
                     <BenchmarkResultsCard runId={workflowBenchmarkStatus.runId} />
                   )}
                 </CardContent>

@@ -1748,16 +1748,17 @@ class DeployVLLMRequest(BaseModel):
     cloud_provider: str = "lambda"  # "lambda" or "scaleway"
 
 class RunBenchmarkRequest(BaseModel):
-    """Request model for workload benchmark (agent.py --mode standard)"""
+    """Request model for workload benchmark — uses vLLM official bench serve."""
     ssh_host: str
     ssh_user: str = "ubuntu"
     pem_base64: Optional[str] = None
     model_path: str = "/home/ubuntu/BM/models/Qwen3.5-9B"
+    model_name: Optional[str] = None  # HuggingFace ID e.g. Qwen/Qwen3.5-9B (for vllm bench serve)
     cloud_provider: str = "lambda"  # "lambda" or "scaleway"
-    input_seq_len: int = 1000
-    output_seq_len: int = 1000
+    input_seq_len: int = 256
+    output_seq_len: int = 128
     num_requests: int = 50
-    request_rate: float = 25.0
+    request_rate: Optional[float] = None  # None = inf (max throughput)
     max_concurrency: int = 4
 
 
@@ -7813,6 +7814,8 @@ async def get_workflow_logs(workflow_id: str, phase: Optional[str] = None):
             "error_details": status.get("error_details", ""),
             "run_id": status.get("run_id", ""),
         }
+        if status.get("metrics"):
+            result["metrics"] = status["metrics"]
         if container_logs:
             result["container_logs"] = container_logs
         return result
@@ -8920,16 +8923,45 @@ def _run_agent_via_ssh(
     return exit_code, output_tail
 
 
-def workflow_benchmark_task(request: RunBenchmarkRequest, pem_file_path: str, log_dir: str):
-    """Background task for benchmark phase — runs agent.py --mode standard.
+def _parse_vllm_bench_output(output: str) -> dict:
+    """Parse vllm bench serve output for throughput, TTFT, inter-token latency."""
+    import re
+    result = {}
+    # Output token throughput (tok/s)
+    m = re.search(r"Output token throughput \(tok/s\):\s+([\d.]+)", output)
+    if m:
+        result["output_throughput_tok_s"] = float(m.group(1))
+    # Total token throughput
+    m = re.search(r"Total token throughput \(tok/s\):\s+([\d.]+)", output)
+    if m:
+        result["total_throughput_tok_s"] = float(m.group(1))
+    # Request throughput
+    m = re.search(r"Request throughput \(req/s\):\s+([\d.]+)", output)
+    if m:
+        result["request_throughput_req_s"] = float(m.group(1))
+    # Mean TTFT (ms)
+    m = re.search(r"Mean TTFT \(ms\):\s+([\d.]+)", output)
+    if m:
+        result["mean_ttft_ms"] = float(m.group(1))
+    # Mean ITL (ms) - Inter-token Latency
+    m = re.search(r"Mean ITL \(ms\):\s+([\d.]+)", output)
+    if m:
+        result["mean_itl_ms"] = float(m.group(1))
+    # Mean TPOT (ms)
+    m = re.search(r"Mean TPOT \(ms\):\s+([\d.]+)", output)
+    if m:
+        result["mean_tpot_ms"] = float(m.group(1))
+    return result
 
-    Uploads agent.py + telemetry/ package to the instance, creates a run,
-    and executes agent.py to collect workload metrics (TTFT, TPOT, throughput,
-    bottleneck analysis). Results are uploaded to the profiling API.
+
+def workflow_benchmark_task(request: RunBenchmarkRequest, pem_file_path: str, log_dir: str):
+    """Benchmark phase — runs vLLM official bench serve against the running vLLM server.
+
+    Uses `vllm bench serve` with random synthetic data. No agent, no Python deps.
+    Reports: throughput (tok/s), time to first token (TTFT), inter-token latency (ITL).
     """
     import paramiko
     import json
-    import time
 
     status_file = os.path.join(log_dir, "benchmark_status.json")
     log_file = os.path.join(log_dir, "benchmark.log")
@@ -8938,60 +8970,172 @@ def workflow_benchmark_task(request: RunBenchmarkRequest, pem_file_path: str, lo
         with open(status_file, 'w') as f:
             json.dump({"status": "running", "message": "Connecting to instance..."}, f)
 
-        cloud_provider = getattr(request, 'cloud_provider', 'lambda').lower()
-        remote_home = "/root" if cloud_provider == "scaleway" else "/home/ubuntu"
-
         logger.info(f"Connecting to {request.ssh_host} as {request.ssh_user} ...")
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(request.ssh_host, username=request.ssh_user, key_filename=pem_file_path, timeout=30)
 
-        # Step 1: Upload agent package
+        # vLLM takes ~2–3 min to load the model after container start. Wait for it to be ready
+        # before querying /v1/models or running the smoke test (HTTP_STATUS:000 = not ready yet).
+        import time
         with open(status_file, 'w') as f:
-            json.dump({"status": "running", "message": "Uploading agent package..."}, f)
-        remote_dir = _upload_agent_package_via_ssh(ssh, remote_home)
+            json.dump({"status": "running", "message": "Waiting for vLLM server to be ready (may take 2–3 min)..."}, f)
 
-        # Step 2: Create a run in the backend
+        max_wait = 300  # 5 minutes
+        poll_interval = 10
+        elapsed = 0
+        while elapsed < max_wait:
+            _, chk_out, _ = ssh.exec_command(
+                "curl -sf -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/health 2>/dev/null || echo '000'"
+            )
+            status = chk_out.read().decode().strip()
+            if status == "200":
+                logger.info(f"vLLM server ready after {elapsed}s")
+                break
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+            with open(status_file, 'w') as f:
+                json.dump({
+                    "status": "running",
+                    "message": f"Waiting for vLLM server... ({elapsed}s elapsed, max {max_wait}s)",
+                }, f)
+
+        if elapsed >= max_wait:
+            with open(status_file, 'w') as f:
+                json.dump({
+                    "status": "failed",
+                    "message": "vLLM server did not become ready within 5 minutes. Check: docker ps | grep vllm; docker logs vllm | tail -100",
+                }, f)
+            ssh.close()
+            return
+
+        # Query the running vLLM server for the exact model ID it is serving.
         with open(status_file, 'w') as f:
-            json.dump({"status": "running", "message": "Creating profiling run..."}, f)
-        backend_url = os.getenv("API_BASE_URL", "http://localhost:8000").rstrip("/")
-        run_id, ingest_token = _create_run_for_workflow(request.ssh_host, mode="workload")
+            json.dump({"status": "running", "message": "Detecting served model name..."}, f)
 
-        # Step 3: Execute agent.py --mode standard
+        _, mstdout, _ = ssh.exec_command(
+            "curl -sf http://127.0.0.1:8000/v1/models 2>/dev/null | "
+            "python3 -c \"import sys,json; d=json.load(sys.stdin); print(d['data'][0]['id'])\" 2>/dev/null"
+        )
+        served_model = mstdout.read().decode().strip()
+
+        if served_model:
+            model_name = served_model
+            logger.info(f"vLLM server reports model ID: {model_name}")
+        else:
+            # Fallback: vLLM default naming when started with a local path
+            model_basename = request.model_path.rstrip("/").split("/")[-1]
+            model_name = f"/models/{model_basename}"
+            logger.warning(f"Could not query /v1/models, falling back to: {model_name}")
+
+        # Run a real single-request smoke test from the HOST (not from inside Docker)
+        # so we can see exactly what vLLM returns before launching the benchmark container.
+        with open(status_file, 'w') as f:
+            json.dump({"status": "running", "message": "Running vLLM smoke test..."}, f)
+
+        smoke_payload = json.dumps({
+            "model": model_name,
+            "messages": [{"role": "user", "content": "Hi"}],
+            "max_tokens": 5,
+            "stream": False,
+        }).replace('"', '\\"')
+        _, smoke_stdout, smoke_stderr = ssh.exec_command(
+            f'curl -s -w "\\nHTTP_STATUS:%{{http_code}}" -X POST http://127.0.0.1:8000/v1/chat/completions '
+            f'-H "Content-Type: application/json" -d "{smoke_payload}" 2>&1'
+        )
+        smoke_result = smoke_stdout.read().decode().strip()
+        smoke_error = smoke_stderr.read().decode().strip()
+        logger.info(f"vLLM smoke test result:\n{smoke_result}")
+        with open(log_file, 'w') as lf:
+            lf.write(f"=== vLLM smoke test (model={model_name}) ===\n{smoke_result}\n{smoke_error}\n\n")
+
+        if "HTTP_STATUS:200" not in smoke_result:
+            error_msg = (
+                f"vLLM smoke test FAILED. The server is not accepting requests.\n"
+                f"Response: {smoke_result[:800]}\n"
+                f"Check: (1) model name matches /v1/models, (2) vLLM container is healthy, "
+                f"(3) docker logs vllm | tail -50"
+            )
+            with open(status_file, 'w') as f:
+                json.dump({"status": "failed", "message": error_msg, "error_details": smoke_result}, f)
+            ssh.close()
+            return
+
+        # The benchmark runs in a separate Docker container with no volume mounts.
+        # It needs a tokenizer to generate random prompts, but model_name is a
+        # container-internal path like /models/Qwen3.5-9B that only the vLLM server
+        # container can access. Passing that as the tokenizer fails with HFValidationError.
+        # Solution: use model_name (local path) to identify the model TO the server,
+        # and tokenizer_id (the HF ID from request.model_name) so the benchmark
+        # container can download the tokenizer directly from HuggingFace.
+        tokenizer_id = request.model_name or model_name
+        rate_arg = "" if request.request_rate is None else f" --request-rate {request.request_rate}"
+        # Quote model_name: /v1/models can return "Qwen3.5-9B /models/Qwen3.5-9B" (space-separated);
+        # unquoted, the shell splits it into two args and vLLM errors "unrecognized arguments".
+        import shlex
+        model_arg = shlex.quote(model_name)
+        tokenizer_arg = shlex.quote(tokenizer_id)
+        cmd = (
+            f"sudo docker run --rm --network host --entrypoint vllm vllm/vllm-openai:latest"
+            f" bench serve"
+            f" --backend openai-chat"
+            f" --model {model_arg}"
+            f" --tokenizer {tokenizer_arg}"
+            f" --endpoint /v1/chat/completions"
+            f" --dataset-name random"
+            f" --random-input-len {request.input_seq_len}"
+            f" --random-output-len {request.output_seq_len}"
+            f" --num-prompts {request.num_requests}"
+            f" --max-concurrency {request.max_concurrency}"
+            f" --temperature 0"
+            f" --no-stream"
+            f" --ready-check-timeout-sec 120"
+            f"{rate_arg}"
+            f" --port 8000"
+            f" --host 127.0.0.1"
+            f" 2>&1"
+        )
+
         with open(status_file, 'w') as f:
             json.dump({
                 "status": "running",
-                "message": f"Running workload benchmark ({request.num_requests} requests, concurrency {request.max_concurrency})...",
-                "run_id": run_id,
+                "message": f"Running vLLM benchmark ({request.num_requests} prompts, concurrency {request.max_concurrency})...",
+                "command": cmd,
+                "model_used": model_name,
             }, f)
 
-        exit_code, output_tail = _run_agent_via_ssh(
-            ssh, remote_dir, mode="standard",
-            run_id=run_id, ingest_token=ingest_token,
-            backend_url=backend_url,
-            num_requests=request.num_requests,
-            concurrency=request.max_concurrency,
-            max_tokens=request.output_seq_len,
-            log_file=log_file, status_file=status_file,
-        )
+        logger.info(f"Executing: {cmd}")
+        with open(log_file, 'w') as lf:
+            lf.write(f"# Command executed (model={model_name}):\n# {cmd}\n\n")
+        stdin, stdout, stderr = ssh.exec_command(cmd, timeout=600)
+        output_lines = []
+        with open(log_file, 'a') as lf:
+            for line in stdout:
+                output_lines.append(line)
+                lf.write(line)
+                lf.flush()
+                logger.info(f"Bench: {line.strip()}")
 
+        output = "".join(output_lines)
+        exit_code = stdout.channel.recv_exit_status()
         ssh.close()
 
         if exit_code == 0:
+            metrics = _parse_vllm_bench_output(output)
             with open(status_file, 'w') as f:
                 json.dump({
                     "status": "completed",
                     "message": "Benchmark completed successfully",
-                    "run_id": run_id,
+                    "metrics": metrics,
+                    "output_snippet": output[-2000:] if len(output) > 2000 else output,
                 }, f)
-            logger.info(f"Benchmark completed: run_id={run_id}")
+            logger.info(f"Benchmark completed: {metrics}")
         else:
             with open(status_file, 'w') as f:
                 json.dump({
                     "status": "failed",
-                    "message": f"Agent exited with code {exit_code}",
-                    "run_id": run_id,
-                    "error_details": output_tail[-500:] if output_tail else "",
+                    "message": f"vllm bench serve exited with code {exit_code}",
+                    "error_details": output[-1500:] if output else "",
                 }, f)
             logger.error(f"Benchmark failed: exit_code={exit_code}")
 
@@ -9008,7 +9152,7 @@ def workflow_benchmark_task(request: RunBenchmarkRequest, pem_file_path: str, lo
         try:
             with open(log_file, 'a') as f:
                 f.write(f"\n\n=== ERROR ===\n{error_details}\n")
-        except:
+        except Exception:
             pass
         logger.error(f"Benchmark failed: {error_message}", exc_info=True)
 
