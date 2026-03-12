@@ -267,7 +267,7 @@ export default function RunningInstances() {
       commercial_type: inst.instance_type || '',
       provider: inst.provider,
     };
-    navigate('/profiling', { state: { openTelemetry: true, instanceData, allowMigration: true } });
+    navigate('/telemetry', { state: { instanceData } });
   }
 
   const providerLabel = (provider) => {

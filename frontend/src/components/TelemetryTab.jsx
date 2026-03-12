@@ -14,7 +14,6 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  Divider,
   FormControl,
   FormControlLabel,
   Grid,
@@ -51,6 +50,7 @@ import {
   AttachMoney as AttachMoneyIcon,
   ContentCopy as CopyIcon,
   OpenInNew as OpenInNewIcon,
+  VpnKey as VpnKeyIcon,
 } from '@mui/icons-material';
 import {
   ResponsiveContainer,
@@ -1387,6 +1387,13 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
     }
   }, [instanceData, refreshInstanceCredentials]);
 
+  // Auto-populate SSH private key from backend config
+  useEffect(() => {
+    apiService.getSSHPrivateKey()
+      .then((key) => { if (key && !sshKey) setSshKey(key); })
+      .catch(() => {}); // silently ignore if not configured
+  }, []); // eslint-disable-line
+
   useEffect(() => {
     return () => {
       if (websocketRef.current) {
@@ -2422,20 +2429,30 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                 </Paper>
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  label="SSH Private Key (PEM)"
-                  fullWidth
-                  value={sshKey || ''}
-                  onChange={(e) => setSshKey(e.target.value)}
-                  multiline
-                  minRows={4}
-                  placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
-                  helperText="Paste your SSH private key here. This will be used to securely access the instance."
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': { borderRadius: '8px' },
-                    '& textarea': { WebkitTextSecurity: 'disc' }
-                  }}
-                />
+                {sshKey ? (
+                  <Box sx={{ mt: 1, p: 2, borderRadius: '8px', border: '1px solid #3d3d3a', backgroundColor: 'rgba(129, 140, 248, 0.06)' }}>
+                    <Typography variant="body2" sx={{ color: '#34d399', fontWeight: 600, mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <VpnKeyIcon sx={{ fontSize: 16 }} /> SSH Key Auto-configured
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#a8a8a0', fontFamily: '"DM Mono", monospace', wordBreak: 'break-all' }}>
+                      {sshKey.substring(0, 80)}...
+                    </Typography>
+                  </Box>
+                ) : (
+                  <TextField
+                    label="SSH Private Key (PEM)"
+                    fullWidth
+                    value={sshKey || ''}
+                    onChange={(e) => setSshKey(e.target.value)}
+                    multiline
+                    rows={3}
+                    placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
+                    helperText="Paste your SSH private key here. This will be used to securely access the instance."
+                    sx={{
+                      '& .MuiOutlinedInput-root': { borderRadius: '8px' },
+                    }}
+                  />
+                )}
               </Grid>
             </Grid>
           </CardContent>
@@ -3041,8 +3058,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           </Card>
         )}
 
-        <Divider />
-
         {/* Component Status Indicators */}
         {activeRun && (monitoringState === 'running' || monitoringState === 'deploying') && (
           <Card sx={{ mb: 2 }}>
@@ -3117,98 +3132,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           </Card>
         )}
 
-        <Divider sx={{ mb: 2 }} />
-
-        {/* Deployment Queue */}
-        {instanceId && (
-          <Card variant="outlined" sx={{ mb: 2 }}>
-            <CardHeader
-              title="Deployment Queue"
-              action={
-                <IconButton size="small" onClick={fetchDeploymentJobs} disabled={jobsLoading}>
-                  <ReplayIcon fontSize="small" />
-                </IconButton>
-              }
-            />
-            <CardContent>
-              {queueStats && (
-                <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                  <Chip label={`Pending: ${queueStats.pending}`} color="warning" size="small" />
-                  <Chip label={`Running: ${queueStats.running}`} color="info" size="small" />
-                  <Chip label={`Total: ${queueStats.total}`} size="small" />
-                </Stack>
-              )}
-              {jobsLoading ? (
-                <Box display="flex" justifyContent="center" p={2}>
-                  <CircularProgress size={24} />
-                </Box>
-              ) : deploymentJobs.length === 0 ? (
-                <Alert severity="info">No deployment jobs found</Alert>
-              ) : (
-                <Box>
-                  {deploymentJobs.map((job) => {
-                    const statusColor = {
-                      pending: 'warning',
-                      queued: 'info',
-                      running: 'info',
-                      completed: 'success',
-                      failed: 'error',
-                      cancelled: 'default',
-                    }[job.status] || 'default';
-
-                    return (
-                      <Card key={job.job_id} variant="outlined" sx={{ mb: 1 }}>
-                        <CardContent>
-                          <Stack direction="row" spacing={2} alignItems="center">
-                            <Chip label={job.status} color={statusColor} size="small" />
-                            <Typography variant="body2" sx={{ fontFamily: 'monospace', flex: 1 }}>
-                              {job.job_id.substring(0, 8)}...
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              Attempt {job.attempt_count}/{job.max_attempts}
-                            </Typography>
-                            {job.error_message && (
-                              <Tooltip title={job.error_message}>
-                                <WarningIcon color="error" fontSize="small" />
-                              </Tooltip>
-                            )}
-                            <Stack direction="row" spacing={1}>
-                              {job.status === 'failed' && (
-                                <Button
-                                  size="small"
-                                  startIcon={<ReplayIcon />}
-                                  onClick={() => handleRetryJob(job.job_id)}
-                                >
-                                  Retry
-                                </Button>
-                              )}
-                              {(job.status === 'pending' || job.status === 'queued') && (
-                                <Button
-                                  size="small"
-                                  color="error"
-                                  onClick={() => handleCancelJob(job.job_id)}
-                                >
-                                  Cancel
-                                </Button>
-                              )}
-                            </Stack>
-                          </Stack>
-                          {job.error_message && (
-                            <Alert severity="error" sx={{ mt: 1 }}>
-                              {job.error_message}
-                            </Alert>
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        <Divider sx={{ mb: 2 }} />
 
         <Card sx={{ mb: 3, borderRadius: '8px', border: `1px solid ${alpha('#000', 0.1)}` }}>
           <CardContent sx={{ p: 3 }}>
@@ -3385,97 +3308,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
             );
           })}
         </Grid>
-
-        <Divider />
-
-        {/* Deployment Queue */}
-        <Card variant="outlined" sx={{ mt: 2 }}>
-          <CardHeader
-            title="Deployment Queue"
-            action={
-              <IconButton size="small" onClick={fetchDeploymentJobs} disabled={jobsLoading}>
-                <ReplayIcon fontSize="small" />
-              </IconButton>
-            }
-          />
-          <CardContent>
-            {queueStats && (
-              <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                <Chip label={`Pending: ${queueStats.pending}`} color="warning" size="small" />
-                <Chip label={`Running: ${queueStats.running}`} color="info" size="small" />
-                <Chip label={`Total: ${queueStats.total}`} size="small" />
-              </Stack>
-            )}
-            {jobsLoading ? (
-              <Box display="flex" justifyContent="center" p={2}>
-                <CircularProgress size={24} />
-              </Box>
-            ) : deploymentJobs.length === 0 ? (
-              <Alert severity="info">No deployment jobs found</Alert>
-            ) : (
-              <Box>
-                {deploymentJobs.map((job) => {
-                  const statusColor = {
-                    pending: 'warning',
-                    queued: 'info',
-                    running: 'info',
-                    completed: 'success',
-                    failed: 'error',
-                    cancelled: 'default',
-                  }[job.status] || 'default';
-
-                  return (
-                    <Card key={job.job_id} variant="outlined" sx={{ mb: 1 }}>
-                      <CardContent>
-                        <Stack direction="row" spacing={2} alignItems="center">
-                          <Chip label={job.status} color={statusColor} size="small" />
-                          <Typography variant="body2" sx={{ fontFamily: 'monospace', flex: 1 }}>
-                            {job.job_id.substring(0, 8)}...
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Attempt {job.attempt_count}/{job.max_attempts}
-                          </Typography>
-                          {job.error_message && (
-                            <Tooltip title={job.error_message}>
-                              <WarningIcon color="error" fontSize="small" />
-                            </Tooltip>
-                          )}
-                          <Stack direction="row" spacing={1}>
-                            {job.status === 'failed' && (
-                              <Button
-                                size="small"
-                                startIcon={<ReplayIcon />}
-                                onClick={() => handleRetryJob(job.job_id)}
-                              >
-                                Retry
-                              </Button>
-                            )}
-                            {(job.status === 'pending' || job.status === 'queued') && (
-                              <Button
-                                size="small"
-                                color="error"
-                                onClick={() => handleCancelJob(job.job_id)}
-                              >
-                                Cancel
-                              </Button>
-                            )}
-                          </Stack>
-                        </Stack>
-                        {job.error_message && (
-                          <Alert severity="error" sx={{ mt: 1 }}>
-                            {job.error_message}
-                          </Alert>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </Box>
-            )}
-          </CardContent>
-        </Card>
-
-        <Divider />
 
         <Stack direction="row" alignItems="center" justifyContent="space-between">
           <Typography variant="h6">Historical Runs</Typography>

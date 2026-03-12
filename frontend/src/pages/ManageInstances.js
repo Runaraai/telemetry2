@@ -192,6 +192,24 @@ export default function ManageInstances() {
     sshUser: 'ubuntu'
   });
   
+  // SSH public key fetched from backend .env (auto-populated into all launch forms)
+  const [envSSHKey, setEnvSSHKey] = useState('');
+
+  // Fetch SSH public key from backend on mount and auto-populate all launch forms
+  useEffect(() => {
+    apiService.getSSHPublicKey()
+      .then((key) => {
+        if (key) {
+          setEnvSSHKey(key);
+          // Auto-populate SSH key into all provider launch forms
+          setLaunchForm(prev => ({ ...prev, sshKey: key }));
+          setScwLaunchForm(prev => ({ ...prev, publicKey: key }));
+          setNebiusLaunchForm(prev => ({ ...prev, sshPublicKey: key }));
+        }
+      })
+      .catch(() => {}); // silently ignore if not configured
+  }, []);
+
   // Ensure page is white on mount
   useEffect(() => {
     document.body.style.backgroundColor = '#2d2d2a';
@@ -296,6 +314,16 @@ export default function ManageInstances() {
     ip: null,
     stateDetail: null,
     refreshedInstances: false,
+  });
+
+  // Unified full-screen launching state (used by all providers)
+  const [launchingScreen, setLaunchingScreen] = useState({
+    active: false,
+    provider: null,      // 'scaleway' | 'lambda' | 'nebius'
+    phase: 'launching',  // 'launching' | 'waiting_ip' | 'ready'
+    ip: null,
+    instanceName: null,
+    sshUser: 'ubuntu',
   });
 
   // Scaleway state (real fetch via backend proxy; defaults seeded with static list)
@@ -494,6 +522,13 @@ const [nebiusDeleteLoading, setNebiusDeleteLoading] = useState(false);
   const [nebiusLaunchOpen, setNebiusLaunchOpen] = useState(false);
   const [nebiusLaunchForm, setNebiusLaunchForm] = useState(NEBUS_INITIAL_LAUNCH_FORM);
   const [nebiusLaunchLoading, setNebiusLaunchLoading] = useState(false);
+  const [nebiusProgress, setNebiusProgress] = useState({
+    open: false,
+    instanceName: null,
+    status: null,
+    ip: null,
+    startTime: null,
+  });
   const handleOpenNebiusLaunch = useCallback(
     (preset) => {
       if (!preset) return;
@@ -509,7 +544,7 @@ const [nebiusDeleteLoading, setNebiusDeleteLoading] = useState(false);
       setNebiusLaunchForm({
         presetId,
         zoneId: fallbackZone,
-        sshPublicKey: '',
+        sshPublicKey: envSSHKey || '',
         sshKeyName: '',
       });
       setNebiusLaunchOpen(true);
@@ -673,7 +708,7 @@ const normalizeAvailability = (cfg, zone) => {
     }
     setScwLaunchForm({
       region: preferredRegion,
-      publicKey: process.env.REACT_APP_SCW_SSH_PUBLIC_KEY || '',
+      publicKey: envSSHKey || process.env.REACT_APP_SCW_SSH_PUBLIC_KEY || '',
       sshKeyName: 'runara-key',
       commercialType: preferredType,
       rootVolumeSize: null,
@@ -1079,10 +1114,30 @@ const normalizeAvailability = (cfg, zone) => {
         nebiusLaunchForm.sshKeyName?.trim() || null
       );
       
-      setMessage(`Instance launch initiated: ${result.instance_name || result.operation_id || 'Success'}`);
+      const instName = result.instance_name || result.operation_id || 'Nebius Instance';
+      setMessage(`Instance launch initiated: ${instName}`);
       setNebiusLaunchOpen(false);
       setNebiusLaunchForm(NEBUS_INITIAL_LAUNCH_FORM);
-      
+
+      // Open progress dialog to poll for IP
+      setNebiusProgress({
+        open: true,
+        instanceName: instName,
+        status: 'launching',
+        ip: null,
+        startTime: Date.now(),
+      });
+
+      // Activate full-screen loading
+      setLaunchingScreen({
+        active: true,
+        provider: 'nebius',
+        phase: 'launching',
+        ip: null,
+        instanceName: instName,
+        sshUser: 'ubuntu',
+      });
+
       // Refresh instances after a short delay
       setTimeout(() => {
         fetchNebiusInstances();
@@ -1449,22 +1504,43 @@ const normalizeAvailability = (cfg, zone) => {
         }));
         const statusLower = (res.status || '').toLowerCase();
         const hasIp = Boolean(res.ip);
+        const isReady = statusLower === 'running' || statusLower === 'ready';
+        // Update full-screen loading phase
+        if (hasIp) {
+          setLaunchingScreen((prev) => prev.active ? { ...prev, phase: isReady ? 'ready' : 'waiting_ip', ip: res.ip } : prev);
+        }
         // Refresh instances periodically when running, even without IP (to catch delayed IP assignment)
         // Also refresh immediately when IP first appears
         if (statusLower === 'running') {
           // Always refresh instances when running to catch IPs assigned after launch
           if (!scwProgressRefreshed || hasIp) {
             await fetchScalewayInstances(scwProgressZone || scwRegion, { showGlobalLoading: false });
-            setScwProgress((prev) => ({ 
-              ...prev, 
-              refreshedInstances: true, 
-              ip: res.ip || prev.ip 
+            setScwProgress((prev) => ({
+              ...prev,
+              refreshedInstances: true,
+              ip: res.ip || prev.ip
             }));
           }
         }
-        // Stop polling when instance is running AND has IP
-        if (statusLower === 'running' && hasIp) {
+        // Stop polling and auto-redirect when we have an IP (instance is usable)
+        if (hasIp) {
           clearInterval(intervalId);
+          setLaunchingScreen((prev) => prev.active ? { ...prev, phase: 'ready', ip: res.ip } : prev);
+          // Auto-redirect to Run Workload after a brief delay
+          setTimeout(() => {
+            setScwProgress((prev) => ({ ...prev, open: false }));
+            setLaunchingScreen({ active: false, provider: null, phase: 'launching', ip: null, instanceName: null, sshUser: 'ubuntu' });
+            navigate('/profiling', {
+              state: {
+                openRunWorkload: true,
+                instanceData: {
+                  ipAddress: res.ip,
+                  sshUser: 'root',
+                  provider: 'scaleway',
+                },
+              },
+            });
+          }, 2000);
         }
         // Stop polling after 3 minutes even without IP (instance might need manual flexible IP)
         const startTime = scwProgress.startTime || Date.now();
@@ -1479,6 +1555,72 @@ const normalizeAvailability = (cfg, zone) => {
     intervalId = setInterval(poll, 6000);
     return () => clearInterval(intervalId);
   }, [scwProgressOpen, scwProgressServerId, scwProgressZone, scwProgressRefreshed, fetchScalewayInstances, scwRegion, credentials, credentialSecrets]);
+
+  // Poll Nebius instances when progress dialog is open to find IP
+  useEffect(() => {
+    if (!nebiusProgress.open || !nebiusProgress.instanceName) return;
+    let intervalId;
+    const poll = async () => {
+      try {
+        const parsed = getNebiusAuth();
+        if (!parsed) return;
+        const credentialsPayload = {
+          service_account_id: parsed.serviceAccountId,
+          key_id: parsed.keyId,
+          private_key: parsed.secretKey,
+        };
+        const effectiveProjectId = resolveNebiusProjectId(parsed.projectId, nebiusRegion);
+        const instancesList = await apiService.getNebiusInstances(credentialsPayload, effectiveProjectId);
+        // Find the launched instance by name
+        const found = (instancesList || []).find(
+          (inst) => inst.name === nebiusProgress.instanceName || inst.id === nebiusProgress.instanceName
+        );
+        if (found) {
+          const ip = found.public_ip || found.ip || found.network_interfaces?.[0]?.primary_v4_address?.one_to_one_nat?.address || null;
+          const foundStatus = (found.status || 'launching').toLowerCase();
+          setNebiusProgress((prev) => ({ ...prev, status: foundStatus, ip: ip || prev.ip }));
+          // Update full-screen loading
+          if (ip) {
+            setLaunchingScreen((prev) => prev.active ? { ...prev, phase: 'waiting_ip', ip } : prev);
+          }
+          if (ip && (foundStatus === 'running' || foundStatus === 'ready')) {
+            clearInterval(intervalId);
+            setLaunchingScreen((prev) => prev.active ? { ...prev, phase: 'ready' } : prev);
+            // Auto-redirect to Run Workload
+            setTimeout(() => {
+              setNebiusProgress((prev) => ({ ...prev, open: false }));
+              setLaunchingScreen({ active: false, provider: null, phase: 'launching', ip: null, instanceName: null, sshUser: 'ubuntu' });
+              navigate('/profiling', {
+                state: {
+                  openRunWorkload: true,
+                  instanceData: {
+                    ipAddress: ip,
+                    sshUser: 'ubuntu',
+                    provider: 'nebius',
+                  },
+                },
+              });
+            }, 2000);
+          }
+        }
+        // Stop polling after 5 minutes
+        if (Date.now() - (nebiusProgress.startTime || Date.now()) > 300000) {
+          clearInterval(intervalId);
+        }
+      } catch (e) {
+        console.warn('Nebius progress poll failed', e);
+      }
+    };
+    // Start polling after initial delay (instance needs time to appear)
+    const initialTimeout = setTimeout(() => {
+      poll();
+      intervalId = setInterval(poll, 8000);
+    }, 5000);
+    return () => {
+      clearTimeout(initialTimeout);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [nebiusProgress.open, nebiusProgress.instanceName, nebiusProgress.startTime, getNebiusAuth, nebiusRegion, navigate]);
 
   const handleOpenModal = (providerId) => {
     setOpenModal(providerId);
@@ -2073,10 +2215,20 @@ const normalizeAvailability = (cfg, zone) => {
       const response = await apiService.startInstanceOrchestration(apiKey, orchestrationRequest);
       
       if (response && response.orchestration_id) {
-        setMessage('Instance launch initiated successfully! Opening orchestration dialog...');
+        setMessage('Instance launch initiated successfully!');
         setError('');
-        
-        // Show success message briefly before opening orchestration dialog
+
+        // Activate full-screen loading
+        setLaunchingScreen({
+          active: true,
+          provider: 'lambda',
+          phase: 'launching',
+          ip: null,
+          instanceName: launchForm.instanceType,
+          sshUser: 'ubuntu',
+        });
+
+        // Open orchestration dialog (hidden behind full-screen) and close launch dialog
         setTimeout(() => {
           setOrchestrationId(response.orchestration_id);
           setOrchestrationStatus(response);
@@ -2165,11 +2317,132 @@ const normalizeAvailability = (cfg, zone) => {
     };
 
     // Navigate to telemetry with local instance data
-    navigate('/profiling', { state: { openTelemetry: true, instanceData, allowMigration: true } });
+    navigate('/telemetry', { state: { instanceData } });
   };
 
   return (
     <>
+    {/* Full-screen launching overlay */}
+    {launchingScreen.active && (
+      <Box
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(26, 26, 24, 0.97)',
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+        <Box sx={{ textAlign: 'center', maxWidth: 480, px: 3 }}>
+          {/* Spinner */}
+          {launchingScreen.phase !== 'ready' && (
+            <CircularProgress size={64} thickness={3} sx={{ color: '#818cf8', mb: 4 }} />
+          )}
+          {launchingScreen.phase === 'ready' && (
+            <CheckCircleIcon sx={{ fontSize: 64, color: '#34d399', mb: 4 }} />
+          )}
+
+          {/* Title */}
+          <Typography variant="h5" sx={{ color: '#fafaf8', fontWeight: 700, mb: 1 }}>
+            {launchingScreen.phase === 'ready'
+              ? 'Instance Ready!'
+              : launchingScreen.phase === 'waiting_ip'
+              ? 'Almost there...'
+              : 'Launching Instance'}
+          </Typography>
+
+          {/* Subtitle */}
+          <Typography variant="body1" sx={{ color: '#a8a8a0', mb: 4 }}>
+            {launchingScreen.phase === 'ready'
+              ? 'Redirecting to Run Workload...'
+              : launchingScreen.phase === 'waiting_ip'
+              ? 'Waiting for IP address assignment...'
+              : `Setting up your ${launchingScreen.provider || ''} instance...`}
+          </Typography>
+
+          {/* Progress steps */}
+          <Box sx={{ textAlign: 'left', mb: 4 }}>
+            <Stack spacing={2}>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <CheckCircleIcon sx={{ fontSize: 20, color: '#34d399' }} />
+                <Typography variant="body2" sx={{ color: '#fafaf8' }}>
+                  Launch requested
+                </Typography>
+              </Stack>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                {launchingScreen.phase === 'launching' ? (
+                  <CircularProgress size={18} thickness={4} sx={{ color: '#818cf8' }} />
+                ) : (
+                  <CheckCircleIcon sx={{ fontSize: 20, color: '#34d399' }} />
+                )}
+                <Typography variant="body2" sx={{ color: launchingScreen.phase === 'launching' ? '#a8a8a0' : '#fafaf8' }}>
+                  Provisioning instance
+                </Typography>
+              </Stack>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                {launchingScreen.phase === 'waiting_ip' ? (
+                  <CircularProgress size={18} thickness={4} sx={{ color: '#818cf8' }} />
+                ) : launchingScreen.phase === 'ready' ? (
+                  <CheckCircleIcon sx={{ fontSize: 20, color: '#34d399' }} />
+                ) : (
+                  <Box sx={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid #3d3d3a' }} />
+                )}
+                <Typography variant="body2" sx={{ color: launchingScreen.phase === 'launching' ? '#6b6b65' : launchingScreen.phase === 'waiting_ip' ? '#a8a8a0' : '#fafaf8' }}>
+                  Assigning IP address
+                </Typography>
+              </Stack>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                {launchingScreen.phase === 'ready' ? (
+                  <CheckCircleIcon sx={{ fontSize: 20, color: '#34d399' }} />
+                ) : (
+                  <Box sx={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid #3d3d3a' }} />
+                )}
+                <Typography variant="body2" sx={{ color: launchingScreen.phase === 'ready' ? '#fafaf8' : '#6b6b65' }}>
+                  Ready — redirecting to Run Workload
+                </Typography>
+              </Stack>
+            </Stack>
+          </Box>
+
+          {/* IP address display */}
+          {launchingScreen.ip && (
+            <Box sx={{ p: 2, borderRadius: 2, border: '1px solid #3d3d3a', backgroundColor: 'rgba(129, 140, 248, 0.08)', mb: 3 }}>
+              <Typography variant="caption" sx={{ color: '#a8a8a0' }}>
+                IP Address
+              </Typography>
+              <Typography variant="h6" sx={{ color: '#818cf8', fontFamily: '"DM Mono", monospace' }}>
+                {launchingScreen.ip}
+              </Typography>
+            </Box>
+          )}
+
+          {/* Instance name */}
+          {launchingScreen.instanceName && (
+            <Typography variant="caption" sx={{ color: '#6b6b65' }}>
+              {launchingScreen.provider?.charAt(0).toUpperCase() + launchingScreen.provider?.slice(1)} &middot; {launchingScreen.instanceName}
+            </Typography>
+          )}
+
+          {/* Cancel button */}
+          <Box sx={{ mt: 4 }}>
+            <Button
+              onClick={() => setLaunchingScreen({ active: false, provider: null, phase: 'launching', ip: null, instanceName: null, sshUser: 'ubuntu' })}
+              sx={{ color: '#a8a8a0', textTransform: 'none', '&:hover': { color: '#fafaf8' } }}
+            >
+              Dismiss
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+    )}
+
     <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: 'background.default' }}>
       {/* Main Content Area */}
       <Box sx={{ flex: 1, p: 4, display: 'flex', flexDirection: 'column' }}>
@@ -3286,7 +3559,7 @@ const normalizeAvailability = (cfg, zone) => {
                                     vendor: 'Lambda',
                                     status: isRunning ? 'running' : (status || 'unknown'),
                                   };
-                                  navigate('/profiling', { state: { openTelemetry: true, instanceData, allowMigration: true } });
+                                  navigate('/telemetry', { state: { instanceData } });
                                 }}
                                 sx={{ mt: 1, textTransform: 'none' }}
                               >
@@ -3373,7 +3646,7 @@ const normalizeAvailability = (cfg, zone) => {
                                         region: zone,
                                         status: status || 'running',
                                       };
-                                      navigate('/profiling', { state: { openTelemetry: true, instanceData, allowMigration: true } });
+                                      navigate('/telemetry', { state: { instanceData } });
                                     }}
                                     sx={{ textTransform: 'none', width: '100%' }}
                                   >
@@ -3579,7 +3852,7 @@ const normalizeAvailability = (cfg, zone) => {
                                       region: zone,
                                       status: (instance.status || instance.state || '').toLowerCase() || 'running',
                                     };
-                                    navigate('/profiling', { state: { openTelemetry: true, instanceData, allowMigration: true } });
+                                    navigate('/telemetry', { state: { instanceData } });
                                   }}
                                   sx={{ textTransform: 'none', width: '100%' }}
                                 >
@@ -3952,17 +4225,28 @@ const normalizeAvailability = (cfg, zone) => {
             </Select>
           </FormControl>
 
-          <TextField
-            fullWidth
-            label="SSH Public Key"
-            multiline
-            rows={4}
-            value={nebiusLaunchForm.sshPublicKey}
-            onChange={(e) => setNebiusLaunchForm(prev => ({ ...prev, sshPublicKey: e.target.value }))}
-            placeholder="ssh-rsa AAAAB3NzaC1yc2E... your-email@example.com"
-            helperText="Paste your SSH public key here. This will be injected into the instance."
-            sx={{ mt: 1 }}
-          />
+          {envSSHKey ? (
+            <Box sx={{ mt: 1, p: 2, borderRadius: '8px', border: '1px solid #3d3d3a', backgroundColor: 'rgba(129, 140, 248, 0.06)' }}>
+              <Typography variant="body2" sx={{ color: '#34d399', fontWeight: 600, mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <VpnKeyIcon sx={{ fontSize: 16 }} /> SSH Key Auto-configured
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#a8a8a0', fontFamily: '"DM Mono", monospace', wordBreak: 'break-all' }}>
+                {nebiusLaunchForm.sshPublicKey?.substring(0, 80)}...
+              </Typography>
+            </Box>
+          ) : (
+            <TextField
+              fullWidth
+              label="SSH Public Key"
+              multiline
+              rows={4}
+              value={nebiusLaunchForm.sshPublicKey}
+              onChange={(e) => setNebiusLaunchForm(prev => ({ ...prev, sshPublicKey: e.target.value }))}
+              placeholder="ssh-rsa AAAAB3NzaC1yc2E... your-email@example.com"
+              helperText="Paste your SSH public key here. This will be injected into the instance."
+              sx={{ mt: 1 }}
+            />
+          )}
           <TextField
             fullWidth
             label="SSH Key Name (optional)"
@@ -4235,17 +4519,28 @@ const normalizeAvailability = (cfg, zone) => {
                   })()}
                 </FormControl>
 
-                <TextField
-                  fullWidth
-                  label="SSH Private Key"
-                  multiline
-                  rows={6}
-                  value={launchForm.sshKey}
-                  onChange={(e) => setLaunchForm(prev => ({ ...prev, sshKey: e.target.value }))}
-                  placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"
-                  helperText="Paste your SSH private key here. This will be used to access the instance."
-                  sx={{ mt: 1 }}
-                />
+                {envSSHKey ? (
+                  <Box sx={{ mt: 1, p: 2, borderRadius: '8px', border: '1px solid #3d3d3a', backgroundColor: 'rgba(129, 140, 248, 0.06)' }}>
+                    <Typography variant="body2" sx={{ color: '#34d399', fontWeight: 600, mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <VpnKeyIcon sx={{ fontSize: 16 }} /> SSH Key Auto-configured
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#a8a8a0', fontFamily: '"DM Mono", monospace', wordBreak: 'break-all' }}>
+                      {launchForm.sshKey?.substring(0, 80)}...
+                    </Typography>
+                  </Box>
+                ) : (
+                  <TextField
+                    fullWidth
+                    label="SSH Private Key"
+                    multiline
+                    rows={6}
+                    value={launchForm.sshKey}
+                    onChange={(e) => setLaunchForm(prev => ({ ...prev, sshKey: e.target.value }))}
+                    placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"
+                    helperText="Paste your SSH private key here. This will be used to access the instance."
+                    sx={{ mt: 1 }}
+                  />
+                )}
                 
                 <TextField
                   fullWidth
@@ -4290,8 +4585,16 @@ const normalizeAvailability = (cfg, zone) => {
           setOrchestrationDialogOpen(false);
           setOrchestrationId(null);
           setOrchestrationStatus(null);
+          setLaunchingScreen({ active: false, provider: null, phase: 'launching', ip: null, instanceName: null, sshUser: 'ubuntu' });
         }}
         orchestrationId={orchestrationId}
+        onStatusUpdate={(data) => {
+          if (data.ip_address) {
+            setLaunchingScreen((prev) => prev.active ? { ...prev, phase: 'ready', ip: data.ip_address } : prev);
+          } else if (data.status === 'waiting_ip' || data.status === 'setting_up') {
+            setLaunchingScreen((prev) => prev.active ? { ...prev, phase: 'waiting_ip' } : prev);
+          }
+        }}
       />
 
       {/* Scaleway Launch Modal */}
@@ -4428,14 +4731,25 @@ const normalizeAvailability = (cfg, zone) => {
               Loading configurations for {scwLaunchForm.region}...
             </Typography>
           )}
-          <TextField
-            label="SSH Public Key"
-            placeholder="ssh-ed25519 AAAA... or ssh-rsa AAAA..."
-            multiline
-            minRows={3}
-            value={scwLaunchForm.publicKey}
-            onChange={(e) => setScwLaunchForm((prev) => ({ ...prev, publicKey: e.target.value }))}
-          />
+          {envSSHKey ? (
+            <Box sx={{ p: 2, borderRadius: '8px', border: '1px solid #3d3d3a', backgroundColor: 'rgba(129, 140, 248, 0.06)' }}>
+              <Typography variant="body2" sx={{ color: '#34d399', fontWeight: 600, mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <VpnKeyIcon sx={{ fontSize: 16 }} /> SSH Key Auto-configured
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#a8a8a0', fontFamily: '"DM Mono", monospace', wordBreak: 'break-all' }}>
+                {scwLaunchForm.publicKey?.substring(0, 80)}...
+              </Typography>
+            </Box>
+          ) : (
+            <TextField
+              label="SSH Public Key"
+              placeholder="ssh-ed25519 AAAA... or ssh-rsa AAAA..."
+              multiline
+              minRows={3}
+              value={scwLaunchForm.publicKey}
+              onChange={(e) => setScwLaunchForm((prev) => ({ ...prev, publicKey: e.target.value }))}
+            />
+          )}
           <TextField
             label="SSH Key Name (optional)"
             placeholder="my-key-name"
@@ -4555,6 +4869,41 @@ const normalizeAvailability = (cfg, zone) => {
                   refreshedInstances: false,
                   startTime: Date.now(),
                 });
+                // Activate full-screen loading — if IP already available, skip ahead
+                if (res.ip) {
+                  // IP available immediately — show ready and redirect
+                  setLaunchingScreen({
+                    active: true,
+                    provider: 'scaleway',
+                    phase: 'ready',
+                    ip: res.ip,
+                    instanceName: serverId,
+                    sshUser: 'root',
+                  });
+                  setTimeout(() => {
+                    setScwProgress((prev) => ({ ...prev, open: false }));
+                    setLaunchingScreen({ active: false, provider: null, phase: 'launching', ip: null, instanceName: null, sshUser: 'ubuntu' });
+                    navigate('/profiling', {
+                      state: {
+                        openRunWorkload: true,
+                        instanceData: {
+                          ipAddress: res.ip,
+                          sshUser: 'root',
+                          provider: 'scaleway',
+                        },
+                      },
+                    });
+                  }, 2000);
+                } else {
+                  setLaunchingScreen({
+                    active: true,
+                    provider: 'scaleway',
+                    phase: 'launching',
+                    ip: null,
+                    instanceName: serverId,
+                    sshUser: 'root',
+                  });
+                }
                 // Refresh instances asynchronously (don't wait)
                 fetchScalewayInstances(launchRegion).catch(err => {
                   console.warn('Failed to refresh instances after launch:', err);
@@ -4705,12 +5054,143 @@ const normalizeAvailability = (cfg, zone) => {
             <Typography variant="body2" color="text.secondary">
               This will refresh until the server reports running and has an IP.
             </Typography>
+            {scwProgress.ip && scwProgress.status && scwProgress.status.toLowerCase() === 'running' && (
+              <Alert severity="success" sx={{ mt: 2 }}>
+                Instance is ready! Redirecting to Run Workload...
+              </Alert>
+            )}
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2, pt: 1 }}>
           <Button onClick={() => setScwProgress((prev) => ({ ...prev, open: false }))} sx={{ textTransform: 'none' }}>
             Close
           </Button>
+          {scwProgress.ip && scwProgress.status && scwProgress.status.toLowerCase() === 'running' && (
+            <Button
+              variant="contained"
+              onClick={() => {
+                setScwProgress((prev) => ({ ...prev, open: false }));
+                navigate('/profiling', {
+                  state: {
+                    openRunWorkload: true,
+                    instanceData: {
+                      ipAddress: scwProgress.ip,
+                      sshUser: 'root',
+                      provider: 'scaleway',
+                    },
+                  },
+                });
+              }}
+              sx={{ textTransform: 'none' }}
+            >
+              Go to Run Workload
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Nebius Polling Progress */}
+      <Dialog
+        open={nebiusProgress.open}
+        onClose={() => setNebiusProgress((prev) => ({ ...prev, open: false }))}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 600, pb: 1 }}>
+          Instance Launching (Nebius)
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Typography variant="body2" color="text.secondary">
+            Instance: {nebiusProgress.instanceName}
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Typography variant="body2">
+              Status: {nebiusProgress.status || 'launching'}
+            </Typography>
+            <Typography variant="body2">IP: {nebiusProgress.ip || 'waiting...'}</Typography>
+            <Box sx={{ mt: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>Overall Progress</Typography>
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Chip size="small" color="success" label="●" sx={{ width: 10, height: 10 }} />
+                  <Typography variant="body2">Launch Requested</Typography>
+                </Stack>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Chip
+                    size="small"
+                    color={nebiusProgress.status === 'running' || nebiusProgress.ip ? 'success' : 'warning'}
+                    label="●"
+                    sx={{ width: 10, height: 10 }}
+                  />
+                  <Typography variant="body2">
+                    Provisioning {nebiusProgress.status === 'running' || nebiusProgress.ip ? '(done)' : '(in progress)'}
+                  </Typography>
+                </Stack>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Chip
+                    size="small"
+                    color={nebiusProgress.ip ? 'success' : 'warning'}
+                    label="●"
+                    sx={{ width: 10, height: 10 }}
+                  />
+                  <Typography variant="body2">
+                    Waiting for IP Address {nebiusProgress.ip ? '(done)' : '(in progress)'}
+                  </Typography>
+                </Stack>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Chip
+                    size="small"
+                    color={nebiusProgress.ip && nebiusProgress.status === 'running' ? 'success' : 'warning'}
+                    label="●"
+                    sx={{ width: 10, height: 10 }}
+                  />
+                  <Typography variant="body2">
+                    Ready {nebiusProgress.ip && nebiusProgress.status === 'running' ? '(done)' : '(waiting)'}
+                  </Typography>
+                </Stack>
+              </Stack>
+            </Box>
+            {!nebiusProgress.ip && (
+              <Box sx={{ mt: 1 }}>
+                <CircularProgress size={20} sx={{ mr: 1 }} />
+                <Typography variant="body2" component="span" color="text.secondary">
+                  Polling for instance status...
+                </Typography>
+              </Box>
+            )}
+            {nebiusProgress.ip && nebiusProgress.status === 'running' && (
+              <Alert severity="success" sx={{ mt: 2 }}>
+                Instance is ready! Redirecting to Run Workload...
+              </Alert>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 1 }}>
+          <Button onClick={() => setNebiusProgress((prev) => ({ ...prev, open: false }))} sx={{ textTransform: 'none' }}>
+            Close
+          </Button>
+          {nebiusProgress.ip && nebiusProgress.status === 'running' && (
+            <Button
+              variant="contained"
+              onClick={() => {
+                setNebiusProgress((prev) => ({ ...prev, open: false }));
+                navigate('/profiling', {
+                  state: {
+                    openRunWorkload: true,
+                    instanceData: {
+                      ipAddress: nebiusProgress.ip,
+                      sshUser: 'ubuntu',
+                      provider: 'nebius',
+                    },
+                  },
+                });
+              }}
+              sx={{ textTransform: 'none' }}
+            >
+              Go to Run Workload
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </>

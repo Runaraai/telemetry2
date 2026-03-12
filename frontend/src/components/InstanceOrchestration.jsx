@@ -42,7 +42,7 @@ const PHASES = [
   { id: 'ready', label: 'Ready', progress: 100 }
 ];
 
-export default function InstanceOrchestration({ open, onClose, orchestrationId }) {
+export default function InstanceOrchestration({ open, onClose, orchestrationId, onStatusUpdate }) {
   const navigate = useNavigate();
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -90,8 +90,13 @@ export default function InstanceOrchestration({ open, onClose, orchestrationId }
         setStatus(data);
         setError(null);
 
-        // Auto-navigate to telemetry dashboard when model is deployed and ready (only if enabled)
-        if (data.status === 'ready' && data.model_deployed && data.model_deployed !== '' && data.ip_address && autoNavigateEnabled) {
+        // Notify parent of status updates for full-screen loading
+        if (onStatusUpdate) {
+          onStatusUpdate(data);
+        }
+
+        // Auto-navigate to Run Workload when IP is available
+        if (data.ip_address) {
           // Stop polling immediately
           if (intervalRef.current) {
             clearInterval(intervalRef.current);
@@ -106,27 +111,19 @@ export default function InstanceOrchestration({ open, onClose, orchestrationId }
               ip_address: data.ip_address,
               sshUser: data.ssh_user || 'ubuntu',
               ssh_user: data.ssh_user || 'ubuntu',
-              model_deployed: data.model_deployed,
-              modelConfig: modelConfig // Include model configuration
             };
-            navigate('/profiling', { 
-              state: { 
-                openTelemetry: true, 
-                instanceData 
-              } 
+            navigate('/profiling', {
+              state: {
+                openRunWorkload: true,
+                instanceData
+              }
             });
             onClose();
-          }, 2000); // 2 second delay to show success message
+          }, 2000);
           return;
         }
-        
-        // Show configuration dialog when model is ready (first time only)
-        if (data.status === 'ready' && data.model_deployed && data.model_deployed !== '' && data.ip_address && !showConfigBeforeNavigate) {
-          setShowConfigBeforeNavigate(true);
-        }
 
-        // Stop polling if completed or failed (but continue if deploying_model)
-        // Only stop if ready AND model is deployed, or if failed
+        // Stop polling if failed
         if (data.status === 'failed') {
           if (intervalRef.current) {
             clearInterval(intervalRef.current);
@@ -134,19 +131,7 @@ export default function InstanceOrchestration({ open, onClose, orchestrationId }
           }
           return;
         }
-        
-        // Stop polling if ready but only if model is already deployed (deployment complete)
-        // Continue polling if ready but no model deployed yet (waiting for model selection)
-        if (data.status === 'ready' && data.model_deployed && data.model_deployed !== '') {
-          // Model deployment is complete, but we already handle navigation above
-          // Keep polling for a bit to show final status, then stop
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
-          return;
-        }
-        
+
         // Continue polling for: launching, waiting_ip, setting_up, deploying_model, or ready (no model yet)
       } catch (e) {
         console.error('Failed to fetch orchestration status:', e);
@@ -176,7 +161,7 @@ export default function InstanceOrchestration({ open, onClose, orchestrationId }
         navigationTimeoutRef.current = null;
       }
     };
-  }, [open, orchestrationId, navigate, onClose, autoNavigateEnabled, modelConfig, showConfigBeforeNavigate]);
+  }, [open, orchestrationId, navigate, onClose, onStatusUpdate]);
 
   const getPhaseStatus = (phaseId) => {
     if (!status) return 'pending';
@@ -431,6 +416,32 @@ export default function InstanceOrchestration({ open, onClose, orchestrationId }
                     </Box>
                   )}
                 </Stack>
+                {status.ip_address && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => {
+                      const instanceData = {
+                        id: status.instance_id,
+                        instance_id: status.instance_id,
+                        ipAddress: status.ip_address,
+                        ip_address: status.ip_address,
+                        sshUser: status.ssh_user || 'ubuntu',
+                        ssh_user: status.ssh_user || 'ubuntu',
+                      };
+                      navigate('/profiling', {
+                        state: {
+                          openRunWorkload: true,
+                          instanceData,
+                        },
+                      });
+                      onClose();
+                    }}
+                    sx={{ mt: 1.5, textTransform: 'none', fontWeight: 600 }}
+                  >
+                    Go to Run Workload
+                  </Button>
+                )}
               </Box>
             )}
 
@@ -553,11 +564,8 @@ export default function InstanceOrchestration({ open, onClose, orchestrationId }
                                 model_deployed: status.model_deployed,
                                 modelConfig: modelConfig
                               };
-                              navigate('/profiling', { 
-                                state: { 
-                                  openTelemetry: true, 
-                                  instanceData 
-                                } 
+                              navigate('/telemetry', {
+                                state: { instanceData }
                               });
                               onClose();
                             }
@@ -772,11 +780,8 @@ export default function InstanceOrchestration({ open, onClose, orchestrationId }
                 model_deployed: status.model_deployed,
                 modelConfig: modelConfig
               };
-              navigate('/profiling', { 
-                state: { 
-                  openTelemetry: true, 
-                  instanceData 
-                } 
+              navigate('/telemetry', {
+                state: { instanceData }
               });
               onClose();
             }}

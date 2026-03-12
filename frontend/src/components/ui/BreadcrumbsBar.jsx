@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 const LABELS = {
   '/': 'Benchmarking',
   '/profiling': 'Run Workload',
+  '/telemetry': 'Telemetry',
   '/instances': 'Manage Instances',
   '/telemetry-history': 'Telemetry History',
 };

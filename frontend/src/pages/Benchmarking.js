@@ -14,8 +14,6 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Tabs,
-  Tab,
   CircularProgress,
   FormControl,
   InputLabel,
@@ -60,7 +58,6 @@ import {
 } from 'recharts';
 import { 
   Memory as MemoryIcon, 
-  Assessment as AssessmentIcon,
   Refresh as RefreshIcon,
   AttachMoney as AttachMoneyIcon,
   PowerSettingsNew as PowerIcon,
@@ -84,15 +81,14 @@ import {
   CheckCircleOutline as CheckCircleOutlineIcon,
   RocketLaunch as RocketLaunchIcon,
   Speed as SpeedIcon,
+  VpnKey as VpnKeyIcon,
 } from '@mui/icons-material';
 import apiService, { friendlyError } from '../services/api';
 import SystemBenchmarkDashboard from '../components/SystemBenchmarkDashboard';
-import TelemetryTab from '../components/TelemetryTab';
 import ProvisioningTab from '../components/ProvisioningTab';
 import WorkflowStepper from '../components/WorkflowStepper';
 import { alpha, useTheme } from '@mui/material';
 import { useUI } from '../components/ui/UIProvider';
-import RefreshControl from '../components/ui/RefreshControl';
 
 // Inline results card for benchmark (workload metrics)
 const BenchmarkResultsCard = ({ runId }) => {
@@ -251,9 +247,6 @@ const Benchmarking = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  // Tabs
-  const [selectedTab, setSelectedTab] = useState(0);
-  
   // System selection
   const [availableSystems, setAvailableSystems] = useState([]);
   const [selectedSystem, setSelectedSystem] = useState('');
@@ -275,7 +268,7 @@ const Benchmarking = () => {
   const [exportDialog, setExportDialog] = useState(false);
   
   // Run Workload tab state
-  const [rwCloudProvider, setRwCloudProvider] = useState('lambda'); // 'lambda' or 'scaleway'
+  const [rwCloudProvider, setRwCloudProvider] = useState('scaleway'); // 'scaleway'
   const [rwModel, setRwModel] = useState('Llama4-Scout');
   const [rwSystem, setRwSystem] = useState('8xH100');
   const [rwVendor, setRwVendor] = useState('Lambda');
@@ -344,7 +337,6 @@ const Benchmarking = () => {
   const [workflowRequestRate, setWorkflowRequestRate] = useState(10.0);
   const [workflowMaxConcurrency, setWorkflowMaxConcurrency] = useState(4);
   const [workflowKernelRequests, setWorkflowKernelRequests] = useState(20);
-  const [lastUpdated, setLastUpdated] = useState(null);
   const { showToast } = useUI();
 
   // Environment check state
@@ -383,6 +375,13 @@ const Benchmarking = () => {
   useEffect(() => {
     apiService.listConnections().then(setSavedConnections).catch(() => {});
   }, []);
+
+  // Auto-populate SSH private key from backend config
+  useEffect(() => {
+    apiService.getSSHPrivateKey()
+      .then((key) => { if (key && !rwSshKey) setRwSshKey(key); })
+      .catch(() => {}); // silently ignore if not configured
+  }, []); // eslint-disable-line
 
   // Hydrate persisted workflow state whenever ssh host changes
   useEffect(() => {
@@ -613,11 +612,6 @@ const Benchmarking = () => {
 
   const migrationEnabled = allowMigration && (instanceData?.status || '').toLowerCase() === 'running';
 
-  const handleRefresh = () => {
-    // Simple page reload until APIs are reorganized
-    window.location.reload();
-  };
-  
   // Helper function to get display config type (show prefill for unknown H100)
   const getDisplayConfigType = (configType, system) => {
     if (configType === 'unknown' && system === 'H100') {
@@ -934,7 +928,6 @@ const Benchmarking = () => {
   // Effects
   useEffect(() => {
     loadAvailableSystems();
-    setLastUpdated(Date.now());
   }, []);
 
   // Helper function to get PEM from localStorage
@@ -1094,10 +1087,7 @@ const Benchmarking = () => {
     }
     setAllowMigration(Boolean(state.allowMigration));
 
-    if (state.openTelemetry) {
-      setSelectedTab(0); // Telemetry tab is index 0
-    } else if (state.openRunWorkload) {
-      setSelectedTab(2); // Run Workload tab is index 2
+    if (state.openRunWorkload) {
       if (state.instanceData) {
         const data = state.instanceData;
         if (data.gpuDescription) {
@@ -1138,9 +1128,6 @@ const Benchmarking = () => {
   // Update SSH fields when instanceData changes (e.g., when navigating from Manage Instances)
   // This ensures fields are pre-filled when coming from Manage Instances, but empty when navigating directly
   useEffect(() => {
-    // Only update fields if we're on the Run Workload tab
-    if (selectedTab !== 2) return;
-
     if (instanceData) {
       // Pre-fill IP address if available
       if (instanceData.ipAddress) {
@@ -1165,7 +1152,7 @@ const Benchmarking = () => {
     }
     // Note: We don't clear fields when instanceData is null to avoid clearing user input
     // Fields will be empty by default when navigating directly (no state)
-  }, [instanceData, selectedTab]);
+  }, [instanceData]);
 
   useEffect(() => {
     if (selectedSystem) {
@@ -1173,94 +1160,16 @@ const Benchmarking = () => {
     }
   }, [selectedSystem]);
 
-  // Load instances when tab 3 is selected
-  useEffect(() => {
-    // Removed: Tab 4 (Instance Management) no longer exists
-    // if (selectedTab === 4) {
-    //   loadLambdaInstances();
-    // }
-  }, [selectedTab]);
-
-  // Load GPU metrics when tab 2 is selected
-  useEffect(() => {
-    // Removed: Tab 2 (GPU Metrics) no longer exists
-    // if (selectedTab === 2 && selectedSystem) {
-    //   loadGpuMetrics(selectedSystem);
-    // }
-  }, [selectedTab, selectedSystem]);
 
   return (
     <Box sx={{ p: 4, maxWidth: '1920px', mx: 'auto' }}>
-      {/* Header Section */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-        <Box>
-          <Typography variant="h4" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <AssessmentIcon color="primary" sx={{ fontSize: '2rem' }} />
-            Profiling Dashboard
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            View benchmarking results, GPU metrics, and manage your instances
-          </Typography>
-        </Box>
-        <RefreshControl lastUpdated={lastUpdated} loading={loading} onRefresh={handleRefresh} />
-      </Box>
-
       {error && (
         <Alert severity="error" sx={{ mb: 4 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
-      {/* Tabs Section */}
-      <Card sx={{ mb: 4, borderRadius: 3 }}>
-        <Tabs 
-          value={selectedTab} 
-          onChange={(e, newValue) => setSelectedTab(newValue)}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{ 
-            borderBottom: 1, 
-            borderColor: 'divider',
-            px: 2,
-            '& .MuiTab-root': {
-              py: 2.5,
-              fontSize: '0.9375rem',
-              fontWeight: 500
-            }
-          }}
-        >
-          <Tab label="Telemetry" icon={<TimelineIcon />} iconPosition="start" />
-          <Tab label="Agent Provisioning" icon={<CloudDownloadIcon />} iconPosition="start" />
-          <Tab label="Run Workload" icon={<PlayArrowIcon />} iconPosition="start" />
-        </Tabs>
-
-        {/* Tab 0: Telemetry */}
-        {selectedTab === 0 && (
-          <TelemetryTab
-            instanceData={instanceData}
-            onNavigateToInstances={() => navigate('/instances')}
-          />
-        )}
-
-        {/* Tab 1: Agent Provisioning */}
-        {selectedTab === 1 && (
-          <ProvisioningTab
-            instanceData={instanceData}
-            onNavigateToInstances={() => navigate('/instances')}
-            onNavigateToTelemetry={(instanceId, runId) => {
-              setSelectedTab(0); // Switch to Telemetry tab
-              // TelemetryTab will pick up the instance from location state or we can set it
-              if (runId) {
-                // Store runId in location state for TelemetryTab to use
-                navigate(`/benchmarking?instance=${instanceId}&run=${runId}`, { replace: true });
-              }
-            }}
-          />
-        )}
-
-        {/* Tab 2: Run Workload */}
-        {selectedTab === 2 && (
-          <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+      {/* Run Workload Section */}
             <Stack spacing={4}>
               {/* Header */}
               <Box>
@@ -1285,25 +1194,6 @@ const Benchmarking = () => {
                       Execute the complete workflow: Setup → Check → Deploy → Benchmark
                     </Typography>
                   </Box>
-                  <Tooltip
-                    title={
-                      migrationEnabled
-                        ? 'Compare and migrate workload'
-                        : 'Available only from Manage Instance on a running instance.'
-                    }
-                  >
-                    <span>
-                      <Button
-                        variant="outlined"
-                        startIcon={<RocketLaunchIcon />}
-                        disabled={!migrationEnabled || !instanceData}
-                        onClick={handleOpenMigrateDialog}
-                        sx={{ textTransform: 'none' }}
-                      >
-                        Migrate Workload
-                      </Button>
-                    </span>
-                  </Tooltip>
                 </Stack>
               </Box>
 
@@ -1341,21 +1231,31 @@ const Benchmarking = () => {
                     />
                   </Grid>
                     <Grid item xs={12}>
-                    <TextField
-                        label="SSH Private Key (PEM)" 
-                      fullWidth
-                        value={rwSshKey} 
+                    {rwSshKey ? (
+                      <Box sx={{ mt: 1, p: 2, borderRadius: '8px', border: '1px solid #3d3d3a', backgroundColor: 'rgba(129, 140, 248, 0.06)' }}>
+                        <Typography variant="body2" sx={{ color: '#34d399', fontWeight: 600, mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <VpnKeyIcon sx={{ fontSize: 16 }} /> SSH Key Auto-configured
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#a8a8a0', fontFamily: '"DM Mono", monospace', wordBreak: 'break-all' }}>
+                          {rwSshKey.substring(0, 80)}...
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <TextField
+                        label="SSH Private Key (PEM)"
+                        fullWidth
+                        value={rwSshKey}
                         onChange={(e) => setRwSshKey(e.target.value)}
                         multiline
-                        minRows={4}
+                        rows={3}
                         placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"
                         helperText="Paste your SSH private key here. This will be used to securely access the instance."
                         required
-                        sx={{ 
+                        sx={{
                           '& .MuiOutlinedInput-root': { borderRadius: '8px' },
-                          '& textarea': { WebkitTextSecurity: 'disc' }
                         }}
-                    />
+                      />
+                    )}
                   </Grid>
                   </Grid>
                 </CardContent>
@@ -1383,86 +1283,7 @@ const Benchmarking = () => {
                 </Alert>
               )}
 
-              <Card sx={{ borderRadius: 3, border: `1px solid ${alpha('#000', 0.1)}` }}>
-                <CardContent sx={{ p: 3 }}>
-                  <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                    <Stack direction="row" spacing={1.5} alignItems="center">
-                      <TerminalIcon sx={{ color: 'primary.main' }} />
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        Workflow Activity Log
-                      </Typography>
-                    </Stack>
-                    <Button
-                      variant="text"
-                      size="small"
-                      onClick={() => {
-                        workflowProgressRef.current = { setup: '', check: '', deploy: '', benchmark: '' };
-                        setWorkflowEvents([]);
-                      }}
-                      disabled={workflowEvents.length === 0}
-                    >
-                      Clear
-                    </Button>
-                  </Stack>
-                  {workflowEvents.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary">
-                      No events yet. Start a phase to see live workflow status transitions.
-                    </Typography>
-                  ) : (
-                    <Paper
-                      sx={{
-                        p: 2,
-                        maxHeight: 280,
-                        overflow: 'auto',
-                        backgroundColor: alpha('#3d3d3a', 0.35),
-                        borderRadius: 2,
-                      }}
-                    >
-                      <Stack spacing={1}>
-                        {workflowEvents.map((event) => (
-                          <Stack
-                            key={event.id}
-                            direction={{ xs: 'column', sm: 'row' }}
-                            spacing={1}
-                            alignItems={{ xs: 'flex-start', sm: 'center' }}
-                          >
-                            <Chip size="small" color={getEventColor(event.level)} label={event.phase} />
-                            <Typography variant="caption" color="text.secondary" sx={{ minWidth: 90 }}>
-                              {new Date(event.ts).toLocaleTimeString()}
-                            </Typography>
-                            <Typography variant="body2">{event.message}</Typography>
-                          </Stack>
-                        ))}
-                      </Stack>
-                    </Paper>
-                  )}
-                </CardContent>
-              </Card>
-
               {/* Cloud Provider Tabs */}
-              <Card sx={{ borderRadius: 3, border: `1px solid ${alpha('#000', 0.1)}`, mb: 3 }}>
-                <CardContent sx={{ p: 2 }}>
-                  <Tabs 
-                    value={rwCloudProvider === 'lambda' ? 0 : 1} 
-                    onChange={(e, newValue) => {
-                      setRwCloudProvider(newValue === 0 ? 'lambda' : 'scaleway');
-                      // Update SSH user based on provider
-                      setRwSshUser(newValue === 0 ? 'ubuntu' : 'root');
-                      // Reset workflow statuses when switching providers
-                      setWorkflowSetupStatus({ loading: false, status: null, message: null, workflowId: null, logs: '' });
-                      setWorkflowCheckStatus({ loading: false, status: null, message: null, workflowId: null, logs: '' });
-                      setWorkflowDeployStatus({ loading: false, status: null, message: null, workflowId: null, logs: '' });
-                      setWorkflowBenchmarkStatus({ loading: false, status: null, message: null, workflowId: null, logs: '', errorDetails: null });
-                      workflowProgressRef.current = { setup: '', check: '', deploy: '', benchmark: '' };
-                      setWorkflowEvents([]);
-                    }}
-                    sx={{ borderBottom: 1, borderColor: 'divider' }}
-                  >
-                    <Tab label="Lambda" icon={<CloudIcon />} iconPosition="start" />
-                    <Tab label="Scaleway" icon={<CloudIcon />} iconPosition="start" />
-                  </Tabs>
-                </CardContent>
-              </Card>
 
               {/* Model Selection */}
               <Card sx={{ borderRadius: 3, border: `1px solid ${alpha('#000', 0.1)}` }}>
@@ -2824,11 +2645,6 @@ const Benchmarking = () => {
                 </CardContent>
               </Card>
             </Stack>
-          </Box>
-        )}
-
-        {/* Removed tabs: Overview, Detailed Profiling Results, GPU Metrics, Instance Management */}
-      </Card>
 
       {/* Migrate Workload Dialog */}
       <Dialog open={migrateDialogOpen} onClose={() => setMigrateDialogOpen(false)} maxWidth="md" fullWidth>
