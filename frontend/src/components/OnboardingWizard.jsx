@@ -25,7 +25,7 @@ const STORAGE_KEY = 'omniference_onboarding_done';
 
 const STEPS = [
   {
-    icon: <CloudIcon sx={{ fontSize: 40, color: '#3DA866' }} />,
+    icon: <CloudIcon sx={{ fontSize: 40, color: '#818cf8' }} />,
     label: 'Step 1 of 3',
     title: 'Connect your GPU',
     subtitle: 'Launch a cloud GPU or connect one you already have running.',
@@ -38,7 +38,7 @@ const STEPS = [
     tip: 'Not sure which GPU to pick? L40S (48 GB) handles most 7–34B models. H100 (80 GB) is needed for 70B+.',
   },
   {
-    icon: <PlayIcon sx={{ fontSize: 40, color: '#3DA866' }} />,
+    icon: <PlayIcon sx={{ fontSize: 40, color: '#818cf8' }} />,
     label: 'Step 2 of 3',
     title: 'Set up & deploy inference',
     subtitle: 'Install dependencies, download the model, then start the vLLM server.',
@@ -51,7 +51,7 @@ const STEPS = [
     tip: 'Setup only needs to run once. Next time, just hit Check → Deploy.',
   },
   {
-    icon: <BarChartIcon sx={{ fontSize: 40, color: '#3DA866' }} />,
+    icon: <BarChartIcon sx={{ fontSize: 40, color: '#818cf8' }} />,
     label: 'Step 3 of 3',
     title: 'Run a benchmark & see results',
     subtitle: 'Pick your benchmark mode and watch metrics stream in real-time.',
@@ -95,8 +95,8 @@ export default function OnboardingWizard() {
       fullWidth
       PaperProps={{
         sx: {
-          backgroundColor: '#142B1D',
-          border: '1px solid #1E4530',
+          backgroundColor: '#1a1a18',
+          border: '1px solid #3d3d3a',
           borderRadius: '16px',
           overflow: 'hidden',
         },
@@ -110,16 +110,16 @@ export default function OnboardingWizard() {
           px: 3,
           pt: 2.5,
           pb: 1.5,
-          borderBottom: '1px solid #1E4530',
+          borderBottom: '1px solid #3d3d3a',
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <img src="/logo.png" alt="Runara" style={{ height: '22px' }} />
-          <Typography variant="body2" sx={{ color: '#94a3b8' }}>
+          <Typography variant="body2" sx={{ color: '#a8a8a0' }}>
             Quick start guide
           </Typography>
         </Box>
-        <IconButton size="small" onClick={dismiss} sx={{ color: '#94a3b8' }}>
+        <IconButton size="small" onClick={dismiss} sx={{ color: '#a8a8a0' }}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </Box>
@@ -130,9 +130,9 @@ export default function OnboardingWizard() {
           label={current.label}
           size="small"
           sx={{
-            backgroundColor: 'rgba(61, 168, 102, 0.12)',
-            color: '#3DA866',
-            border: '1px solid rgba(61, 168, 102, 0.3)',
+            backgroundColor: 'rgba(129, 140, 248, 0.12)',
+            color: '#818cf8',
+            border: '1px solid rgba(129, 140, 248, 0.3)',
             mb: 2,
           }}
         />
@@ -143,8 +143,8 @@ export default function OnboardingWizard() {
             sx={{
               p: 1.5,
               borderRadius: '12px',
-              backgroundColor: 'rgba(61, 168, 102, 0.08)',
-              border: '1px solid rgba(61, 168, 102, 0.2)',
+              backgroundColor: 'rgba(129, 140, 248, 0.08)',
+              border: '1px solid rgba(129, 140, 248, 0.2)',
               flexShrink: 0,
             }}
           >
@@ -154,7 +154,7 @@ export default function OnboardingWizard() {
             <Typography variant="h3" sx={{ mb: 0.5 }}>
               {current.title}
             </Typography>
-            <Typography variant="body2" sx={{ color: '#94a3b8' }}>
+            <Typography variant="body2" sx={{ color: '#a8a8a0' }}>
               {current.subtitle}
             </Typography>
           </Box>
@@ -164,8 +164,8 @@ export default function OnboardingWizard() {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 3 }}>
           {current.bullets.map((b, i) => (
             <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-              <CheckIcon sx={{ color: '#3DA866', fontSize: 18, mt: '2px', flexShrink: 0 }} />
-              <Typography variant="body1" sx={{ color: '#cbd5e1', lineHeight: 1.6 }}>
+              <CheckIcon sx={{ color: '#818cf8', fontSize: 18, mt: '2px', flexShrink: 0 }} />
+              <Typography variant="body1" sx={{ color: '#d4d4cc', lineHeight: 1.6 }}>
                 {b}
               </Typography>
             </Box>
@@ -199,8 +199,8 @@ export default function OnboardingWizard() {
             sx={{
               p: 0,
               backgroundColor: 'transparent',
-              '& .MuiMobileStepper-dot': { backgroundColor: '#1E4530' },
-              '& .MuiMobileStepper-dotActive': { backgroundColor: '#3DA866' },
+              '& .MuiMobileStepper-dot': { backgroundColor: '#3d3d3a' },
+              '& .MuiMobileStepper-dotActive': { backgroundColor: '#818cf8' },
             }}
             backButton={
               <Button
@@ -208,7 +208,7 @@ export default function OnboardingWizard() {
                 onClick={() => setStep((s) => s - 1)}
                 disabled={step === 0}
                 startIcon={<KeyboardArrowLeft />}
-                sx={{ color: '#94a3b8', '&:hover': { color: '#e2e8f0' } }}
+                sx={{ color: '#a8a8a0', '&:hover': { color: '#fafaf8' } }}
               >
                 Back
               </Button>
@@ -219,7 +219,7 @@ export default function OnboardingWizard() {
                   size="small"
                   onClick={() => setStep((s) => s + 1)}
                   endIcon={<KeyboardArrowRight />}
-                  sx={{ color: '#94a3b8', '&:hover': { color: '#e2e8f0' } }}
+                  sx={{ color: '#a8a8a0', '&:hover': { color: '#fafaf8' } }}
                 >
                   Next
                 </Button>

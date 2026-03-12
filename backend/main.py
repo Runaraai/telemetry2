@@ -3548,6 +3548,16 @@ async def lambda_launch_instance(
     api_key = await resolve_lambda_api_key(request, x_lambda_api_key)
     return await make_lambda_api_request("instance-operations/launch", method="POST", data=payload, api_key_override=api_key)
 
+@app.post("/api/v1/lambda-cloud/instance-operations/terminate")
+async def lambda_terminate_instance(
+    payload: Dict[str, Any] = Body(...),
+    request: Request = None,
+    x_lambda_api_key: Optional[str] = Header(None, alias="X-Lambda-API-Key")
+):
+    """Terminate Lambda instance(s) via Lambda Cloud API."""
+    api_key = await resolve_lambda_api_key(request, x_lambda_api_key)
+    return await make_lambda_api_request("instance-operations/terminate", method="POST", data=payload, api_key_override=api_key)
+
 @app.get("/api/v1/lambda-cloud/ssh-keys")
 async def lambda_list_ssh_keys(
     request: Request,

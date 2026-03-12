@@ -3,52 +3,32 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Button, Chip, CircularProgress,
-  Alert, IconButton, Tooltip, Stack, Collapse
+  Alert, IconButton, Tooltip, Stack
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
-  PlayArrow as PlayIcon,
   Pause as PauseIcon,
+  Stop as StopIcon,
   Delete as DeleteIcon,
   Assessment as ProfileIcon,
   Dns as DnsIcon
 } from '@mui/icons-material';
 import { apiService } from '../services/api';
 
-// GPU specifications lookup
-const GPU_SPECS = {
-  'H100': { vram: 80, vramUnit: 'GB HBM3', cudaCores: 16896, tensorCores: 528, memBandwidth: '3.35 TB/s', arch: 'Hopper', tdp: 700 },
-  'H200': { vram: 141, vramUnit: 'GB HBM3e', cudaCores: 16896, tensorCores: 528, memBandwidth: '4.8 TB/s', arch: 'Hopper', tdp: 700 },
-  'A100': { vram: 80, vramUnit: 'GB HBM2e', cudaCores: 6912, tensorCores: 432, memBandwidth: '2.0 TB/s', arch: 'Ampere', tdp: 400 },
-  'A10': { vram: 24, vramUnit: 'GB GDDR6', cudaCores: 9216, tensorCores: 288, memBandwidth: '600 GB/s', arch: 'Ampere', tdp: 150 },
-  'L4': { vram: 24, vramUnit: 'GB GDDR6', cudaCores: 7424, tensorCores: 232, memBandwidth: '300 GB/s', arch: 'Ada Lovelace', tdp: 72 },
-  'L40': { vram: 48, vramUnit: 'GB GDDR6', cudaCores: 18176, tensorCores: 568, memBandwidth: '864 GB/s', arch: 'Ada Lovelace', tdp: 300 },
-  'L40S': { vram: 48, vramUnit: 'GB GDDR6', cudaCores: 18176, tensorCores: 568, memBandwidth: '864 GB/s', arch: 'Ada Lovelace', tdp: 350 },
-  'V100': { vram: 32, vramUnit: 'GB HBM2', cudaCores: 5120, tensorCores: 640, memBandwidth: '900 GB/s', arch: 'Volta', tdp: 300 },
-  'T4': { vram: 16, vramUnit: 'GB GDDR6', cudaCores: 2560, tensorCores: 320, memBandwidth: '300 GB/s', arch: 'Turing', tdp: 70 },
-  'B200': { vram: 192, vramUnit: 'GB HBM3e', cudaCores: 18432, tensorCores: 576, memBandwidth: '8.0 TB/s', arch: 'Blackwell', tdp: 1000 },
-  'GH200': { vram: 96, vramUnit: 'GB HBM3', cudaCores: 16896, tensorCores: 528, memBandwidth: '4.0 TB/s', arch: 'Hopper', tdp: 900 },
-  'MI300': { vram: 192, vramUnit: 'GB HBM3', arch: 'CDNA 3', tdp: 750, memBandwidth: '5.3 TB/s' },
+const SCW_BASE = 'https://api.scaleway.com/instance/v1/zones';
+
+const STATUS_COLORS = {
+  running: 'success',
+  active: 'success',
+  starting: 'info',
+  pending: 'info',
+  stopped: 'error',
+  stopped_in_place: 'error',
+  stopping: 'warning',
+  locked: 'warning',
+  terminated: 'default',
+  deleting: 'warning',
 };
-
-function lookupGpuSpecs(name) {
-  if (!name) return null;
-  const upper = name.toUpperCase();
-  const sorted = Object.keys(GPU_SPECS).sort((a, b) => b.length - a.length);
-  for (const key of sorted) {
-    if (upper.includes(key)) return { key, ...GPU_SPECS[key] };
-  }
-  return null;
-}
-
-// Parse GPU count from commercial_type like "H100-1-80G" or "L4-4-24G"
-function parseGpuCount(commercialType) {
-  if (!commercialType) return null;
-  const match = commercialType.match(/-(\d+)-\d+[gG]/);
-  return match ? parseInt(match[1]) : null;
-}
-
-const BASE = 'https://api.scaleway.com/instance/v1/zones';
 
 function parseScalewayCredential(secret) {
   if (!secret) return null;
@@ -66,29 +46,16 @@ function parseScalewayCredential(secret) {
 function getLocalScalewayCredential() {
   const envSecret = process.env.REACT_APP_SCW_SECRET_KEY || '';
   const envProject = process.env.REACT_APP_SCW_PROJECT_ID || '';
-  if (envSecret) {
-    return { secretKey: envSecret, projectId: envProject };
-  }
+  if (envSecret) return { secretKey: envSecret, projectId: envProject };
 
   try {
     const legacy = JSON.parse(localStorage.getItem('cloudCreds_scaleway') || '{}');
     const secretKey = legacy.secretKey || legacy.SCALEWAY_SECRET_KEY || '';
     const projectId = legacy.projectId || legacy.SCALEWAY_PROJECT_ID || '';
-    if (secretKey) {
-      return { secretKey, projectId };
-    }
+    if (secretKey) return { secretKey, projectId };
   } catch {}
-
   return null;
 }
-
-const STATE_COLORS = {
-  running: 'success',
-  starting: 'info',
-  stopped: 'error',
-  stopping: 'warning',
-  locked: 'warning',
-};
 
 function getTrackedInstances() {
   try {
@@ -105,191 +72,208 @@ function removeTrackedInstance(id) {
   } catch {}
 }
 
-async function fetchServerDetails(zone, serverId, secretKey) {
-  const res = await fetch(`${BASE}/${zone}/servers/${serverId}`, {
+async function fetchScwServerDetails(zone, serverId, secretKey) {
+  const res = await fetch(`${SCW_BASE}/${zone}/servers/${serverId}`, {
     headers: { 'X-Auth-Token': secretKey },
   });
   if (!res.ok) {
-    if (res.status === 404) return null; // server was deleted
+    if (res.status === 404) return null;
     throw new Error(`${zone}/${serverId}: ${res.status}`);
   }
   const data = await res.json();
   return { ...data.server, zone };
 }
 
-async function serverAction(zone, serverId, action, secretKey) {
-  const res = await fetch(`${BASE}/${zone}/servers/${serverId}/action`, {
-    method: 'POST',
-    headers: {
-      'X-Auth-Token': secretKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ action }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `Failed to ${action}: ${res.status}`);
-  }
+// Normalize a Scaleway server object (from direct API) into the unified shape
+function normalizeScwServer(server) {
+  return {
+    id: server.id,
+    name: server.name,
+    provider: 'scaleway',
+    instance_type: server.commercial_type || '',
+    status: server.state || 'unknown',
+    public_ip: server.public_ip?.address || '',
+    region: server.zone || '',
+    zone: server.zone || '',
+    raw: server,
+  };
 }
 
 export default function RunningInstances() {
   const navigate = useNavigate();
-  const [servers, setServers] = useState([]);
+  const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [credentialsLoading, setCredentialsLoading] = useState(true);
-  const [scwCredential, setScwCredential] = useState(() => getLocalScalewayCredential());
   const [actionLoading, setActionLoading] = useState({});
   const [actionError, setActionError] = useState({});
+  const [scwCredential, setScwCredential] = useState(() => getLocalScalewayCredential());
 
+  // Load Scaleway credential from backend on mount
   useEffect(() => {
     let cancelled = false;
-
-    const loadCredentialFromBackend = async () => {
+    (async () => {
       try {
         const creds = await apiService.listCredentialsWithSecrets('scaleway');
         const first = Array.isArray(creds) ? creds[0] : null;
         const parsed = parseScalewayCredential(first?.secret);
-        if (!cancelled && parsed?.secretKey) {
-          setScwCredential(parsed);
-          return;
-        }
-      } catch {
-        // Ignore and fall back to env/localStorage.
-      } finally {
-        if (!cancelled) {
-          setCredentialsLoading(false);
-        }
-      }
-    };
-
-    loadCredentialFromBackend();
-    return () => {
-      cancelled = true;
-    };
+        if (!cancelled && parsed?.secretKey) setScwCredential(parsed);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const load = useCallback(async () => {
-    if (!scwCredential?.secretKey) {
-      setServers([]);
-      return;
-    }
-
-    const tracked = getTrackedInstances();
-    if (tracked.length === 0) {
-      setServers([]);
-      return;
-    }
     setLoading(true);
     setError(null);
+
+    let aggregated = [];
+    let usedAggregated = false;
+
+    // Try the aggregated API first (multi-provider)
     try {
-      const results = await Promise.allSettled(
-        tracked.map((t) => fetchServerDetails(t.zone, t.id, scwCredential.secretKey))
-      );
-      const live = [];
-      const deadIds = [];
-      results.forEach((r, i) => {
-        if (r.status === 'fulfilled' && r.value) {
-          live.push(r.value);
-        } else if (r.status === 'fulfilled' && r.value === null) {
-          // Server no longer exists — clean up tracking
-          deadIds.push(tracked[i].id);
-        }
-      });
-      // Remove dead instances from localStorage
-      if (deadIds.length > 0) {
-        deadIds.forEach(removeTrackedInstance);
+      const data = await apiService.getAggregatedInstances();
+      if (Array.isArray(data) && data.length > 0) {
+        aggregated = data;
+        usedAggregated = true;
       }
-      setServers(live);
-    } catch (e) {
-      setError(e.message || 'Failed to fetch instances');
-    } finally {
-      setLoading(false);
+    } catch {
+      // Aggregated endpoint failed (401, network, etc.) — fall back below
     }
+
+    // Fallback: fetch Scaleway instances from localStorage tracking + direct API
+    if (!usedAggregated && scwCredential?.secretKey) {
+      const tracked = getTrackedInstances();
+      if (tracked.length > 0) {
+        try {
+          const results = await Promise.allSettled(
+            tracked.map((t) => fetchScwServerDetails(t.zone, t.id, scwCredential.secretKey))
+          );
+          const deadIds = [];
+          results.forEach((r, i) => {
+            if (r.status === 'fulfilled' && r.value) {
+              aggregated.push(normalizeScwServer(r.value));
+            } else if (r.status === 'fulfilled' && r.value === null) {
+              deadIds.push(tracked[i].id);
+            }
+          });
+          if (deadIds.length > 0) deadIds.forEach(removeTrackedInstance);
+        } catch (e) {
+          setError(e.message || 'Failed to fetch instances');
+        }
+      }
+    }
+
+    setInstances(aggregated);
+    setLoading(false);
   }, [scwCredential]);
 
   useEffect(() => { load(); }, [load]);
 
-  // Auto-refresh while any server is in a transitional state
+  // Auto-refresh while any instance is in a transitional state
   useEffect(() => {
-    const hasTransitional = servers.some(
-      (s) => s.state === 'starting' || s.state === 'stopping'
+    const hasTransitional = instances.some((inst) =>
+      ['starting', 'stopping', 'pending', 'deleting'].includes(inst.status)
     );
     if (!hasTransitional) return;
     const id = setTimeout(load, 5000);
     return () => clearTimeout(id);
-  }, [servers, load]);
+  }, [instances, load]);
 
-  async function handleStart(server) {
-    if (!scwCredential?.secretKey) return;
-    setActionLoading((prev) => ({ ...prev, [server.id]: 'start' }));
-    setActionError((prev) => { const n = { ...prev }; delete n[server.id]; return n; });
+  // --- Action handlers ---
+
+  async function scwAction(inst, action) {
+    if (!scwCredential?.secretKey) throw new Error('Scaleway credentials not configured');
+    const zone = inst.zone || inst.region;
+    const res = await fetch(`${SCW_BASE}/${zone}/servers/${inst.id}/action`, {
+      method: 'POST',
+      headers: { 'X-Auth-Token': scwCredential.secretKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to ${action}: ${res.status}`);
+    }
+  }
+
+  async function handleTerminate(inst) {
+    const name = inst.name || inst.id;
+    if (!window.confirm(`Terminate "${name}"? This will permanently delete the instance.`)) return;
+
+    setActionLoading((prev) => ({ ...prev, [inst.id]: 'terminate' }));
+    setActionError((prev) => { const n = { ...prev }; delete n[inst.id]; return n; });
     try {
-      await serverAction(server.zone, server.id, 'poweron', scwCredential.secretKey);
-      setServers((prev) =>
-        prev.map((s) => (s.id === server.id ? { ...s, state: 'starting' } : s))
+      if (inst.provider === 'scaleway') {
+        await scwAction(inst, 'terminate');
+        removeTrackedInstance(inst.id);
+      } else if (inst.provider === 'lambda') {
+        await apiService.terminateLambdaInstance(inst.id);
+      } else if (inst.provider === 'nebius') {
+        await apiService.deleteNebiusInstance(null, null, inst.id);
+      }
+      setInstances((prev) => prev.filter((i) => i.id !== inst.id));
+    } catch (e) {
+      setActionError((prev) => ({ ...prev, [inst.id]: e.message }));
+    } finally {
+      setActionLoading((prev) => { const n = { ...prev }; delete n[inst.id]; return n; });
+    }
+  }
+
+  async function handlePause(inst) {
+    setActionLoading((prev) => ({ ...prev, [inst.id]: 'pause' }));
+    setActionError((prev) => { const n = { ...prev }; delete n[inst.id]; return n; });
+    try {
+      if (inst.provider === 'scaleway') {
+        await scwAction(inst, 'poweroff');
+      } else {
+        throw new Error(`Pause not supported for ${inst.provider}`);
+      }
+      setInstances((prev) =>
+        prev.map((i) => (i.id === inst.id ? { ...i, status: 'stopping' } : i))
       );
     } catch (e) {
-      setActionError((prev) => ({ ...prev, [server.id]: e.message }));
+      setActionError((prev) => ({ ...prev, [inst.id]: e.message }));
     } finally {
-      setActionLoading((prev) => { const n = { ...prev }; delete n[server.id]; return n; });
+      setActionLoading((prev) => { const n = { ...prev }; delete n[inst.id]; return n; });
     }
   }
 
-  async function handlePause(server) {
-    if (!scwCredential?.secretKey) return;
-    setActionLoading((prev) => ({ ...prev, [server.id]: 'pause' }));
-    setActionError((prev) => { const n = { ...prev }; delete n[server.id]; return n; });
+  async function handleStop(inst) {
+    setActionLoading((prev) => ({ ...prev, [inst.id]: 'stop' }));
+    setActionError((prev) => { const n = { ...prev }; delete n[inst.id]; return n; });
     try {
-      await serverAction(server.zone, server.id, 'poweroff', scwCredential.secretKey);
-      setServers((prev) =>
-        prev.map((s) => (s.id === server.id ? { ...s, state: 'stopping' } : s))
+      if (inst.provider === 'scaleway') {
+        await scwAction(inst, 'poweroff');
+      } else if (inst.provider === 'lambda') {
+        await apiService.terminateLambdaInstance(inst.id);
+      } else if (inst.provider === 'nebius') {
+        await apiService.deleteNebiusInstance(null, null, inst.id);
+      }
+      setInstances((prev) =>
+        prev.map((i) => (i.id === inst.id ? { ...i, status: 'stopping' } : i))
       );
     } catch (e) {
-      setActionError((prev) => ({ ...prev, [server.id]: e.message }));
+      setActionError((prev) => ({ ...prev, [inst.id]: e.message }));
     } finally {
-      setActionLoading((prev) => { const n = { ...prev }; delete n[server.id]; return n; });
+      setActionLoading((prev) => { const n = { ...prev }; delete n[inst.id]; return n; });
     }
   }
 
-  async function handleTerminate(server) {
-    if (!scwCredential?.secretKey) return;
-    if (!window.confirm(`Terminate "${server.name}"? This will permanently delete the server and its local volumes.`)) return;
-    setActionLoading((prev) => ({ ...prev, [server.id]: 'terminate' }));
-    setActionError((prev) => { const n = { ...prev }; delete n[server.id]; return n; });
-    try {
-      await serverAction(server.zone, server.id, 'terminate', scwCredential.secretKey);
-      removeTrackedInstance(server.id);
-      setServers((prev) => prev.filter((s) => s.id !== server.id));
-    } catch (e) {
-      setActionError((prev) => ({ ...prev, [server.id]: e.message }));
-    } finally {
-      setActionLoading((prev) => { const n = { ...prev }; delete n[server.id]; return n; });
-    }
-  }
-
-  function handleProfile(server) {
+  function handleProfile(inst) {
     const instanceData = {
-      id: server.id,
-      name: server.name,
-      ip: server.public_ip?.address || '',
-      zone: server.zone,
-      commercial_type: server.commercial_type,
-      provider: 'scaleway',
+      id: inst.id,
+      name: inst.name || inst.id,
+      ip: inst.public_ip || '',
+      zone: inst.zone || inst.region || '',
+      commercial_type: inst.instance_type || '',
+      provider: inst.provider,
     };
     navigate('/profiling', { state: { openTelemetry: true, instanceData, allowMigration: true } });
   }
 
-  if (!credentialsLoading && !scwCredential?.secretKey) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <Alert severity="warning">
-          Scaleway credentials not configured. Integrate Scaleway in Manage Instances, or set
-          `REACT_APP_SCW_SECRET_KEY` in the frontend environment before building.
-        </Alert>
-      </Box>
-    );
-  }
+  const providerLabel = (provider) => {
+    const labels = { scaleway: 'Scaleway', lambda: 'Lambda', nebius: 'Nebius' };
+    return labels[provider] || provider;
+  };
 
   return (
     <Box sx={{ p: 4, maxWidth: 1400 }}>
@@ -300,7 +284,7 @@ export default function RunningInstances() {
             Running Instances
           </Typography>
           <Chip
-            label={`${servers.length} instance${servers.length !== 1 ? 's' : ''}`}
+            label={`${instances.length} instance${instances.length !== 1 ? 's' : ''}`}
             size="small"
             variant="outlined"
           />
@@ -318,14 +302,14 @@ export default function RunningInstances() {
         </Alert>
       )}
 
-      {loading && servers.length === 0 && (
+      {loading && instances.length === 0 && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 6, justifyContent: 'center' }}>
           <CircularProgress size={24} />
-          <Typography color="text.secondary">Fetching instance status...</Typography>
+          <Typography color="text.secondary">Fetching instances from all providers...</Typography>
         </Box>
       )}
 
-      {!loading && servers.length === 0 && !error && (
+      {!loading && instances.length === 0 && !error && (
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <DnsIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
           <Typography color="text.secondary">No instances launched yet</Typography>
@@ -335,78 +319,63 @@ export default function RunningInstances() {
         </Box>
       )}
 
-      {servers.length > 0 && (
+      {instances.length > 0 && (
         <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
           <Table size="small">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#0D1B13' }}>
-                <TableCell sx={{ fontWeight: 600 }}>Instance Name</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>GPU</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Region</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>IP Address</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 600 }} align="center">Terminate</TableCell>
-                <TableCell sx={{ fontWeight: 600 }} align="center">Pause</TableCell>
-                <TableCell sx={{ fontWeight: 600 }} align="center">Start</TableCell>
-                <TableCell sx={{ fontWeight: 600 }} align="center">Profile</TableCell>
+              <TableRow sx={{ backgroundColor: '#2d2d2a' }}>
+                <TableCell sx={{ fontWeight: 600, color: '#fff' }}>Instance Name</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#fff' }}>Provider</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#fff' }}>IP Address</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#fff' }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#fff' }} align="center">Terminate</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#fff' }} align="center">Pause</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#fff' }} align="center">Stop</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#fff' }} align="center">Profile</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {servers.map((server) => {
-                const stateColor = STATE_COLORS[server.state] || 'default';
-                const isTransitional = server.state === 'starting' || server.state === 'stopping';
-                const isActioning = !!actionLoading[server.id];
-                const canStart = server.state === 'stopped' && !isActioning;
-                const canPause = server.state === 'running' && !isActioning;
+              {instances.map((inst) => {
+                const statusColor = STATUS_COLORS[inst.status] || 'default';
+                const isTransitional = ['starting', 'stopping', 'pending', 'deleting'].includes(inst.status);
+                const isActioning = !!actionLoading[inst.id];
+                const canPause = inst.status === 'running' && !isActioning && inst.provider === 'scaleway';
+                const canStop = (inst.status === 'running' || inst.status === 'active') && !isActioning;
                 const canTerminate = !isActioning && !isTransitional;
-                const canProfile = server.state === 'running' && server.public_ip?.address;
+                const canProfile = (inst.status === 'running' || inst.status === 'active') && inst.public_ip;
 
                 return (
-                  <React.Fragment key={server.id}>
+                  <React.Fragment key={inst.id}>
                     <TableRow
                       sx={{
-                        opacity: actionLoading[server.id] === 'terminate' ? 0.5 : 1,
+                        opacity: actionLoading[inst.id] === 'terminate' ? 0.5 : 1,
                         transition: 'opacity 0.3s',
-                        '&:hover': { backgroundColor: 'rgba(61, 168, 102, 0.05)' },
+                        '&:hover': { backgroundColor: 'rgba(129, 140, 248, 0.05)' },
                       }}
                     >
                       <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>{server.name}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {inst.name || inst.id}
+                        </Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                          {server.commercial_type}
+                          {inst.instance_type}
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        {(() => {
-                          const specs = lookupGpuSpecs(server.commercial_type);
-                          const gpuCount = parseGpuCount(server.commercial_type);
-                          if (!specs) return <Typography variant="body2" color="text.secondary">—</Typography>;
-                          return (
-                            <Box>
-                              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
-                                {specs.key}{gpuCount ? ` × ${gpuCount}` : ''}
-                              </Typography>
-                              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.25 }}>
-                                <Chip label={`${specs.vram} ${specs.vramUnit}`} size="small" variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
-                                <Chip label={specs.arch} size="small" variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
-                              </Stack>
-                              {specs.memBandwidth && (
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25, fontSize: '0.65rem' }}>
-                                  {specs.memBandwidth} bandwidth
-                                </Typography>
-                              )}
-                            </Box>
-                          );
-                        })()}
+                        <Chip
+                          label={providerLabel(inst.provider)}
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontSize: '0.75rem' }}
+                        />
                       </TableCell>
-                      <TableCell>{server.zone}</TableCell>
                       <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                        {server.public_ip?.address || '—'}
+                        {inst.public_ip || '—'}
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={isTransitional ? server.state + '...' : server.state}
-                          color={stateColor}
+                          label={isTransitional ? inst.status + '...' : inst.status}
+                          color={statusColor}
                           size="small"
                           variant="outlined"
                           icon={isTransitional ? <CircularProgress size={12} /> : undefined}
@@ -418,11 +387,11 @@ export default function RunningInstances() {
                           variant="outlined"
                           color="error"
                           startIcon={
-                            actionLoading[server.id] === 'terminate'
+                            actionLoading[inst.id] === 'terminate'
                               ? <CircularProgress size={14} />
                               : <DeleteIcon fontSize="small" />
                           }
-                          onClick={() => handleTerminate(server)}
+                          onClick={() => handleTerminate(inst)}
                           disabled={!canTerminate}
                           sx={{ textTransform: 'none', fontSize: '0.75rem', minWidth: 100 }}
                         >
@@ -435,11 +404,11 @@ export default function RunningInstances() {
                           variant="outlined"
                           color="warning"
                           startIcon={
-                            actionLoading[server.id] === 'pause'
+                            actionLoading[inst.id] === 'pause'
                               ? <CircularProgress size={14} />
                               : <PauseIcon fontSize="small" />
                           }
-                          onClick={() => handlePause(server)}
+                          onClick={() => handlePause(inst)}
                           disabled={!canPause}
                           sx={{ textTransform: 'none', fontSize: '0.75rem', minWidth: 80 }}
                         >
@@ -450,17 +419,17 @@ export default function RunningInstances() {
                         <Button
                           size="small"
                           variant="outlined"
-                          color="success"
+                          color="warning"
                           startIcon={
-                            actionLoading[server.id] === 'start'
+                            actionLoading[inst.id] === 'stop'
                               ? <CircularProgress size={14} />
-                              : <PlayIcon fontSize="small" />
+                              : <StopIcon fontSize="small" />
                           }
-                          onClick={() => handleStart(server)}
-                          disabled={!canStart}
+                          onClick={() => handleStop(inst)}
+                          disabled={!canStop}
                           sx={{ textTransform: 'none', fontSize: '0.75rem', minWidth: 80 }}
                         >
-                          Start
+                          Stop
                         </Button>
                       </TableCell>
                       <TableCell align="center">
@@ -469,7 +438,7 @@ export default function RunningInstances() {
                           variant="outlined"
                           color="primary"
                           startIcon={<ProfileIcon fontSize="small" />}
-                          onClick={() => handleProfile(server)}
+                          onClick={() => handleProfile(inst)}
                           disabled={!canProfile}
                           sx={{ textTransform: 'none', fontSize: '0.75rem', minWidth: 80 }}
                         >
@@ -477,11 +446,11 @@ export default function RunningInstances() {
                         </Button>
                       </TableCell>
                     </TableRow>
-                    {actionError[server.id] && (
+                    {actionError[inst.id] && (
                       <TableRow>
-                        <TableCell colSpan={9}>
+                        <TableCell colSpan={8}>
                           <Alert severity="error" sx={{ py: 0 }}>
-                            {actionError[server.id]}
+                            {actionError[inst.id]}
                           </Alert>
                         </TableCell>
                       </TableRow>

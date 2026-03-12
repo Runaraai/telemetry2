@@ -345,6 +345,7 @@ async def get_scaleway_products(payload: ScalewayProductsRequest, request: Reque
 
     data = resp.json()
     servers_raw = data.get("servers") or {}
+    logger.info(f"Scaleway products: zone={payload.zone}, total_products={len(servers_raw)}, gpu_only={payload.gpu_only}")
     servers: List[ScalewayServer] = []
     for key, val in servers_raw.items():
         hourly_price = None
@@ -400,9 +401,8 @@ async def get_scaleway_products(payload: ScalewayProductsRequest, request: Reque
         if any(bad in name_hint for bad in banned_markers):
             continue
 
-        # Optionally skip out-of-stock entries to match UI expectations
-        if stock and str(stock).lower() == "out_of_stock":
-            continue
+        # Show out-of-stock entries so users can see all GPU options (marked as unavailable)
+        # Previously these were filtered out, but users need visibility into what exists
 
         # Derive zone-specific availability if provided
         stock_status = stock or availability
@@ -433,6 +433,7 @@ async def get_scaleway_products(payload: ScalewayProductsRequest, request: Reque
             )
         )
 
+    logger.info(f"Scaleway products: returning {len(servers)} GPU servers for zone={payload.zone}")
     return ScalewayProductsResponse(zone=payload.zone, servers=servers)
 
 

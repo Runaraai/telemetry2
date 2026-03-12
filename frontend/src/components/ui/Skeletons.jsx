@@ -3,7 +3,7 @@ import { Box, Skeleton, Stack } from '@mui/material';
 
 export function CardSkeleton({ rows = 3 }) {
   return (
-    <Box sx={{ borderRadius: 2, border: '1px solid #1E4530', p: 2, bgcolor: '#142B1D' }}>
+    <Box sx={{ borderRadius: 2, border: '1px solid #3d3d3a', p: 2, bgcolor: '#1a1a18' }}>
       <Skeleton variant="text" width="50%" height={28} />
       <Stack spacing={1} sx={{ mt: 1 }}>
         {Array.from({ length: rows }).map((_, idx) => (

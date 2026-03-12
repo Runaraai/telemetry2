@@ -60,7 +60,7 @@ const PROVIDERS = [
     logo: 'https://www.scaleway.com/favicon-192x192.png',
     name: 'Scaleway',
     color: '#4A00FF',
-    bgColor: '#142B1D',
+    bgColor: '#1a1a18',
     requiredFields: ['Access Key', 'Secret Key', 'Project ID'],
     helpUrl: 'https://www.scaleway.com/en/docs/iam/how-to/create-api-keys/',
     helpText: 'To get your Scaleway credentials:\\n1. Go to Scaleway Console -> IAM -> API Keys\\n2. Create an Access Key and Secret Key\\n3. Copy your Project ID from Project settings\\n4. Paste keys and Project ID here'
@@ -194,7 +194,7 @@ export default function ManageInstances() {
   
   // Ensure page is white on mount
   useEffect(() => {
-    document.body.style.backgroundColor = '#0D1B13';
+    document.body.style.backgroundColor = '#2d2d2a';
     return () => {
       document.body.style.backgroundColor = '';
     };
@@ -698,51 +698,28 @@ const normalizeAvailability = (cfg, zone) => {
   // Fetch Scaleway products for selected region
   const fetchScalewayConfigs = useCallback(async (regionOverride = null, options = {}) => {
     const zone = regionOverride || scwRegion;
-    const cred = credentials['scaleway'];
-    const secret = credentialSecrets['scaleway'];
-    
+
+    // Use centralized credential resolver (checks backend store, env vars, localStorage)
+    const resolvedCreds = getScalewayCredentials();
+
     console.log('🔍 fetchScalewayConfigs:', {
-      hasCred: !!cred,
-      hasSecret: !!secret,
-      secretType: typeof secret,
-      secretLength: secret?.length,
-      secretPreview: secret ? secret.substring(0, 50) + '...' : null,
+      zone,
+      hasResolvedCreds: !!resolvedCreds,
+      hasSecretKey: !!resolvedCreds?.secretKey,
+      hasAccessKey: !!resolvedCreds?.accessKeyId,
+      hasProjectId: !!resolvedCreds?.projectId,
     });
-    
-    if (!cred || !secret) {
+
+    if (!resolvedCreds || !resolvedCreds.secretKey) {
       const errorMsg = 'Scaleway credentials not found. Please integrate first.';
       console.error('❌ fetchScalewayConfigs:', errorMsg);
       setError(errorMsg);
       return [];
     }
-    
-    let secretData;
-    try {
-      secretData = typeof secret === 'string' ? JSON.parse(secret) : secret;
-      console.log('✅ fetchScalewayConfigs: Parsed secret data:', {
-        hasSecretKey: !!(secretData.secretKey || secretData.secret_key),
-        hasAccessKey: !!(secretData.accessKeyId || secretData.access_key_id),
-        hasProjectId: !!(secretData.projectId || secretData.project_id),
-      });
-    } catch (e) {
-      const errorMsg = `Failed to parse Scaleway credentials: ${e.message}. Please re-integrate.`;
-      console.error('❌ fetchScalewayConfigs: JSON parse failed:', {
-        error: e.message,
-        secretPreview: secret ? secret.substring(0, 100) : null,
-      });
-      setError(errorMsg);
-      return [];
-    }
-    
-    const secretKey = secretData.secretKey || secretData.secret_key || '';
-    const accessKey = secretData.accessKeyId || secretData.access_key_id || secretData.apiKey || '';
-    const projectId = secretData.projectId || secretData.project_id || '';
-    if (!secretKey) {
-      const errorMsg = 'Scaleway secret key missing. Please re-integrate.';
-      console.error('❌ fetchScalewayConfigs:', errorMsg, { secretData });
-      setError(errorMsg);
-      return [];
-    }
+
+    const secretKey = resolvedCreds.secretKey;
+    const accessKey = resolvedCreds.accessKeyId || '';
+    const projectId = resolvedCreds.projectId || '';
 
     const silent = options.silent || false;
     const skipState = options.skipState || false;
@@ -795,7 +772,7 @@ const normalizeAvailability = (cfg, zone) => {
       }
       return [];
     }
-  }, [scwRegion, credentials, credentialSecrets]);
+  }, [scwRegion, getScalewayCredentials]);
 
   // Check if provider is connected (from backend credentials, fallback to localStorage)
   const isProviderConnected = (_providerId) => {
@@ -2938,10 +2915,10 @@ const normalizeAvailability = (cfg, zone) => {
                         </Box>
 
                         <Box sx={{
-                          backgroundColor: '#0D1B13',
+                          backgroundColor: '#2d2d2a',
                           p: 1.5,
                           borderRadius: 1,
-                          border: '1px solid #1E4530',
+                          border: '1px solid #3d3d3a',
                           textAlign: 'center',
                           mb: 2
                         }}>

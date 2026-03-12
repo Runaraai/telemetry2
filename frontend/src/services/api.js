@@ -724,6 +724,13 @@ export const apiService = {
     return response.data;
   },
 
+  terminateLambdaInstance: async (instanceIds) => {
+    const response = await api.post('/api/v1/lambda-cloud/instance-operations/terminate', {
+      instance_ids: Array.isArray(instanceIds) ? instanceIds : [instanceIds],
+    });
+    return response.data;
+  },
+
   getLambdaSshKeys: async (apiKey) => {
     const response = await api.get('/api/v1/lambda-cloud/ssh-keys', {
       timeout: 90000, // 90 second timeout for Lambda API calls (may need retries)
