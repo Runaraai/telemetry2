@@ -49,6 +49,8 @@ import {
   ContentCopy as CopyIcon,
   OpenInNew as OpenInNewIcon,
   VpnKey as VpnKeyIcon,
+  ArrowForward as ArrowForwardIcon,
+  ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 import {
   ResponsiveContainer,
@@ -1109,6 +1111,7 @@ MetricChart.displayName = 'MetricChart';
 
 const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
   const theme = useTheme();
+  const [telemetryStep, setTelemetryStep] = useState(0);
   const [instance, setInstance] = useState(instanceData || null);
   const [sshUser, setSshUser] = useState(instanceData?.sshUser || 'ubuntu');
   const [sshHost, setSshHost] = useState(instanceData?.ipAddress || '');
@@ -2213,6 +2216,53 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           </Typography>
         </Box>
 
+        {/* Step Indicator */}
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+          {['Instance Connection', 'Inference Server', 'Workload Benchmark', 'Kernel Profiling', 'Telemetry'].map((label, idx) => (
+            <Box
+              key={label}
+              onClick={() => setTelemetryStep(idx)}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                cursor: 'pointer',
+                opacity: telemetryStep === idx ? 1 : 0.5,
+                transition: 'opacity 0.2s',
+              }}
+            >
+              <Box
+                sx={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  backgroundColor: telemetryStep === idx ? '#16a34a' : alpha('#000', 0.1),
+                  color: telemetryStep === idx ? '#fff' : 'text.secondary',
+                }}
+              >
+                {idx + 1}
+              </Box>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: telemetryStep === idx ? 600 : 400,
+                  display: { xs: 'none', sm: 'block' },
+                }}
+              >
+                {label}
+              </Typography>
+              {idx < 4 && (
+                <Box sx={{ width: 24, height: 1, backgroundColor: alpha('#000', 0.15), mx: 0.5 }} />
+              )}
+            </Box>
+          ))}
+        </Stack>
+
         {!instanceId && (
           <Alert
             severity="success"
@@ -2229,7 +2279,8 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           </Alert>
         )}
 
-
+        {/* Step 0: Instance Connection */}
+        {telemetryStep === 0 && (<React.Fragment>
         <Card variant="outlined" sx={{ borderRadius: '8px' }}>
           <CardHeader
             title={<Typography variant="h6" sx={{ fontWeight: 600 }}>Instance Connection</Typography>}
@@ -2446,8 +2497,30 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           )}
         </Card>
 
+        {/* Next button for step 0 */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+          <Button
+            variant="contained"
+            endIcon={<ArrowForwardIcon />}
+            onClick={() => setTelemetryStep(1)}
+            sx={{
+              backgroundColor: '#16a34a',
+              color: '#fff',
+              borderRadius: 2,
+              fontWeight: 600,
+              px: 4,
+              '&:hover': { backgroundColor: '#15803d' },
+            }}
+          >
+            Next
+          </Button>
+        </Box>
+        </React.Fragment>)}
+
+        {/* Step 1: Inference Server */}
+        {telemetryStep === 1 && (<React.Fragment>
+
         {/* ── Inference (vLLM) Control Card ─────────────────────────────── */}
-        {sshHost && (
           <Card variant="outlined" sx={{ mb: 2 }}>
             <CardHeader
               title="Inference Server"
@@ -2513,7 +2586,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
               </Button>
             </CardActions>
           </Card>
-        )}
 
         {message && <Alert severity="success">{message}</Alert>}
         {error && <Alert severity="error">{error}</Alert>}
@@ -2525,6 +2597,37 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
             {deploymentStatus?.message ? ` • ${deploymentStatus.message}` : ''}
           </Alert>
         )}
+
+        {/* Nav buttons for step 1 */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => setTelemetryStep(0)}
+            sx={{ borderRadius: 2, fontWeight: 600, px: 4 }}
+          >
+            Back
+          </Button>
+          <Button
+            variant="contained"
+            endIcon={<ArrowForwardIcon />}
+            onClick={() => setTelemetryStep(2)}
+            sx={{
+              backgroundColor: '#16a34a',
+              color: '#fff',
+              borderRadius: 2,
+              fontWeight: 600,
+              px: 4,
+              '&:hover': { backgroundColor: '#15803d' },
+            }}
+          >
+            Next
+          </Button>
+        </Box>
+        </React.Fragment>)}
+
+        {/* Step 2: Workload Benchmark */}
+        {telemetryStep === 2 && (<React.Fragment>
 
         {/* Run Summary - workload, bottleneck, kernel, GPU aggregates */}
         {profilingResult && (
@@ -2622,7 +2725,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
         {/* ================================================================ */}
         {/* Workload Benchmark Card                                         */}
         {/* ================================================================ */}
-        {instanceId && (monitoringState === 'running' || monitoringState === 'idle' || monitoringState === 'stopping') && (
           <Card variant="outlined">
             <CardHeader
               title={
@@ -2808,12 +2910,41 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
               )}
             </CardContent>
           </Card>
-        )}
+
+        {/* Nav buttons for step 2 */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => setTelemetryStep(1)}
+            sx={{ borderRadius: 2, fontWeight: 600, px: 4 }}
+          >
+            Back
+          </Button>
+          <Button
+            variant="contained"
+            endIcon={<ArrowForwardIcon />}
+            onClick={() => setTelemetryStep(3)}
+            sx={{
+              backgroundColor: '#16a34a',
+              color: '#fff',
+              borderRadius: 2,
+              fontWeight: 600,
+              px: 4,
+              '&:hover': { backgroundColor: '#15803d' },
+            }}
+          >
+            Next
+          </Button>
+        </Box>
+        </React.Fragment>)}
+
+        {/* Step 3: Kernel Profiling */}
+        {telemetryStep === 3 && (<React.Fragment>
 
         {/* ================================================================ */}
         {/* Kernel Profiling Card (separate run, overhead warning)           */}
         {/* ================================================================ */}
-        {instanceId && (monitoringState === 'running' || monitoringState === 'idle' || monitoringState === 'stopping') && (
           <Card variant="outlined" sx={{ borderColor: 'warning.main' }}>
             <CardHeader
               title={
@@ -2952,7 +3083,41 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
               )}
             </CardContent>
           </Card>
-        )}
+
+        {/* Nav buttons for step 3 */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => setTelemetryStep(2)}
+            sx={{
+              borderRadius: 2,
+              fontWeight: 600,
+              px: 4,
+            }}
+          >
+            Back
+          </Button>
+          <Button
+            variant="contained"
+            endIcon={<ArrowForwardIcon />}
+            onClick={() => setTelemetryStep(4)}
+            sx={{
+              backgroundColor: '#16a34a',
+              color: '#fff',
+              borderRadius: 2,
+              fontWeight: 600,
+              px: 4,
+              '&:hover': { backgroundColor: '#15803d' },
+            }}
+          >
+            Next
+          </Button>
+        </Box>
+        </React.Fragment>)}
+
+        {/* Step 4: Telemetry */}
+        {telemetryStep === 4 && (<React.Fragment>
 
         {/* Component Status Indicators */}
         {activeRun && (monitoringState === 'running' || monitoringState === 'deploying') && (
@@ -3028,21 +3193,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           </Card>
         )}
 
-
-        <Card sx={{ mb: 3, borderRadius: '8px', border: `1px solid ${alpha('#000', 0.1)}` }}>
-          <CardContent sx={{ p: 3 }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-                  Real-time Metrics
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Monitor GPU performance metrics in real-time
-                </Typography>
-              </Box>
-            </Stack>
-          </CardContent>
-        </Card>
         {monitoringState === 'deploying' && (
           <Alert severity="info">Waiting for monitoring stack to become healthy...</Alert>
         )}
@@ -3292,6 +3442,23 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
             </CardContent>
           </Card>
         )}
+
+        {/* Nav buttons for step 4 */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => setTelemetryStep(3)}
+            sx={{
+              borderRadius: 2,
+              fontWeight: 600,
+              px: 4,
+            }}
+          >
+            Back
+          </Button>
+        </Box>
+        </React.Fragment>)}
       </Stack>
 
       {/* Profiling Mode Consent Dialog */}
