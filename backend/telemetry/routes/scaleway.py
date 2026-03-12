@@ -564,7 +564,7 @@ async def launch_scaleway_server(payload: ScalewayLaunchRequest, request: Reques
                     logger.info(f"H100 instance detected ({payload.commercial_type}), letting Scaleway use default volume configuration")
             elif user_provided_volume:
                 # User provided volume settings for non-H100 instance
-                volume_type = payload.root_volume_type or "l_ssd"
+                volume_type = payload.root_volume_type or "sbs_volume"
                 volume_size = payload.root_volume_size or 20_000_000_000
                 create_body["volumes"] = {
                     "0": {
