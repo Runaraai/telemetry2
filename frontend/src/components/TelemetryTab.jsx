@@ -1209,8 +1209,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
   const [runsLoading, setRunsLoading] = useState(false);
   const [agentStatus, setAgentStatus] = useState(null);
   const [agentSuggestedRunId, setAgentSuggestedRunId] = useState(null);
-  const [prerequisites, setPrerequisites] = useState([]);
-  const [prerequisitesLoading, setPrerequisitesLoading] = useState(false);
   const [historicalLoading, setHistoricalLoading] = useState(false);
   const [historicalChart, setHistoricalChart] = useState({ data: [], gpuIds: [] });
   const [selectedHistoricalRun, setSelectedHistoricalRun] = useState(null);
@@ -1460,26 +1458,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
     }, 10000);
     return () => clearInterval(interval);
   }, [fetchRuns]);
-
-  useEffect(() => {
-    const fetchPrerequisites = async () => {
-      setPrerequisitesLoading(true);
-      try {
-        const response = await apiService.getTelemetryPrerequisites();
-        console.log('Prerequisites API response:', response);
-        const prereqs = response?.prerequisites || [];
-        console.log('Setting prerequisites:', prereqs.length);
-        setPrerequisites(prereqs);
-      } catch (err) {
-        console.error('Failed to load prerequisites', err);
-        // Set empty array on error so UI doesn't break
-        setPrerequisites([]);
-      } finally {
-        setPrerequisitesLoading(false);
-      }
-    };
-    fetchPrerequisites();
-  }, []);
 
   // Fetch component status when active run exists
   const fetchDeploymentJobs = useCallback(async () => {
@@ -2337,81 +2315,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           </Alert>
         )}
 
-        {(prerequisitesLoading || prerequisites.length > 0) && (
-          <InfoCard
-            icon={InfoIcon}
-            title="Prerequisites"
-            subtitle="Required before starting monitoring"
-            color="info"
-            sx={{ mb: 3 }}
-          >
-              {prerequisitesLoading ? (
-              <Stack direction="row" spacing={2} alignItems="center" sx={{ py: 2 }}>
-                  <CircularProgress size={20} />
-                  <Typography variant="body2" color="text.secondary">
-                    Loading prerequisites...
-                  </Typography>
-              </Stack>
-              ) : (
-                <>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    The following must be set up on your GPU instance before using "Start Monitoring". 
-                  dio will automatically install Docker, NVIDIA Container Toolkit, DCGM, and Fabric Manager.
-                  </Typography>
-                <Stack spacing={2}>
-                    {prerequisites.map((prereq) => (
-                    <Paper
-                      key={prereq.id}
-                      sx={{
-                        p: 2,
-                        borderRadius: '8px',
-                        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                        backgroundColor: alpha(theme.palette.background.paper, 0.5),
-                      }}
-                    >
-                      <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                          {prereq.title}
-                        </Typography>
-                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-                          {prereq.description}
-                        </Typography>
-                        {prereq.install_hint && (
-                        <CodeBlock
-                          code={prereq.install_hint}
-                          onCopy={(text) => {
-                            navigator.clipboard.writeText(text);
-                          }}
-                          sx={{ mt: 1, fontSize: '0.75rem', p: 1.5 }}
-                        />
-                        )}
-                        {prereq.docs_link && (
-                        <MuiLink
-                            href={prereq.docs_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            variant="caption"
-                          sx={{ 
-                            display: 'inline-flex', 
-                            alignItems: 'center', 
-                            mt: 1,
-                            fontWeight: 500,
-                          }}
-                          >
-                          View Documentation <OpenInNewIcon sx={{ fontSize: 14, ml: 0.5 }} />
-                        </MuiLink>
-                        )}
-                    </Paper>
-                    ))}
-                </Stack>
-                <Alert severity="info" sx={{ mt: 3, borderRadius: '8px' }}>
-                    <Typography variant="body2">
-                    <strong>What dio installs automatically:</strong> Docker, NVIDIA Container Toolkit, DCGM, Fabric Manager
-                    </Typography>
-                  </Alert>
-                </>
-              )}
-          </InfoCard>
-        )}
 
         <Card variant="outlined" sx={{ borderRadius: '8px' }}>
           <CardHeader
