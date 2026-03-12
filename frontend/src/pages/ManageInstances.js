@@ -2763,7 +2763,7 @@ const normalizeAvailability = (cfg, zone) => {
         ) : (
           <Box>
             {/* Selected Provider Content Will Appear Here */}
-            <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
+            <Typography variant="h1" sx={{ mb: 2, fontWeight: 800, fontSize: '3rem' }}>
               {PROVIDERS.find(p => p.id === selectedProvider)?.name}
             </Typography>
             
@@ -3075,12 +3075,6 @@ const normalizeAvailability = (cfg, zone) => {
         {aggregatedViewMode === 'cloud' && selectedProvider === 'scaleway' && isProviderConnected('scaleway') && (
           <Box sx={{ mt: 3, mb: 4 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <CloudIcon color="primary" />
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  Scaleway GPU Configurations
-                </Typography>
-              </Box>
               <Stack direction="row" spacing={1} alignItems="center">
                 <FormControl size="small" sx={{ minWidth: 180 }}>
                   <InputLabel>Region</InputLabel>

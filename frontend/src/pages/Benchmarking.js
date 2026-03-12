@@ -1174,24 +1174,9 @@ const Benchmarking = () => {
               {/* Header */}
               <Box>
                 <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1, justifyContent: 'space-between' }}>
-                  <Box
-                    sx={{
-                      p: 1.5,
-                      borderRadius: 2,
-                      backgroundColor: alpha('#818cf8', 0.1),
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <PlayArrowIcon sx={{ color: 'primary.main', fontSize: 28 }} />
-                  </Box>
                   <Box sx={{ flex: 1 }}>
-                    <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    <Typography variant="h1" sx={{ fontWeight: 800, fontSize: '3rem', mb: 0.5 }}>
                       Run Workload
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Execute the complete workflow: Setup → Check → Deploy → Benchmark
                     </Typography>
                   </Box>
                 </Stack>

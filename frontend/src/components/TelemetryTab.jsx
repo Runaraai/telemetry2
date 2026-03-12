@@ -2297,13 +2297,8 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
     <Box sx={{ p: 4, maxWidth: '1920px', mx: 'auto' }}>
       <Stack spacing={4}>
         <Box>
-          <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5, fontWeight: 600, fontSize: '1.75rem', color: '#1a1a1a' }}>
-            <TimelineIcon color="primary" sx={{ fontSize: '2rem' }} />
-            GPU Telemetry Monitoring
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.9375rem', lineHeight: 1.6 }}>
-            Deploy lightweight monitoring stack on your GPU instance to stream real-time metrics
-            into dio.
+          <Typography variant="h1" sx={{ mb: 1.5, fontWeight: 800, fontSize: '3rem' }}>
+            Telemetry
           </Typography>
         </Box>
 

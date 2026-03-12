@@ -1446,12 +1446,8 @@ const TelemetryHistory = () => {
       <Stack spacing={4}>
         {/* Header */}
         <Box>
-          <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5, fontWeight: 600, fontSize: '1.75rem', color: '#1a1a1a' }}>
-            <HistoryIcon color="primary" sx={{ fontSize: '2rem' }} />
+          <Typography variant="h1" sx={{ mb: 1.5, fontWeight: 800, fontSize: '3rem' }}>
             Telemetry History
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.9375rem', lineHeight: 1.6 }}>
-            View all telemetry runs across all instances. Identify and clean up runs with missing data.
           </Typography>
         </Box>
 

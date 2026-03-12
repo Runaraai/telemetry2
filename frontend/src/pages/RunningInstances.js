@@ -279,15 +279,9 @@ export default function RunningInstances() {
     <Box sx={{ p: 4, maxWidth: 1400 }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
-          <DnsIcon color="primary" />
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
+          <Typography variant="h1" sx={{ fontWeight: 800, fontSize: '3rem' }}>
             Running Instances
           </Typography>
-          <Chip
-            label={`${instances.length} instance${instances.length !== 1 ? 's' : ''}`}
-            size="small"
-            variant="outlined"
-          />
         </Stack>
         <Tooltip title="Refresh">
           <IconButton onClick={load} disabled={loading}>
