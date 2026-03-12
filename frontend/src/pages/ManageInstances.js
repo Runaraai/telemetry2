@@ -58,7 +58,7 @@ const PROVIDERS = [
     id: 'scaleway',
     label: 'Scaleway',
     logo: 'https://www.scaleway.com/favicon-192x192.png',
-    name: 'Scaleway',
+    name: 'Instances',
     color: '#4A00FF',
     bgColor: '#1a1a18',
     requiredFields: ['Access Key', 'Secret Key', 'Project ID'],

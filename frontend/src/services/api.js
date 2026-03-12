@@ -184,6 +184,19 @@ async function postJSON(path, body) {
 }
 
 export const apiService = {
+  // ── Config ──────────────────────────────────────────────────────────────────
+  // Fetch the SSH public key configured in the backend .env
+  getSSHPublicKey: async () => {
+    const response = await api.get('/api/config/ssh-public-key');
+    return response.data.public_key;
+  },
+
+  // Fetch the SSH private key configured in the backend .env
+  getSSHPrivateKey: async () => {
+    const response = await api.get('/api/config/ssh-private-key');
+    return response.data.private_key;
+  },
+
   // Health check
   healthCheck: async () => {
     const response = await api.get('/health');

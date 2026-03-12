@@ -869,6 +869,32 @@ app.include_router(websocket_router)
 # API ENDPOINTS
 # ============================================================================
 
+# ── SSH Public Key from .env ─────────────────────────────────────────────────
+@app.get("/api/config/ssh-public-key")
+async def get_ssh_public_key():
+    """Return the SSH public key from VOERTX_PUBLIC_KEY env variable."""
+    key = os.getenv("VOERTX_PUBLIC_KEY", "").strip()
+    if not key:
+        raise HTTPException(status_code=404, detail="No SSH public key configured in environment")
+    return {"public_key": key}
+
+
+# ── SSH Private Key from .env ────────────────────────────────────────────────
+@app.get("/api/config/ssh-private-key")
+async def get_ssh_private_key():
+    """Return the SSH private key from VOERTX_PRIVATE_KEY or VOERTX_PRIVATE_KEY_PATH env variable."""
+    key = os.getenv("VOERTX_PRIVATE_KEY", "").strip()
+    if not key:
+        key_path = os.getenv("VOERTX_PRIVATE_KEY_PATH", "").strip()
+        if key_path:
+            expanded = Path(key_path).expanduser()
+            if expanded.exists():
+                key = expanded.read_text().strip()
+    if not key:
+        raise HTTPException(status_code=404, detail="No SSH private key configured in environment")
+    return {"private_key": key}
+
+
 # Mapper-related helper functions removed - mapper module not available
 # ============================================================================
 # API ENDPOINTS

@@ -298,7 +298,7 @@ async def get_scaleway_products(payload: ScalewayProductsRequest, request: Reque
 
     availability_lookup: dict[str, str] = {}
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.get(url, headers=headers, params=params)
             # If availability param triggers 400, retry without it
             if resp.status_code == 400 and params.get("availability"):
@@ -779,7 +779,7 @@ async def scaleway_server_status(payload: ScalewayServerStatusRequest, request: 
     if payload.project_id:
         headers["X-Project-ID"] = payload.project_id
     url = f"https://api.scaleway.com/instance/v1/zones/{payload.zone}/servers/{payload.server_id}"
-    async with httpx.AsyncClient(timeout=20) as client:
+    async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.get(url, headers=headers)
     if resp.status_code == 404:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
@@ -804,7 +804,7 @@ async def scaleway_server_status(payload: ScalewayServerStatusRequest, request: 
     if data.get("state") in {"stopped", "stopped_in_place"}:
         action_url = f"https://api.scaleway.com/instance/v1/zones/{payload.zone}/servers/{payload.server_id}/action"
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with httpx.AsyncClient(timeout=60) as client:
                 await client.post(action_url, headers=headers, json={"action": "poweron"})
         except httpx.RequestError:
             pass
@@ -834,7 +834,7 @@ async def list_scaleway_instances(payload: ScalewayInstancesRequest) -> Scaleway
     instances: List[ScalewayInstance] = []
 
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=60) as client:
             current_page = page
             while True:
                 params = {"page": current_page, "per_page": per_page}
@@ -996,7 +996,7 @@ async def delete_scaleway_server(payload: ScalewayDeleteRequest) -> ScalewayDele
             pass
 
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=60) as client:
             for attempt in range(3):
                 resp = await client.delete(url, headers=headers)
 

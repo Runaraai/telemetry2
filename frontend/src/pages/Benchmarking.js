@@ -2481,150 +2481,239 @@ const Benchmarking = () => {
                   {workflowBenchmarkStatus.status === 'completed' && workflowBenchmarkStatus.runId && !workflowBenchmarkStatus.metrics && (
                     <BenchmarkResultsCard runId={workflowBenchmarkStatus.runId} />
                   )}
-                </CardContent>
-              </Card>
 
-              {/* Phase 5: Kernel Profile */}
-              <Card sx={{ borderRadius: 3, backgroundColor: alpha(theme.palette.background.paper, 0.6) }}>
-                <CardContent>
-                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
-                    <Chip label="Phase 5" size="small" color="secondary" />
-                    <Typography variant="h6" fontWeight={600}>Kernel Profile</Typography>
-                    {workflowKernelStatus.status === 'completed' && <CheckCircleIcon color="success" fontSize="small" />}
-                    {workflowKernelStatus.status === 'failed' && <ErrorIcon color="error" fontSize="small" />}
-                  </Stack>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Run kernel-level profiling to get CUDA kernel breakdown, compute/memory utilization, and bottleneck analysis.
-                    This is a separate run from the benchmark.
-                  </Typography>
-
-                  <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                    <TextField
-                      label="Kernel Requests"
-                      type="number"
-                      size="small"
-                      value={workflowKernelRequests}
-                      onChange={(e) => setWorkflowKernelRequests(Number(e.target.value))}
-                      sx={{ width: 160 }}
-                      inputProps={{ min: 1, max: 100 }}
-                    />
-                  </Stack>
-
-                  {workflowKernelStatus.message && (
-                    <Alert
-                      severity={workflowKernelStatus.status === 'failed' ? 'error' : workflowKernelStatus.status === 'completed' ? 'success' : 'info'}
-                      sx={{ mb: 2, borderRadius: 2 }}
-                    >
-                      {workflowKernelStatus.message}
-                    </Alert>
-                  )}
-
-                  <Card variant="outlined" sx={{ borderRadius: 2, p: 2 }}>
-                    <CardContent sx={{ p: '0 !important' }}>
-                      <Button
-                        variant="contained"
-                        color="secondary"
-                        startIcon={workflowKernelStatus.loading ? <CircularProgress size={18} color="inherit" /> : <SpeedIcon />}
-                        onClick={async () => {
-                          try {
-                            setWorkflowKernelStatus({ loading: true, status: 'running', message: 'Starting kernel profiling...', workflowId: null, logs: '', errorDetails: null, runId: null });
-                            const pemBase64 = rwSshKey ? btoa(rwSshKey) : null;
-                            const modelPath = getWorkflowModelPath(selectedModel);
-                            const response = await apiService.workflowKernelProfile({
-                              cloud_provider: rwCloudProvider,
-                              ssh_host: rwSshHost,
-                              ssh_user: rwSshUser,
-                              pem_base64: pemBase64,
-                              model_path: modelPath,
-                              kernel_requests: workflowKernelRequests
-                            });
-                            setWorkflowKernelStatus({
-                              loading: false,
-                              status: 'started',
-                              message: response.message,
-                              workflowId: response.workflow_id,
-                              logs: '',
-                              errorDetails: null,
-                              runId: null
-                            });
-                            appendWorkflowEvent('kernel_profile', 'info', `Kernel profiling started: ${response.workflow_id}`);
-
-                            const pollLogs = setInterval(async () => {
-                              try {
-                                const result = await apiService.getWorkflowLogs(response.workflow_id, 'kernel_profile');
-                                trackWorkflowProgress('kernel_profile', result.status, result.message);
-                                setWorkflowKernelStatus(prev => ({
-                                  ...prev,
-                                  logs: result.logs || '',
-                                  status: result.status || prev.status,
-                                  message: result.message || prev.message,
-                                  errorDetails: result.error_details || prev.errorDetails,
-                                  runId: result.run_id || prev.runId
-                                }));
-
-                                if (result.status === 'failed') {
-                                  clearInterval(pollLogs);
-                                  appendWorkflowEvent('kernel_profile', 'error', result.message || 'Kernel profiling failed');
-                                } else if (result.status === 'completed') {
-                                  clearInterval(pollLogs);
-                                  appendWorkflowEvent('kernel_profile', 'success', 'Kernel profiling completed');
-                                }
-                              } catch (e) {
-                                console.error('Failed to fetch kernel profile logs:', e);
-                              }
-                            }, 2000);
-                            setTimeout(() => clearInterval(pollLogs), 1800000);
-                          } catch (e) {
-                            setWorkflowKernelStatus({ loading: false, status: 'error', message: e.response?.data?.detail || e.message, workflowId: null, logs: '', errorDetails: null, runId: null });
-                            appendWorkflowEvent('kernel_profile', 'error', e.response?.data?.detail || e.message);
-                          }
-                        }}
-                        disabled={workflowKernelStatus.loading || !rwSshHost || !rwSshKey || !deployComplete}
-                        sx={{ borderRadius: 2, minWidth: 160 }}
-                      >
-                        {workflowKernelStatus.loading ? 'Profiling...' : 'Run Kernel Profile'}
-                      </Button>
-
-                      {workflowKernelStatus.logs && (
-                        <Box sx={{ mt: 3 }}>
-                          <Accordion sx={{ borderRadius: 2, '&:before': { display: 'none' } }}>
-                            <AccordionSummary
-                              expandIcon={<ExpandMoreIcon />}
-                              sx={{ backgroundColor: alpha('#2E1A4A', 0.5), borderRadius: '8px' }}
-                            >
-                              <Stack direction="row" spacing={1.5} alignItems="center">
-                                <TerminalIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                  View Logs ({workflowKernelStatus.logs.split('\n').length} lines)
-                                </Typography>
-                              </Stack>
-                            </AccordionSummary>
-                            <AccordionDetails sx={{ p: 0 }}>
-                              <Paper
-                                sx={{
-                                  p: 2,
-                                  backgroundColor: '#1e1e1e',
-                                  color: '#d4d4d4',
-                                  fontFamily: 'monospace',
-                                  fontSize: '0.75rem',
-                                  maxHeight: 500,
-                                  overflow: 'auto',
-                                  borderRadius: '8px',
-                                }}
-                              >
-                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                  {workflowKernelStatus.logs}
-                                </pre>
-                              </Paper>
-                            </AccordionDetails>
-                          </Accordion>
+                  {/* Phase 5: Kernel Profile */}
+                  <Card
+                    sx={{
+                      mb: 3,
+                      borderRadius: 3,
+                      border: `2px solid ${
+                        workflowKernelStatus.status === 'completed'
+                          ? theme.palette.success.main
+                          : workflowKernelStatus.status === 'failed'
+                          ? theme.palette.error.main
+                          : workflowKernelStatus.status === 'running' || workflowKernelStatus.status === 'started'
+                          ? theme.palette.info.main
+                          : alpha('#000', 0.1)
+                      }`,
+                      backgroundColor:
+                        workflowKernelStatus.status === 'running' || workflowKernelStatus.status === 'started'
+                          ? alpha('#0288d1', 0.05)
+                          : workflowKernelStatus.status === 'completed'
+                          ? alpha('#2e7d32', 0.02)
+                          : 'background.paper',
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
+                    <CardContent sx={{ p: 3 }}>
+                      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
+                        <Box
+                          sx={{
+                            p: 1.5,
+                            borderRadius: 2,
+                            backgroundColor: alpha(
+                              workflowKernelStatus.status === 'completed'
+                                ? theme.palette.success.main
+                                : workflowKernelStatus.status === 'running' || workflowKernelStatus.status === 'started'
+                                ? theme.palette.info.main
+                                : theme.palette.primary.main,
+                              0.1
+                            ),
+                          }}
+                        >
+                          <SpeedIcon
+                            sx={{
+                              color:
+                                workflowKernelStatus.status === 'completed'
+                                  ? 'success.main'
+                                  : workflowKernelStatus.status === 'running' || workflowKernelStatus.status === 'started'
+                                  ? 'info.main'
+                                  : 'primary.main',
+                              fontSize: 24,
+                            }}
+                          />
                         </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Stack direction="row" spacing={2} alignItems="center">
+                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                              Phase 5: Kernel Profile
+                            </Typography>
+                            <Chip
+                              icon={
+                                workflowKernelStatus.status === 'completed' ? (
+                                  <CheckCircleIcon />
+                                ) : workflowKernelStatus.status === 'failed' ? (
+                                  <ErrorIcon />
+                                ) : null
+                              }
+                              label={
+                                workflowKernelStatus.loading
+                                  ? 'Running...'
+                                  : workflowKernelStatus.status === 'running'
+                                  ? 'Running...'
+                                  : workflowKernelStatus.status === 'completed'
+                                  ? 'Complete'
+                                  : workflowKernelStatus.status === 'failed'
+                                  ? 'Failed'
+                                  : workflowKernelStatus.status === 'started'
+                                  ? 'Starting...'
+                                  : 'Not Started'
+                              }
+                              color={
+                                workflowKernelStatus.status === 'completed'
+                                  ? 'success'
+                                  : workflowKernelStatus.status === 'failed'
+                                  ? 'error'
+                                  : workflowKernelStatus.status === 'running' || workflowKernelStatus.status === 'started'
+                                  ? 'info'
+                                  : 'default'
+                              }
+                              size="small"
+                            />
+                          </Stack>
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                            Run kernel-level profiling to get CUDA kernel breakdown, compute/memory utilization, and bottleneck analysis.
+                          </Typography>
+                        </Box>
+                      </Stack>
+
+                      {!deployComplete && (
+                        <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+                          <Typography variant="body2">
+                            <strong>Prerequisite:</strong> Phase 4 (Benchmark) must be completed first.
+                          </Typography>
+                        </Alert>
                       )}
 
-                      {/* Kernel Results (inline after completion) */}
-                      {workflowKernelStatus.status === 'completed' && workflowKernelStatus.runId && (
-                        <KernelResultsCard runId={workflowKernelStatus.runId} />
+                      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                        <TextField
+                          label="Kernel Requests"
+                          type="number"
+                          size="small"
+                          value={workflowKernelRequests}
+                          onChange={(e) => setWorkflowKernelRequests(Number(e.target.value))}
+                          sx={{ width: 160 }}
+                          inputProps={{ min: 1, max: 100 }}
+                        />
+                      </Stack>
+
+                      {workflowKernelStatus.message && (
+                        <Alert
+                          severity={workflowKernelStatus.status === 'failed' ? 'error' : workflowKernelStatus.status === 'completed' ? 'success' : 'info'}
+                          sx={{ mb: 2, borderRadius: 2 }}
+                        >
+                          {workflowKernelStatus.message}
+                        </Alert>
                       )}
+
+                      <Card variant="outlined" sx={{ borderRadius: 2, p: 2 }}>
+                        <CardContent sx={{ p: '0 !important' }}>
+                          <Button
+                            variant="contained"
+                            color="secondary"
+                            startIcon={workflowKernelStatus.loading ? <CircularProgress size={18} color="inherit" /> : <SpeedIcon />}
+                            onClick={async () => {
+                              try {
+                                setWorkflowKernelStatus({ loading: true, status: 'running', message: 'Starting kernel profiling...', workflowId: null, logs: '', errorDetails: null, runId: null });
+                                const pemBase64 = rwSshKey ? btoa(rwSshKey) : null;
+                                const modelPath = getWorkflowModelPath(selectedModel);
+                                const response = await apiService.workflowKernelProfile({
+                                  cloud_provider: rwCloudProvider,
+                                  ssh_host: rwSshHost,
+                                  ssh_user: rwSshUser,
+                                  pem_base64: pemBase64,
+                                  model_path: modelPath,
+                                  kernel_requests: workflowKernelRequests
+                                });
+                                setWorkflowKernelStatus({
+                                  loading: false,
+                                  status: 'started',
+                                  message: response.message,
+                                  workflowId: response.workflow_id,
+                                  logs: '',
+                                  errorDetails: null,
+                                  runId: null
+                                });
+                                appendWorkflowEvent('kernel_profile', 'info', `Kernel profiling started: ${response.workflow_id}`);
+
+                                const pollLogs = setInterval(async () => {
+                                  try {
+                                    const result = await apiService.getWorkflowLogs(response.workflow_id, 'kernel_profile');
+                                    trackWorkflowProgress('kernel_profile', result.status, result.message);
+                                    setWorkflowKernelStatus(prev => ({
+                                      ...prev,
+                                      logs: result.logs || '',
+                                      status: result.status || prev.status,
+                                      message: result.message || prev.message,
+                                      errorDetails: result.error_details || prev.errorDetails,
+                                      runId: result.run_id || prev.runId
+                                    }));
+
+                                    if (result.status === 'failed') {
+                                      clearInterval(pollLogs);
+                                      appendWorkflowEvent('kernel_profile', 'error', result.message || 'Kernel profiling failed');
+                                    } else if (result.status === 'completed') {
+                                      clearInterval(pollLogs);
+                                      appendWorkflowEvent('kernel_profile', 'success', 'Kernel profiling completed');
+                                    }
+                                  } catch (e) {
+                                    console.error('Failed to fetch kernel profile logs:', e);
+                                  }
+                                }, 2000);
+                                setTimeout(() => clearInterval(pollLogs), 1800000);
+                              } catch (e) {
+                                setWorkflowKernelStatus({ loading: false, status: 'error', message: e.response?.data?.detail || e.message, workflowId: null, logs: '', errorDetails: null, runId: null });
+                                appendWorkflowEvent('kernel_profile', 'error', e.response?.data?.detail || e.message);
+                              }
+                            }}
+                            disabled={workflowKernelStatus.loading || !rwSshHost || !rwSshKey || !deployComplete}
+                            sx={{ borderRadius: 2, minWidth: 160 }}
+                          >
+                            {workflowKernelStatus.loading ? 'Profiling...' : 'Run Kernel Profile'}
+                          </Button>
+
+                          {workflowKernelStatus.logs && (
+                            <Box sx={{ mt: 3 }}>
+                              <Accordion sx={{ borderRadius: 2, '&:before': { display: 'none' } }}>
+                                <AccordionSummary
+                                  expandIcon={<ExpandMoreIcon />}
+                                  sx={{ backgroundColor: alpha('#2E1A4A', 0.5), borderRadius: '8px' }}
+                                >
+                                  <Stack direction="row" spacing={1.5} alignItems="center">
+                                    <TerminalIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                      View Logs ({workflowKernelStatus.logs.split('\n').length} lines)
+                                    </Typography>
+                                  </Stack>
+                                </AccordionSummary>
+                                <AccordionDetails sx={{ p: 0 }}>
+                                  <Paper
+                                    sx={{
+                                      p: 2,
+                                      backgroundColor: '#1e1e1e',
+                                      color: '#d4d4d4',
+                                      fontFamily: 'monospace',
+                                      fontSize: '0.75rem',
+                                      maxHeight: 500,
+                                      overflow: 'auto',
+                                      borderRadius: '8px',
+                                    }}
+                                  >
+                                    <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                      {workflowKernelStatus.logs}
+                                    </pre>
+                                  </Paper>
+                                </AccordionDetails>
+                              </Accordion>
+                            </Box>
+                          )}
+
+                          {/* Kernel Results (inline after completion) */}
+                          {workflowKernelStatus.status === 'completed' && workflowKernelStatus.runId && (
+                            <KernelResultsCard runId={workflowKernelStatus.runId} />
+                          )}
+                        </CardContent>
+                      </Card>
                     </CardContent>
                   </Card>
                 </CardContent>

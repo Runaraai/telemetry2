@@ -24,7 +24,7 @@ function Sidebar() {
   const { user, logout } = useAuth();
 
   const menuItems = [
-    { text: 'Manage Instances', path: '/instances' },
+    { text: 'Instances', path: '/instances' },
     { text: 'Run Workload', path: '/profiling' },
     { text: 'Telemetry', path: '/telemetry' },
     { text: 'Running Instances', path: '/running-instances' },
@@ -202,12 +202,18 @@ function AppContent() {
         sx={{
           flex: 1,
           marginLeft: `${SIDEBAR_WIDTH}px`,
-          maxWidth: `calc(1280px + 64px)`,
-          width: '100%',
-          px: { xs: 2, sm: 3, lg: 4 },
-          py: 4,
+          display: 'flex',
+          justifyContent: 'center',
         }}
       >
+        <Box
+          sx={{
+            maxWidth: `calc(1280px + 64px)`,
+            width: '100%',
+            px: { xs: 2, sm: 3, lg: 4 },
+            py: 4,
+          }}
+        >
         <Routes>
           <Route path="/" element={<ProtectedRoute><Benchmarking /></ProtectedRoute>} />
           <Route path="/profiling" element={<ProtectedRoute><Benchmarking /></ProtectedRoute>} />
@@ -217,6 +223,7 @@ function AppContent() {
           <Route path="/telemetry-history" element={<ProtectedRoute><TelemetryHistory /></ProtectedRoute>} />
           <Route path="/login" element={<Navigate to="/" replace />} />
         </Routes>
+        </Box>
       </Box>
     </Box>
   );
