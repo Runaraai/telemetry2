@@ -11,7 +11,8 @@ import {
   Stop as StopIcon,
   Delete as DeleteIcon,
   Assessment as ProfileIcon,
-  Dns as DnsIcon
+  Dns as DnsIcon,
+  RocketLaunch as RocketLaunchIcon,
 } from '@mui/icons-material';
 import { apiService } from '../services/api';
 
@@ -270,6 +271,24 @@ export default function RunningInstances() {
     navigate('/telemetry', { state: { instanceData } });
   }
 
+  function handleRunWorkload(inst) {
+    const provider = inst.provider || 'scaleway';
+    const defaultUser = provider === 'scaleway' ? 'root' : 'ubuntu';
+    navigate('/profiling', {
+      state: {
+        fromInstance: {
+          id: inst.id,
+          name: inst.name || inst.id,
+          ip: inst.public_ip || '',
+          zone: inst.zone || inst.region || '',
+          instance_type: inst.instance_type || '',
+          provider,
+          ssh_user: defaultUser,
+        },
+      },
+    });
+  }
+
   const providerLabel = (provider) => {
     const labels = { scaleway: 'Scaleway', lambda: 'Lambda', nebius: 'Nebius' };
     return labels[provider] || provider;
@@ -326,6 +345,7 @@ export default function RunningInstances() {
                 <TableCell sx={{ fontWeight: 600, color: '#fff' }} align="center">Pause</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#fff' }} align="center">Stop</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#fff' }} align="center">Profile</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#fff' }} align="center">Run Workload</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -439,14 +459,28 @@ export default function RunningInstances() {
                           Profile
                         </Button>
                       </TableCell>
+                      <TableCell align="center">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="secondary"
+                          startIcon={<RocketLaunchIcon fontSize="small" />}
+                          onClick={() => handleRunWorkload(inst)}
+                          disabled={!canProfile}
+                          sx={{ textTransform: 'none', fontSize: '0.75rem', minWidth: 110 }}
+                        >
+                          Run Workload
+                        </Button>
+                      </TableCell>
                     </TableRow>
                     {actionError[inst.id] && (
                       <TableRow>
-                        <TableCell colSpan={8}>
+                        <TableCell colSpan={9}>
                           <Alert severity="error" sx={{ py: 0 }}>
                             {actionError[inst.id]}
                           </Alert>
                         </TableCell>
+
                       </TableRow>
                     )}
                   </React.Fragment>

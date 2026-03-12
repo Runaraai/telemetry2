@@ -113,9 +113,18 @@ class DeploymentManager:
         return None
 
     async def _run_deploy(self, record: DeploymentRecord) -> None:
+        import logging
+        logger = logging.getLogger(__name__)
         try:
             services = await asyncio.to_thread(self._perform_deploy, record.request)
         except Exception as exc:  # pragma: no cover - remote failure path
+            logger.error(
+                "telemetry_deploy failed run_id=%s instance=%s: %s",
+                str(record.run_id),
+                record.instance_id,
+                str(exc),
+                exc_info=True,
+            )
             await self._update_record(
                 record.deployment_id,
                 status="failed",
@@ -157,7 +166,12 @@ class DeploymentManager:
         """Deploy telemetry stack with comprehensive validation and health checks."""
         import logging
         logger = logging.getLogger(__name__)
-        
+        logger.info(
+            "telemetry_deploy starting run_id=%s instance=%s",
+            str(request.run_id),
+            request.ssh_host,
+        )
+
         # Validate SSH configuration
         if not request.ssh_host or not request.ssh_user:
             raise ValueError("SSH host and user are required")
@@ -234,8 +248,14 @@ class DeploymentManager:
                     self._exec_safe(ssh, f"cd {remote_dir} && sudo docker compose stop dcgm-exporter 2>/dev/null || true")
                     # Remove the container to force recreation
                     self._exec_safe(ssh, f"cd {remote_dir} && sudo docker compose rm -f dcgm-exporter 2>/dev/null || true")
-            self._exec(ssh, f"cd {remote_dir} && sudo docker compose up -d")
-            
+            compose_output = self._exec(ssh, f"cd {remote_dir} && sudo docker compose up -d")
+            logger.info(
+                "telemetry_deploy: docker compose up completed run_id=%s instance=%s output=%s",
+                str(request.run_id),
+                request.ssh_host,
+                (compose_output or "")[:500],
+            )
+
             # Step 8: Wait briefly for services to start
             logger.info("Waiting for services to start...")
             has_dcgm = system_info.get('dcgm_image') is not None

@@ -37,6 +37,7 @@ import {
   LinearProgress,
   Tooltip,
   AlertTitle,
+  IconButton,
 } from '@mui/material';
 import {
   LineChart,
@@ -84,6 +85,8 @@ import {
   VpnKey as VpnKeyIcon,
   ArrowForward as ArrowForwardIcon,
   ArrowBack as ArrowBackIcon,
+  HourglassEmpty as HourglassEmptyIcon,
+  ContentCopy as ContentCopyIcon,
 } from '@mui/icons-material';
 import apiService, { friendlyError } from '../services/api';
 import SystemBenchmarkDashboard from '../components/SystemBenchmarkDashboard';
@@ -1128,6 +1131,18 @@ const Benchmarking = () => {
         }
       }
     }
+
+    // Handle navigation from Running Instances page
+    if (state.fromInstance) {
+      const inst = state.fromInstance;
+      if (inst.ip) setRwSshHost(inst.ip);
+      if (inst.ssh_user) setRwSshUser(inst.ssh_user);
+      if (inst.provider) setRwCloudProvider(inst.provider);
+      // Fetch SSH key from backend .env config
+      apiService.getSSHPrivateKey()
+        .then((key) => { if (key) setRwSshKey(key); })
+        .catch(() => {});
+    }
   }, [location.state]);
 
   // Update SSH fields when instanceData changes (e.g., when navigating from Manage Instances)
@@ -1591,20 +1606,21 @@ const Benchmarking = () => {
                         {workflowSetupStatus.loading ? 'Running...' : 'Run Setup'}
                     </Button>
 
-                      {workflowSetupStatus.logs && (
+                      {(workflowSetupStatus.loading || workflowSetupStatus.status === 'running' || workflowSetupStatus.status === 'started' || workflowSetupStatus.logs) && (
                         <Box sx={{ mt: 3 }}>
-                          <Accordion sx={{ borderRadius: 2, '&:before': { display: 'none' } }}>
+                          <Accordion sx={{ borderRadius: 2, '&:before': { display: 'none' } }} disabled={!(workflowSetupStatus.loading || workflowSetupStatus.status === 'running' || workflowSetupStatus.status === 'started')}>
                             <AccordionSummary
                               expandIcon={<ExpandMoreIcon />}
                               sx={{
                                 backgroundColor: alpha('#3d3d3a', 0.5),
                                 borderRadius: '8px',
+                                '&.Mui-disabled': { opacity: 0.7 },
                               }}
                             >
                               <Stack direction="row" spacing={1.5} alignItems="center">
                                 <TerminalIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
                                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                  View Logs ({workflowSetupStatus.logs.split('\n').length} lines)
+                                  See logs ({workflowSetupStatus.logs ? workflowSetupStatus.logs.split('\n').length : 0} lines)
                                 </Typography>
                   </Stack>
                             </AccordionSummary>
@@ -1612,17 +1628,17 @@ const Benchmarking = () => {
                               <Paper
                                 sx={{
                                   p: 2,
-                                  backgroundColor: '#1e1e1e',
-                                  color: '#d4d4d4',
+                            backgroundColor: '#1e1e1e',
+                            color: '#d4d4d4',
                                   fontFamily: 'monospace',
-                                  fontSize: '0.75rem',
+                              fontSize: '0.75rem',
                                   maxHeight: 400,
                                   overflow: 'auto',
                                   borderRadius: '8px',
                                 }}
                               >
                                 <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                  {workflowSetupStatus.logs}
+                                  {workflowSetupStatus.logs || '(Waiting for output...)'}
                                 </pre>
                               </Paper>
                             </AccordionDetails>
@@ -1798,24 +1814,55 @@ const Benchmarking = () => {
                     }}
                         disabled={workflowCheckStatus.loading || !rwSshHost || !rwSshKey || !setupComplete}
                         sx={{ borderRadius: 2, minWidth: 140 }}
-                  >
+                      >
                         {workflowCheckStatus.loading ? 'Running...' : 'Run Check'}
                   </Button>
 
-                      {workflowCheckStatus.logs && (
+                      {/* Phase 2 Environment Checklist - parsed from logs */}
+                      {(workflowCheckStatus.loading || workflowCheckStatus.status === 'running' || workflowCheckStatus.status === 'started' || workflowCheckStatus.logs) && (() => {
+                        const logs = (workflowCheckStatus.logs || '').toLowerCase();
+                        const isRunning = workflowCheckStatus.loading || workflowCheckStatus.status === 'running' || workflowCheckStatus.status === 'started';
+                        const items = [
+                          { label: 'NVIDIA Container Toolkit', done: logs.includes('already installed and working'), installing: logs.includes('installing nvidia container toolkit') },
+                          { label: 'Docker GPU Access', done: logs.includes('gpu access verified') || (logs.includes('nvidia container toolkit') && logs.includes('skipping')), installing: false },
+                          { label: 'DCGM', done: logs.includes('dcgm already installed') || logs.includes('dcgm already installed and running'), installing: logs.includes('installing dcgm') },
+                          { label: 'Model', done: logs.includes('downloaded') || /models?\/[^\s]+/.test(workflowCheckStatus.logs || ''), installing: logs.includes('downloading') || logs.includes('hf download') },
+                          { label: 'CUDA Keyring', done: logs.includes('already installed') && logs.includes('skipping'), installing: logs.includes('installing cuda keyring') },
+                        ];
+                        return (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>Environment checklist</Typography>
+                            <Stack direction="row" flexWrap="wrap" gap={1.5}>
+                              {items.map((item) => (
+                                <Chip
+                                  key={item.label}
+                                  size="small"
+                                  icon={item.done ? <CheckCircleIcon /> : item.installing && isRunning ? <HourglassEmptyIcon /> : null}
+                                  label={item.label}
+                                  color={item.done ? 'success' : item.installing && isRunning ? 'info' : 'default'}
+                                  variant={item.done ? 'filled' : 'outlined'}
+                                />
+                              ))}
+                            </Stack>
+                          </Box>
+                        );
+                      })()}
+
+                      {(workflowCheckStatus.loading || workflowCheckStatus.status === 'running' || workflowCheckStatus.status === 'started' || workflowCheckStatus.logs) && (
                         <Box sx={{ mt: 3 }}>
-                          <Accordion sx={{ borderRadius: 2, '&:before': { display: 'none' } }}>
+                          <Accordion sx={{ borderRadius: 2, '&:before': { display: 'none' } }} disabled={!(workflowCheckStatus.loading || workflowCheckStatus.status === 'running' || workflowCheckStatus.status === 'started')}>
                             <AccordionSummary
                               expandIcon={<ExpandMoreIcon />}
                               sx={{
                                 backgroundColor: alpha('#3d3d3a', 0.5),
                                 borderRadius: '8px',
+                                '&.Mui-disabled': { opacity: 0.7 },
                               }}
                             >
                               <Stack direction="row" spacing={1.5} alignItems="center">
                                 <TerminalIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
                                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                  View Logs ({workflowCheckStatus.logs.split('\n').length} lines)
+                                  See logs ({workflowCheckStatus.logs ? workflowCheckStatus.logs.split('\n').length : 0} lines)
                                 </Typography>
                               </Stack>
                             </AccordionSummary>
@@ -1833,7 +1880,7 @@ const Benchmarking = () => {
                                 }}
                               >
                                 <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                  {workflowCheckStatus.logs}
+                                  {workflowCheckStatus.logs || '(Waiting for output...)'}
                                 </pre>
                               </Paper>
                             </AccordionDetails>
@@ -1939,7 +1986,62 @@ const Benchmarking = () => {
                           </Typography>
                         </Box>
                       )}
-                  
+
+                      <Accordion sx={{ mb: 2, borderRadius: 2, '&:before': { display: 'none' } }}>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderRadius: 2 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>Advanced vLLM Parameters</Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <Grid container spacing={2}>
+                            <Grid item xs={12} sm={6}>
+                              <TextField
+                                size="small"
+                                fullWidth
+                                label="Tensor Parallel Size"
+                                placeholder="auto-detected"
+                                value={vllmTensorParallel}
+                                onChange={(e) => setVllmTensorParallel(e.target.value)}
+                                helperText="Number of GPUs for tensor parallelism"
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <TextField
+                                size="small"
+                                fullWidth
+                                label="GPU Memory Utilization"
+                                placeholder="0.90"
+                                value={vllmGpuMemUtil}
+                                onChange={(e) => setVllmGpuMemUtil(e.target.value)}
+                                helperText="0.0–1.0"
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <TextField
+                                size="small"
+                                fullWidth
+                                label="Max Model Length"
+                                placeholder="auto-detected"
+                                value={vllmMaxModelLen}
+                                onChange={(e) => setVllmMaxModelLen(e.target.value)}
+                                helperText="Context window tokens"
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <TextField
+                                size="small"
+                                fullWidth
+                                label="Max Num Sequences"
+                                placeholder="auto-detected"
+                                value={vllmMaxNumSeqs}
+                                onChange={(e) => setVllmMaxNumSeqs(e.target.value)}
+                                helperText="Max concurrent requests"
+                              />
+                            </Grid>
+                          </Grid>
+                        </AccordionDetails>
+                      </Accordion>
+
+                  <Stack direction="row" spacing={2} alignItems="center">
                   <Button
                         variant="contained"
                         color="primary"
@@ -2022,22 +2124,52 @@ const Benchmarking = () => {
                   >
                         {workflowDeployStatus.loading ? 'Running...' : 'Run Deploy'}
                   </Button>
-                  
-                      {workflowDeployStatus.logs && (
+                    {(workflowDeployStatus.status === 'completed' || inferenceStatus.running) && (
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<PowerIcon />}
+                        onClick={handleInferenceStop}
+                        disabled={!rwSshHost || !rwSshKey || inferenceLoading}
+                        sx={{ borderRadius: 2 }}
+                      >
+                        {inferenceLoading ? 'Stopping...' : 'Stop Inference'}
+                      </Button>
+                    )}
+                  </Stack>
+
+                      {/* Serving URL - shown when deploy completed */}
+                      {(workflowDeployStatus.status === 'completed' || persistedWorkflowState?.vllm_deployed_at) && rwSshHost && (
+                        <Paper sx={{ mt: 3, p: 2, backgroundColor: alpha(theme.palette.success.main, 0.08), border: `1px solid ${alpha(theme.palette.success.main, 0.3)}`, borderRadius: 2 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>Public serving URL</Typography>
+                          <Stack direction="row" alignItems="center" spacing={1}>
+                            <Typography variant="body2" fontFamily="monospace" sx={{ flex: 1 }}>http://{rwSshHost}:8000</Typography>
+                            <IconButton size="small" onClick={() => { navigator.clipboard.writeText(`http://${rwSshHost}:8000`); showToast?.('Copied to clipboard', 'success'); }} title="Copy">
+                              <ContentCopyIcon fontSize="small" />
+                            </IconButton>
+                          </Stack>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                            OpenAI-compatible endpoint: http://{rwSshHost}:8000/v1/chat/completions — send requests to this URL. Compatible with OpenAI SDK.
+                          </Typography>
+                        </Paper>
+                      )}
+
+                      {(workflowDeployStatus.loading || workflowDeployStatus.status === 'running' || workflowDeployStatus.status === 'started' || workflowDeployStatus.logs) && (
                         <Box sx={{ mt: 3 }}>
-                          <Accordion sx={{ borderRadius: 2, '&:before': { display: 'none' } }}>
+                          <Accordion sx={{ borderRadius: 2, '&:before': { display: 'none' } }} disabled={!(workflowDeployStatus.loading || workflowDeployStatus.status === 'running' || workflowDeployStatus.status === 'started')}>
                             <AccordionSummary
                               expandIcon={<ExpandMoreIcon />}
                               sx={{
                                 backgroundColor: alpha('#3d3d3a', 0.5),
                                 borderRadius: '8px',
+                                '&.Mui-disabled': { opacity: 0.7 },
                               }}
                             >
                               <Stack direction="row" spacing={1.5} alignItems="center">
                                 <TerminalIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
                                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                  View Logs ({workflowDeployStatus.logs.split('\n').length} lines)
-                      </Typography>
+                                  See logs ({workflowDeployStatus.logs ? workflowDeployStatus.logs.split('\n').length : 0} lines)
+                                </Typography>
                               </Stack>
                             </AccordionSummary>
                             <AccordionDetails sx={{ p: 0 }}>
@@ -2054,7 +2186,7 @@ const Benchmarking = () => {
                                 }}
                               >
                                 <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                  {workflowDeployStatus.logs}
+                                  {workflowDeployStatus.logs || '(Waiting for output...)'}
                                 </pre>
                               </Paper>
                             </AccordionDetails>
@@ -2376,20 +2508,21 @@ const Benchmarking = () => {
                         {workflowBenchmarkStatus.loading ? 'Running...' : 'Run Benchmark'}
                 </Button>
 
-                      {workflowBenchmarkStatus.logs && (
+                      {(workflowBenchmarkStatus.loading || workflowBenchmarkStatus.status === 'running' || workflowBenchmarkStatus.status === 'started' || workflowBenchmarkStatus.logs) && (
                         <Box sx={{ mt: 3 }}>
-                          <Accordion sx={{ borderRadius: 2, '&:before': { display: 'none' } }}>
+                          <Accordion sx={{ borderRadius: 2, '&:before': { display: 'none' } }} disabled={!(workflowBenchmarkStatus.loading || workflowBenchmarkStatus.status === 'running' || workflowBenchmarkStatus.status === 'started')}>
                             <AccordionSummary
                               expandIcon={<ExpandMoreIcon />}
                               sx={{
                                 backgroundColor: alpha('#3d3d3a', 0.5),
                                 borderRadius: '8px',
+                                '&.Mui-disabled': { opacity: 0.7 },
                               }}
                             >
                               <Stack direction="row" spacing={1.5} alignItems="center">
                                 <TerminalIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
                                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                  View Logs ({workflowBenchmarkStatus.logs.split('\n').length} lines)
+                                  See logs ({workflowBenchmarkStatus.logs ? workflowBenchmarkStatus.logs.split('\n').length : 0} lines)
                                 </Typography>
                               </Stack>
                             </AccordionSummary>
@@ -2407,7 +2540,7 @@ const Benchmarking = () => {
                                 }}
                               >
                                 <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                  {workflowBenchmarkStatus.logs}
+                                  {workflowBenchmarkStatus.logs || '(Waiting for output...)'}
                                 </pre>
                               </Paper>
                             </AccordionDetails>
@@ -2629,17 +2762,17 @@ const Benchmarking = () => {
                             {workflowKernelStatus.loading ? 'Profiling...' : 'Run Kernel Profile'}
                           </Button>
 
-                          {workflowKernelStatus.logs && (
+                          {(workflowKernelStatus.loading || workflowKernelStatus.status === 'running' || workflowKernelStatus.status === 'started' || workflowKernelStatus.logs) && (
                             <Box sx={{ mt: 3 }}>
-                              <Accordion sx={{ borderRadius: 2, '&:before': { display: 'none' } }}>
+                              <Accordion sx={{ borderRadius: 2, '&:before': { display: 'none' } }} disabled={!(workflowKernelStatus.loading || workflowKernelStatus.status === 'running' || workflowKernelStatus.status === 'started')}>
                                 <AccordionSummary
                                   expandIcon={<ExpandMoreIcon />}
-                                  sx={{ backgroundColor: alpha('#2E1A4A', 0.5), borderRadius: '8px' }}
+                                  sx={{ backgroundColor: alpha('#2E1A4A', 0.5), borderRadius: '8px', '&.Mui-disabled': { opacity: 0.7 } }}
                                 >
                                   <Stack direction="row" spacing={1.5} alignItems="center">
                                     <TerminalIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
                                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                      View Logs ({workflowKernelStatus.logs.split('\n').length} lines)
+                                      See logs ({workflowKernelStatus.logs ? workflowKernelStatus.logs.split('\n').length : 0} lines)
                                     </Typography>
                                   </Stack>
                                 </AccordionSummary>
@@ -2657,7 +2790,7 @@ const Benchmarking = () => {
                                     }}
                                   >
                                     <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                      {workflowKernelStatus.logs}
+                                      {workflowKernelStatus.logs || '(Waiting for output...)'}
                                     </pre>
                                   </Paper>
                                 </AccordionDetails>

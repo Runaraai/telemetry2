@@ -7181,12 +7181,17 @@ async def workflow_setup_instance(request: SetupInstanceRequest, background_task
         model_basename = os.path.basename(request.model_name.replace('/', '_'))
         request.model_path = f"/home/ubuntu/BM/models/{model_basename}"
     
+    # Clear stale workflow state for this host (fresh instance or re-run)
+    states = _load_workflow_states()
+    states.pop(request.ssh_host, None)
+    _save_workflow_states(states)
+
     # Create log directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     workflow_id = f"workflow_{request.ssh_host}_{timestamp}"
     log_dir = f"logs/{workflow_id}"
     os.makedirs(log_dir, exist_ok=True)
-    
+
     # Run in background
     background_tasks.add_task(workflow_setup_task, request, pem_file_path, log_dir)
     
@@ -7416,7 +7421,7 @@ async def get_workflow_state(ssh_host: str):
         "ssh_host": ssh_host,
         "setup_completed_at": state.get("setup_completed_at"),
         "check_completed_at": state.get("check_completed_at"),
-        "vllm_deployed_at": state.get("vllm_deployed_at"),
+        "vllm_deployed_at": state.get("vllm_deployed_at") or state.get("vllm_completed_at"),
         "vllm_model": state.get("vllm_model"),
         "last_verified_at": state.get("last_verified_at"),
     }
@@ -8187,10 +8192,14 @@ def workflow_setup_task(request: SetupInstanceRequest, pem_file_path: str, log_d
             for line in stdout:
                 f.write(line)
                 f.flush()
-        
-        exit_status = stdout.channel.recv_exit_status()
-        
-        # Fetch log from remote
+
+        exit_status = -1
+        try:
+            exit_status = stdout.channel.recv_exit_status()
+        except Exception:
+            pass  # Connection may have dropped (e.g. reboot); we'll check log
+
+        # Fetch log from remote (may fail if SSH dropped due to reboot)
         try:
             cloud_provider = getattr(request, 'cloud_provider', 'lambda').lower()
             log_path = "/root/setup.log" if cloud_provider == 'scaleway' else "/home/ubuntu/setup.log"
@@ -8200,46 +8209,79 @@ def workflow_setup_task(request: SetupInstanceRequest, pem_file_path: str, log_d
                 f.write(remote_log)
         except Exception as e:
             logger.warning(f"Could not fetch remote log: {e}")
-        
-        ssh.close()
-        
-        # Detect if a reboot is required (written by the setup script into the log)
+
+        try:
+            ssh.close()
+        except Exception:
+            pass
+
+        # Read log and detect reboot (before checking exit_status - reboot kills SSH)
+        _log_content = ""
         try:
             with open(log_file, 'r') as _lf:
                 _log_content = _lf.read()
-            reboot_required = (
-                "REBOOT_REQUIRED" in _log_content
-                or "reboot required" in _log_content.lower()
-                or "⚠️  WARNING: System reboot may be required" in _log_content
-                or "Driver installed. A reboot may be required." in _log_content
-            )
         except Exception:
-            reboot_required = False
+            pass
+        reboot_required = (
+            "Rebooting now..." in _log_content
+            or "Rebooting system" in _log_content
+            or "REBOOT_REQUIRED" in _log_content
+            or "reboot required" in _log_content.lower()
+            or "WARNING: System reboot may be required" in _log_content
+            or "Driver installed. A reboot may be required." in _log_content
+        )
 
         # Write final status
-        if exit_status == 0:
-            if reboot_required:
-                msg = (
-                    "Setup completed, but a system reboot is required for the NVIDIA driver to take effect. "
-                    "SSH into the instance and run: sudo reboot — then run Check once it's back up."
-                )
-                with open(status_file, 'w') as f:
-                    json.dump({"status": "reboot_required", "message": msg}, f)
-                logger.warning("[DEPLOY] Setup finished but reboot required on %s", request.ssh_host)
-            else:
-                with open(status_file, 'w') as f:
-                    json.dump({"status": "completed", "message": "Setup completed successfully"}, f)
-                logger.info("[DEPLOY] Setup completed successfully on %s", request.ssh_host)
-                _update_workflow_phase(request.ssh_host, "setup")
+        if reboot_required:
+            msg = (
+                "Setup completed, but a system reboot is required for the NVIDIA driver to take effect. "
+                "SSH into the instance and run: sudo reboot — then run Check once it's back up."
+            )
+            with open(status_file, 'w') as f:
+                json.dump({"status": "reboot_required", "message": msg}, f)
+            logger.warning("[DEPLOY] Setup finished but reboot required on %s", request.ssh_host)
+            _update_workflow_phase(request.ssh_host, "setup")
+        elif exit_status == 0:
+            with open(status_file, 'w') as f:
+                json.dump({"status": "completed", "message": "Setup completed successfully"}, f)
+            logger.info("[DEPLOY] Setup completed successfully on %s", request.ssh_host)
+            _update_workflow_phase(request.ssh_host, "setup")
         else:
             with open(status_file, 'w') as f:
                 json.dump({"status": "failed", "message": f"Setup failed with exit status {exit_status}"}, f)
             logger.error("[DEPLOY] Setup failed with exit status %d on %s", exit_status, request.ssh_host)
-            
+
     except Exception as e:
-        with open(status_file, 'w') as f:
-            json.dump({"status": "failed", "message": translate_error(str(e))}, f)
-        logger.error("[DEPLOY] Setup failed on %s: %s", getattr(request, 'ssh_host', '?'), e, exc_info=True)
+        # On exception, check log for reboot (e.g. SSH died during reboot)
+        _log_content = ""
+        try:
+            log_file = os.path.join(log_dir, "setup.log")
+            if os.path.exists(log_file):
+                with open(log_file, 'r') as _lf:
+                    _log_content = _lf.read()
+        except Exception:
+            pass
+        reboot_required = (
+            "Rebooting now..." in _log_content
+            or "Rebooting system" in _log_content
+            or "REBOOT_REQUIRED" in _log_content
+            or "reboot required" in _log_content.lower()
+            or "WARNING: System reboot may be required" in _log_content
+            or "Driver installed. A reboot may be required." in _log_content
+        )
+        if reboot_required:
+            msg = (
+                "Setup completed, but a system reboot is required for the NVIDIA driver to take effect. "
+                "SSH into the instance and run: sudo reboot — then run Check once it's back up."
+            )
+            with open(status_file, 'w') as f:
+                json.dump({"status": "reboot_required", "message": msg}, f)
+            logger.warning("[DEPLOY] Setup finished (reboot required) on %s after exception", request.ssh_host)
+            _update_workflow_phase(request.ssh_host, "setup")
+        else:
+            with open(status_file, 'w') as f:
+                json.dump({"status": "failed", "message": translate_error(str(e))}, f)
+            logger.error("[DEPLOY] Setup failed on %s: %s", getattr(request, 'ssh_host', '?'), e, exc_info=True)
 
 def workflow_check_task(request: CheckInstanceRequest, pem_file_path: str, log_dir: str):
     """Background task for check phase"""
@@ -8903,10 +8945,12 @@ def _run_agent_via_ssh(
     backend_url: str, num_requests: int = 50, concurrency: int = 4,
     max_tokens: int = 200, kernel_requests: int = 20,
     log_file: str = "", status_file: str = "",
+    remote_home: str = "/home/ubuntu",
 ):
     """Execute agent.py on the remote instance and stream logs.
 
     Returns (exit_code, output_tail).
+    Uses venv Python (h100_benchmark_env) when available - it has pip, nvidia-ml-py3, aiohttp.
     """
     import json as _json
     import time
@@ -8917,8 +8961,17 @@ def _run_agent_via_ssh(
     elif mode == "kernel":
         extra_args = f"--kernel-requests {kernel_requests}"
 
+    venv_py = f"{remote_home}/h100_benchmark_env/bin/python"
+    python_cmd = "python3"
+    try:
+        _stdin, _stdout, _stderr = ssh.exec_command(f"test -x {venv_py} && echo ok", timeout=5)
+        if _stdout.read().decode().strip() == "ok":
+            python_cmd = venv_py
+    except Exception:
+        pass
+
     cmd = (
-        f"cd {remote_dir} && python3 agent.py"
+        f"cd {remote_dir} && {python_cmd} agent.py"
         f" --mode {mode}"
         f" {extra_args}"
         f" --backend-url {backend_url}"
@@ -9243,6 +9296,7 @@ def workflow_kernel_profile_task(request: KernelProfileRequest, pem_file_path: s
             backend_url=backend_url,
             kernel_requests=request.kernel_requests,
             log_file=log_file, status_file=status_file,
+            remote_home=remote_home,
         )
 
         ssh.close()

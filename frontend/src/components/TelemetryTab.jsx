@@ -2843,32 +2843,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                 Uses the vLLM server and model settings from the Workload Benchmark config above.
               </Typography>
 
-              {/* Preflight check results */}
-              {kernelProfilingReady?.ready === false && (
-                <Alert severity="error" sx={{ mb: 2, borderRadius: '8px' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                    Kernel profiling not ready: {kernelProfilingReady.reason}
-                  </Typography>
-                  {kernelProfilingReady.fix && (
-                    <Typography variant="caption" component="pre" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap', mt: 0.5, p: 1, bgcolor: 'background.default', borderRadius: 1 }}>
-                      {kernelProfilingReady.fix}
-                    </Typography>
-                  )}
-                </Alert>
-              )}
-              {profilingModeReady?.ready === false && (
-                <Alert severity="warning" sx={{ mb: 2, borderRadius: '8px' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                    Profiling mode not enabled: {profilingModeReady.reason}
-                  </Typography>
-                  {profilingModeReady.fix && (
-                    <Typography variant="caption" component="pre" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap', mt: 0.5, p: 1, bgcolor: 'background.default', borderRadius: 1 }}>
-                      {profilingModeReady.fix}
-                    </Typography>
-                  )}
-                </Alert>
-              )}
-
               <Button
                 variant="outlined"
                 color="warning"

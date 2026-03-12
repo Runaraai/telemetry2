@@ -117,7 +117,10 @@ async def receive_remote_write(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     if not samples:
-        logger.debug("remote_write empty payload", extra={"run_id": str(run_id)})
+        logger.info(
+            "remote_write empty payload (Prometheus sent request but 0 samples) run_id=%s",
+            str(run_id),
+        )
         return Response(status_code=status.HTTP_202_ACCEPTED)
 
     # Use circuit breaker to protect against DB failures
@@ -141,17 +144,17 @@ async def receive_remote_write(
         logger.exception("Policy evaluation failed", extra={"run_id": str(run_id)})
         # Don't fail the ingestion if policy evaluation fails
     
-    logger.info(
-        "remote_write ingested",
-        extra={
-            "run_id": str(run_id),
-            "sample_count": inserted,
-        },
-    )
-    
     # Broadcast to live WebSocket subscribers
     if inserted:
         serialized = _serialize_samples_for_broadcast(samples)
         await live_broker.publish(run_id, {"type": "metrics", "data": serialized})
+
+    subscriber_count = await live_broker.get_subscriber_count(run_id)
+    logger.info(
+        "remote_write ingested run_id=%s sample_count=%d subscriber_count=%d",
+        str(run_id),
+        inserted,
+        subscriber_count,
+    )
 
     return Response(status_code=status.HTTP_202_ACCEPTED)

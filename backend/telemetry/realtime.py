@@ -26,22 +26,27 @@ QUEUE_MAX_SIZE = 500  # Maximum messages before dropping
 
 class BaseBroker(ABC):
     """Abstract base class for metrics brokers."""
-    
+
+    @abstractmethod
+    async def get_subscriber_count(self, run_id: UUID) -> int:
+        """Return the number of subscribers for the given run (for logging)."""
+        pass
+
     @abstractmethod
     async def register(self, run_id: UUID) -> asyncio.Queue:
         """Register a new subscriber queue for the given run."""
         pass
-    
+
     @abstractmethod
     async def unregister(self, run_id: UUID, queue: asyncio.Queue) -> None:
         """Remove subscriber queue from the broker."""
         pass
-    
+
     @abstractmethod
     async def publish(self, run_id: UUID, payload: Dict[str, Any]) -> None:
         """Publish a metrics payload to all subscribers."""
         pass
-    
+
     @abstractmethod
     async def close(self) -> None:
         """Clean up resources."""
@@ -66,6 +71,11 @@ class InMemoryBroker(BaseBroker):
         self._lock = asyncio.Lock()
         self._queue_max_size = queue_max_size
 
+    async def get_subscriber_count(self, run_id: UUID) -> int:
+        """Return the number of subscribers for the given run."""
+        async with self._lock:
+            return len(self._subscribers.get(run_id, set()))
+
     async def register(self, run_id: UUID) -> asyncio.Queue:
         """Register a new subscriber queue for the given run."""
         queue: asyncio.Queue = asyncio.Queue(maxsize=self._queue_max_size)
@@ -89,8 +99,17 @@ class InMemoryBroker(BaseBroker):
         async with self._lock:
             subscribers: Iterable[asyncio.Queue] = list(self._subscribers.get(run_id, set()))
 
-        if not subscribers:
+        n_subscribers = len(subscribers)
+        if not n_subscribers:
             return
+
+        sample_count = len(payload.get("data", [])) if isinstance(payload.get("data"), list) else 0
+        logger.info(
+            "live_broker: broadcast run_id=%s samples=%d subscribers=%d",
+            run_id,
+            sample_count,
+            n_subscribers,
+        )
 
         for queue in subscribers:
             try:
@@ -206,10 +225,25 @@ class RedisBroker(BaseBroker):
         except Exception as e:
             logger.exception("Error in Redis listener loop: %s", e)
 
+    async def get_subscriber_count(self, run_id: UUID) -> int:
+        """Return the number of local subscribers for the given run."""
+        async with self._lock:
+            return len(self._subscribers.get(run_id, set()))
+
     async def _distribute_locally(self, run_id: UUID, payload: Dict[str, Any]) -> None:
         """Distribute message to local subscribers only."""
         async with self._lock:
             subscribers: Iterable[asyncio.Queue] = list(self._subscribers.get(run_id, set()))
+
+        n_subscribers = len(subscribers)
+        if n_subscribers:
+            sample_count = len(payload.get("data", [])) if isinstance(payload.get("data"), list) else 0
+            logger.info(
+                "live_broker: broadcast run_id=%s samples=%d subscribers=%d",
+                run_id,
+                sample_count,
+                n_subscribers,
+            )
 
         for queue in subscribers:
             try:

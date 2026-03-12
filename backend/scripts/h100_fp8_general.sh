@@ -692,20 +692,17 @@ else
     echo "=== Phase 3: CUDA and Development Tools Setup ==="
 
     if [ "$DRY_RUN" = "true" ]; then
-        echo "[DRY-RUN] Would check and install CUDA toolkit"
+        echo "[DRY-RUN] Would check CUDA availability"
     else
+        # Skip installing nvidia-cuda-toolkit (~3-4GB) - vLLM bundles its own CUDA runtime
+        # Only check if system CUDA is available (from NVIDIA driver)
         if command -v nvcc &> /dev/null; then
-            echo "CUDA version:"
+            echo "System CUDA version:"
             nvcc --version || true
         else
-            echo "CUDA not installed yet, proceeding with installation..."
+            echo "System nvcc not found (OK - vLLM bundles its own CUDA runtime)"
         fi
-
-        echo "Installing CUDA Development Toolkit..."
-        run_cmd sudo apt install -y nvidia-cuda-toolkit
-
-        echo "Verifying CUDA installation..."
-        nvcc --version || { echo "❌ ERROR: nvcc missing after install"; exit 1; }
+        echo "✅ Skipping nvidia-cuda-toolkit install (vLLM includes CUDA runtime)"
     fi
 
     mark_phase_complete "cuda_setup"

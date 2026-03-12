@@ -711,7 +711,7 @@ const normalizeAvailability = (cfg, zone) => {
       publicKey: envSSHKey || process.env.REACT_APP_SCW_SSH_PUBLIC_KEY || '',
       sshKeyName: 'runara-key',
       commercialType: preferredType,
-      rootVolumeSize: null,
+      rootVolumeSize: isH100 ? 250 : 150, // GB - vLLM+PyTorch+CUDA~18GB, model~50GB, OS~11GB
       rootVolumeType: isH100 ? 'sbs_volume' : null, // Auto-set sbs_volume for H100
     });
     setScwModalConfigs([]);
@@ -4754,13 +4754,13 @@ const normalizeAvailability = (cfg, zone) => {
             <TextField
               label="Root Volume Size (GB)"
               type="number"
-              placeholder="20"
+              placeholder="150"
               value={scwLaunchForm.rootVolumeSize || ''}
               onChange={(e) => {
                 const value = e.target.value === '' ? null : parseInt(e.target.value, 10);
                 setScwLaunchForm((prev) => ({ ...prev, rootVolumeSize: value }));
               }}
-              helperText={scwLaunchForm.rootVolumeSize ? `${scwLaunchForm.rootVolumeSize} GB` : 'Leave empty for default (20GB)'}
+              helperText={scwLaunchForm.rootVolumeSize ? `${scwLaunchForm.rootVolumeSize} GB` : 'Min 150GB for vLLM + model'}
               inputProps={{ min: 1, step: 1 }}
               sx={{ flex: 1 }}
             />
