@@ -82,6 +82,8 @@ import {
   RocketLaunch as RocketLaunchIcon,
   Speed as SpeedIcon,
   VpnKey as VpnKeyIcon,
+  ArrowForward as ArrowForwardIcon,
+  ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 import apiService, { friendlyError } from '../services/api';
 import SystemBenchmarkDashboard from '../components/SystemBenchmarkDashboard';
@@ -267,6 +269,9 @@ const Benchmarking = () => {
   // Export
   const [exportDialog, setExportDialog] = useState(false);
   
+  // Run Workload wizard step (0 = SSH, 1 = Model, 2 = Workflow)
+  const [activeCardStep, setActiveCardStep] = useState(0);
+
   // Run Workload tab state
   const [rwCloudProvider, setRwCloudProvider] = useState('scaleway'); // 'scaleway'
   const [rwModel, setRwModel] = useState('Llama4-Scout');
@@ -1182,15 +1187,59 @@ const Benchmarking = () => {
                 </Stack>
               </Box>
 
-              {/* SSH Credentials */}
-              <Card sx={{ borderRadius: 3, border: `1px solid ${alpha('#000', 0.1)}` }}>
-                <CardContent sx={{ p: 3 }}>
-                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 3 }}>
-                    <CloudIcon sx={{ color: 'primary.main' }} />
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      SSH Connection Configuration
+              {/* Step Indicator */}
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                {['SSH Connection', 'Model Selection', 'Workflow'].map((label, idx) => (
+                  <Box
+                    key={label}
+                    onClick={() => setActiveCardStep(idx)}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      cursor: 'pointer',
+                      opacity: activeCardStep === idx ? 1 : 0.5,
+                      transition: 'opacity 0.2s',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        backgroundColor: activeCardStep === idx ? '#16a34a' : alpha('#000', 0.1),
+                        color: activeCardStep === idx ? '#fff' : 'text.secondary',
+                      }}
+                    >
+                      {idx + 1}
+                    </Box>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: activeCardStep === idx ? 600 : 400,
+                        display: { xs: 'none', sm: 'block' },
+                      }}
+                    >
+                      {label}
                     </Typography>
-                  </Stack>
+                    {idx < 2 && (
+                      <Box sx={{ width: 24, height: 1, backgroundColor: alpha('#000', 0.15), mx: 0.5 }} />
+                    )}
+                  </Box>
+                ))}
+              </Stack>
+
+              {/* Card 1: SSH Credentials */}
+              {activeCardStep === 0 && (<React.Fragment><Card sx={{ borderRadius: 3, border: `1px solid ${alpha('#000', 0.1)}` }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
+                    SSH Connection Configuration
+                  </Typography>
                   <Grid container spacing={3}>
                   <Grid item xs={12} md={4}>
                     <TextField
@@ -1268,22 +1317,38 @@ const Benchmarking = () => {
                 </Alert>
               )}
 
-              {/* Cloud Provider Tabs */}
+              {/* Next button for step 0 */}
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                <Button
+                  variant="contained"
+                  endIcon={<ArrowForwardIcon />}
+                  onClick={() => setActiveCardStep(1)}
+                  sx={{
+                    backgroundColor: '#16a34a',
+                    color: '#fff',
+                    borderRadius: 2,
+                    fontWeight: 600,
+                    px: 4,
+                    '&:hover': { backgroundColor: '#15803d' },
+                  }}
+                >
+                  Next
+                </Button>
+              </Box>
+              </React.Fragment>)}
 
-              {/* Model Selection */}
+              {/* Card 2: Model Selection */}
+              {activeCardStep === 1 && (<React.Fragment>
               <Card sx={{ borderRadius: 3, border: `1px solid ${alpha('#000', 0.1)}` }}>
                 <CardContent sx={{ p: 3 }}>
-                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 3 }}>
-                    <CloudDownloadIcon sx={{ color: 'primary.main' }} />
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      Model Selection
-                    </Typography>
-                  </Stack>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
+                    Model Selection
+                  </Typography>
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
                     <FormControl fullWidth>
                         <InputLabel>Select Model</InputLabel>
-                      <Select 
+                      <Select
                           value={selectedModel}
                           onChange={(e) => setSelectedModel(e.target.value)}
                           label="Select Model"
@@ -1321,16 +1386,38 @@ const Benchmarking = () => {
                 </CardContent>
               </Card>
 
-              {/* Workflow Stepper */}
+              {/* Back / Next buttons for step 1 */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<ArrowBackIcon />}
+                  onClick={() => setActiveCardStep(0)}
+                  sx={{ borderRadius: 2, fontWeight: 600, px: 4 }}
+                >
+                  Back
+                </Button>
+                <Button
+                  variant="contained"
+                  endIcon={<ArrowForwardIcon />}
+                  onClick={() => setActiveCardStep(2)}
+                  sx={{
+                    backgroundColor: '#16a34a',
+                    color: '#fff',
+                    borderRadius: 2,
+                    fontWeight: 600,
+                    px: 4,
+                    '&:hover': { backgroundColor: '#15803d' },
+                  }}
+                >
+                  Next
+                </Button>
+              </Box>
+              </React.Fragment>)}
+
+              {/* Card 3: Workflow Stepper */}
+              {activeCardStep === 2 && (<React.Fragment>
               <Card sx={{ borderRadius: 3, border: `1px solid ${alpha('#000', 0.1)}` }}>
                 <CardContent sx={{ p: 3 }}>
-                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 4 }}>
-                    <TimelineIcon sx={{ color: 'primary.main' }} />
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      Step-by-Step Workflow
-                            </Typography>
-                      </Stack>
-
                   {/* Phase 1: Setup */}
                   <Card
                     sx={{
@@ -1356,32 +1443,6 @@ const Benchmarking = () => {
                   >
                     <CardContent sx={{ p: 3 }}>
                       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                        <Box
-                          sx={{
-                            p: 1.5,
-                            borderRadius: 2,
-                            backgroundColor: alpha(
-                              workflowSetupStatus.status === 'completed'
-                                ? theme.palette.success.main
-                                : workflowSetupStatus.status === 'running' || workflowSetupStatus.status === 'started'
-                                ? theme.palette.info.main
-                                : theme.palette.primary.main,
-                              0.1
-                            ),
-                          }}
-                        >
-                          <CloudDownloadIcon
-                            sx={{
-                              color:
-                                workflowSetupStatus.status === 'completed'
-                                  ? 'success.main'
-                                  : workflowSetupStatus.status === 'running' || workflowSetupStatus.status === 'started'
-                                  ? 'info.main'
-                                  : 'primary.main',
-                              fontSize: 24,
-                            }}
-                          />
-                        </Box>
                         <Box sx={{ flex: 1 }}>
                           <Stack direction="row" spacing={2} alignItems="center">
                             <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -1596,32 +1657,6 @@ const Benchmarking = () => {
                   >
                     <CardContent sx={{ p: 3 }}>
                       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                        <Box
-                          sx={{
-                            p: 1.5,
-                            borderRadius: 2,
-                            backgroundColor: alpha(
-                              workflowCheckStatus.status === 'completed'
-                                ? theme.palette.success.main
-                                : workflowCheckStatus.status === 'running' || workflowCheckStatus.status === 'started'
-                                ? theme.palette.info.main
-                                : theme.palette.primary.main,
-                              0.1
-                            ),
-                          }}
-                        >
-                          <CheckCircleOutlineIcon
-                            sx={{
-                              color:
-                                workflowCheckStatus.status === 'completed'
-                                  ? 'success.main'
-                                  : workflowCheckStatus.status === 'running' || workflowCheckStatus.status === 'started'
-                                  ? 'info.main'
-                                  : 'primary.main',
-                              fontSize: 24,
-                            }}
-                          />
-                        </Box>
                         <Box sx={{ flex: 1 }}>
                           <Stack direction="row" spacing={2} alignItems="center">
                             <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -1833,32 +1868,6 @@ const Benchmarking = () => {
                   >
                     <CardContent sx={{ p: 3 }}>
                       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                        <Box
-                          sx={{
-                            p: 1.5,
-                            borderRadius: 2,
-                            backgroundColor: alpha(
-                              workflowDeployStatus.status === 'completed'
-                                ? theme.palette.success.main
-                                : workflowDeployStatus.status === 'running' || workflowDeployStatus.status === 'started'
-                                ? theme.palette.info.main
-                                : theme.palette.primary.main,
-                              0.1
-                            ),
-                          }}
-                        >
-                          <RocketLaunchIcon
-                            sx={{
-                              color:
-                                workflowDeployStatus.status === 'completed'
-                                  ? 'success.main'
-                                  : workflowDeployStatus.status === 'running' || workflowDeployStatus.status === 'started'
-                                  ? 'info.main'
-                                  : 'primary.main',
-                              fontSize: 24,
-                            }}
-                          />
-                        </Box>
                         <Box sx={{ flex: 1 }}>
                           <Stack direction="row" spacing={2} alignItems="center">
                             <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -2080,32 +2089,6 @@ const Benchmarking = () => {
                   >
                     <CardContent sx={{ p: 3 }}>
                       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
-                        <Box
-                          sx={{
-                            p: 1.5,
-                            borderRadius: 2,
-                            backgroundColor: alpha(
-                              workflowBenchmarkStatus.status === 'completed'
-                                ? theme.palette.success.main
-                                : workflowBenchmarkStatus.status === 'running' || workflowBenchmarkStatus.status === 'started'
-                                ? theme.palette.info.main
-                                : theme.palette.primary.main,
-                              0.1
-                            ),
-                          }}
-                        >
-                          <SpeedIcon
-                            sx={{
-                              color:
-                                workflowBenchmarkStatus.status === 'completed'
-                                  ? 'success.main'
-                                  : workflowBenchmarkStatus.status === 'running' || workflowBenchmarkStatus.status === 'started'
-                                  ? 'info.main'
-                                  : 'primary.main',
-                              fontSize: 24,
-                            }}
-                          />
-                        </Box>
                         <Box sx={{ flex: 1 }}>
                           <Stack direction="row" spacing={2} alignItems="center">
                             <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -2507,32 +2490,6 @@ const Benchmarking = () => {
                   >
                     <CardContent sx={{ p: 3 }}>
                       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
-                        <Box
-                          sx={{
-                            p: 1.5,
-                            borderRadius: 2,
-                            backgroundColor: alpha(
-                              workflowKernelStatus.status === 'completed'
-                                ? theme.palette.success.main
-                                : workflowKernelStatus.status === 'running' || workflowKernelStatus.status === 'started'
-                                ? theme.palette.info.main
-                                : theme.palette.primary.main,
-                              0.1
-                            ),
-                          }}
-                        >
-                          <SpeedIcon
-                            sx={{
-                              color:
-                                workflowKernelStatus.status === 'completed'
-                                  ? 'success.main'
-                                  : workflowKernelStatus.status === 'running' || workflowKernelStatus.status === 'started'
-                                  ? 'info.main'
-                                  : 'primary.main',
-                              fontSize: 24,
-                            }}
-                          />
-                        </Box>
                         <Box sx={{ flex: 1 }}>
                           <Stack direction="row" spacing={2} alignItems="center">
                             <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -2611,7 +2568,7 @@ const Benchmarking = () => {
                           <Button
                             variant="contained"
                             color="secondary"
-                            startIcon={workflowKernelStatus.loading ? <CircularProgress size={18} color="inherit" /> : <SpeedIcon />}
+                            startIcon={workflowKernelStatus.loading ? <CircularProgress size={18} color="inherit" /> : null}
                             onClick={async () => {
                               try {
                                 setWorkflowKernelStatus({ loading: true, status: 'running', message: 'Starting kernel profiling...', workflowId: null, logs: '', errorDetails: null, runId: null });
@@ -2718,6 +2675,19 @@ const Benchmarking = () => {
                   </Card>
                 </CardContent>
               </Card>
+
+              {/* Back button for step 2 */}
+              <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<ArrowBackIcon />}
+                  onClick={() => setActiveCardStep(1)}
+                  sx={{ borderRadius: 2, fontWeight: 600, px: 4 }}
+                >
+                  Back
+                </Button>
+              </Box>
+              </React.Fragment>)}
             </Stack>
 
       {/* Migrate Workload Dialog */}

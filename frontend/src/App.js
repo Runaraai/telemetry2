@@ -10,7 +10,6 @@ import CommandPalette from './components/ui/CommandPalette';
 import Benchmarking from './pages/Benchmarking';
 import ManageInstances from './pages/ManageInstances';
 import RunningInstances from './pages/RunningInstances';
-import TelemetryHistory from './components/TelemetryHistory';
 import Telemetry from './pages/Telemetry';
 import LoginPage from './pages/Login';
 import OnboardingWizard from './components/OnboardingWizard';
@@ -28,7 +27,6 @@ function Sidebar() {
     { text: 'Run Workload', path: '/profiling' },
     { text: 'Telemetry', path: '/telemetry' },
     { text: 'Running Instances', path: '/running-instances' },
-{ text: 'Telemetry History', path: '/telemetry-history' }
   ];
 
   const isActive = (path) =>
@@ -220,7 +218,6 @@ function AppContent() {
           <Route path="/instances" element={<ProtectedRoute><ManageInstances /></ProtectedRoute>} />
           <Route path="/telemetry" element={<ProtectedRoute><Telemetry /></ProtectedRoute>} />
           <Route path="/running-instances" element={<ProtectedRoute><RunningInstances /></ProtectedRoute>} />
-          <Route path="/telemetry-history" element={<ProtectedRoute><TelemetryHistory /></ProtectedRoute>} />
           <Route path="/login" element={<Navigate to="/" replace />} />
         </Routes>
         </Box>

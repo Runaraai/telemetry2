@@ -19,7 +19,7 @@ export default function Telemetry() {
     <Box>
       <TelemetryTab
         instanceData={instanceData}
-        onNavigateToInstances={() => navigate('/instances')}
+        onNavigateToInstances={() => navigate('/running-instances')}
       />
     </Box>
   );

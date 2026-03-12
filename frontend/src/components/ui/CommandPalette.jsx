@@ -18,7 +18,6 @@ const QUICK_ACTIONS = [
   { label: 'Go to Run Workload', path: '/profiling' },
   { label: 'Telemetry', path: '/telemetry' },
   { label: 'Manage Instances', path: '/instances' },
-  { label: 'Telemetry History', path: '/telemetry-history' },
   { label: 'Refresh page', action: 'refresh' },
 ];
 

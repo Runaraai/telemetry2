@@ -7,7 +7,6 @@ const LABELS = {
   '/profiling': 'Run Workload',
   '/telemetry': 'Telemetry',
   '/instances': 'Manage Instances',
-  '/telemetry-history': 'Telemetry History',
 };
 
 export default function BreadcrumbsBar() {

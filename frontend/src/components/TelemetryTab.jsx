@@ -25,8 +25,6 @@ import {
   Paper,
   Select,
   Stack,
-  ToggleButton,
-  ToggleButtonGroup,
   Switch,
   TextField,
   Tooltip,
@@ -67,7 +65,6 @@ import {
 } from 'recharts';
 import apiService, { telemetryUtils, friendlyError } from '../services/api';
 import AIInsightsBox from './AIInsightsBox';
-import SMMetricsOverlay from './SMMetricsOverlay';
 
 // ============================================================================
 // SUB-COMPONENTS
@@ -743,18 +740,11 @@ const ENTERPRISE_METRIC_IDS = new Set([
 ]);
 
 const MetricChartComponent = ({ title, metricKey, unit, domain, data, gpuIds, icon: IconComponent, description, activeRun, sshHost, sshUser, sshKey }) => {
-  // Token metrics are application-level, not per-GPU
   const isTokenMetric = ['tokens_per_second', 'requests_per_second', 'ttft_p50_ms', 'ttft_p95_ms', 'cost_per_watt'].includes(metricKey);
   const theme = useTheme();
-  
-  // State for SM view toggle
-  const [smViewEnabled, setSmViewEnabled] = React.useState(false);
-  const [smSession, setSmSession] = React.useState(null);
-  const [smData, setSmData] = React.useState(null);
-  const [smLoading, setSmLoading] = React.useState(false);
-  const [smError, setSmError] = React.useState('');
-  
-  // Enhanced color palette with gradients
+  const [expanded, setExpanded] = React.useState(false);
+  const cardRef = React.useRef(null);
+
   const getGradientColors = (baseColor, index) => {
     const gradients = [
       { start: '#818cf8', end: '#a5b4fc' },
@@ -769,406 +759,331 @@ const MetricChartComponent = ({ title, metricKey, unit, domain, data, gpuIds, ic
     return gradients[index % gradients.length];
   };
 
-  // Poll for SM profiling results
-  const pollForSMResults = React.useCallback(async (sessionId) => {
-    const maxPolls = 60; // 5 minutes max (60 polls * 5 seconds)
-    for (let i = 0; i < maxPolls; i++) {
-      try {
-        const status = await apiService.getSMProfilingStatus(sessionId);
-        
-        if (status.status === 'completed') {
-          const results = await apiService.getSMMetrics(sessionId, metricKey);
-          setSmData(results);
-          setSmLoading(false);
-          return;
-        } else if (status.status === 'failed') {
-          setSmError(status.error_message || 'Profiling failed');
-          setSmLoading(false);
-          return;
-        }
-        
-        // Still running, wait and poll again
-        await new Promise(r => setTimeout(r, 5000)); // Poll every 5 seconds
-      } catch (err) {
-        console.error('Error polling SM profiling status:', err);
-        setSmError('Failed to poll profiling status: ' + err.message);
-        setSmLoading(false);
-        return;
+  // Compute current value, previous value, and trend
+  const { currentValue, trendPercent, trendDirection, sparklineData } = React.useMemo(() => {
+    if (!data.length) return { currentValue: null, trendPercent: 0, trendDirection: 'flat', sparklineData: [] };
+
+    // Get the last N points for sparkline
+    const sparkPoints = data.slice(-20);
+
+    // Extract values
+    const getVal = (point) => {
+      if (isTokenMetric) return point[metricKey];
+      if (gpuIds.length > 0) return point[`gpu_${gpuIds[0]}_${metricKey}`];
+      return null;
+    };
+
+    const values = data.map(getVal).filter((v) => v != null && !isNaN(v));
+    const current = values.length > 0 ? values[values.length - 1] : null;
+
+    // Compute trend: compare last value to value ~25% back in the series
+    let trend = 0;
+    let direction = 'flat';
+    if (values.length >= 2) {
+      const compareIdx = Math.max(0, Math.floor(values.length * 0.75));
+      const prev = values[compareIdx];
+      if (prev !== 0) {
+        trend = ((current - prev) / Math.abs(prev)) * 100;
+        direction = trend > 1 ? 'up' : trend < -1 ? 'down' : 'flat';
       }
     }
-    
-    // Timeout
-    setSmError('Profiling timeout - please try again');
-    setSmLoading(false);
-  }, [metricKey]);
 
-  // Handle toggle SM view
-  const handleToggleSMView = React.useCallback(async () => {
-    if (!smViewEnabled) {
-      // Enabling SM view - trigger profiling
-      setSmLoading(true);
-      setSmError('');
-      setSmData(null);
-      
-      try {
-        if (!activeRun || !activeRun.run_id) {
-          throw new Error('No active run available - cannot trigger profiling');
-        }
+    return {
+      currentValue: current,
+      trendPercent: Math.abs(trend),
+      trendDirection: direction,
+      sparklineData: sparkPoints,
+    };
+  }, [data, metricKey, isTokenMetric, gpuIds]);
 
-        if (!sshHost || !sshKey) {
-          throw new Error('SSH credentials not configured. Please configure SSH host and key in the deployment settings.');
-        }
+  const formatValue = (val) => {
+    if (val == null) return '--';
+    if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `${(val / 1000).toFixed(1)}k`;
+    if (val >= 100) return Math.round(val).toString();
+    if (val >= 10) return val.toFixed(1);
+    return val.toFixed(2);
+  };
 
-        const session = await apiService.triggerSMProfiling({
-          run_id: activeRun.run_id,
-          gpu_id: gpuIds[0] || 0,
-          metric_name: metricKey,
-          ssh_host: sshHost,
-          ssh_user: sshUser || 'ubuntu',
-          ssh_key: sshKey,
-        });
-        
-        setSmSession(session);
-        setSmViewEnabled(true);
-        
-        // Start polling for results
-        pollForSMResults(session.session_id);
-      } catch (err) {
-        console.error('Failed to trigger SM profiling:', err);
-        setSmError('SM profiling requires SSH configuration. Feature available in enterprise mode.');
-        setSmLoading(false);
-      }
-    } else {
-      // Disabling SM view
-      setSmViewEnabled(false);
-      setSmData(null);
-      setSmError('');
-    }
-  }, [smViewEnabled, metricKey, gpuIds, pollForSMResults, activeRun]);
+  const trendColor =
+    trendDirection === 'up' ? theme.palette.success.main :
+    trendDirection === 'down' ? theme.palette.error.main :
+    theme.palette.text.secondary;
 
-  if (!data.length) {
-    return (
-      <Card 
-        sx={{ 
-          borderRadius: '8px',
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-        }}
-      >
-        <CardHeader 
-          avatar={
-            IconComponent ? (
-              <Box
-                sx={{
-                  p: 1,
-                  borderRadius: '8px',
-                  backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <IconComponent sx={{ color: theme.palette.primary.main, fontSize: 20 }} />
-              </Box>
-            ) : null
-          }
-          title={
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              {title}
-            </Typography>
-          }
-          subheader={
-            unit ? (
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
-                Unit: {unit}
-              </Typography>
-            ) : undefined
-          }
-          action={
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              <Tooltip title={smViewEnabled ? "Hide SM-level view" : "Show SM-level profiling (per-SM breakdown)"} arrow placement="top">
-                <span>
-                  <Button
-                    size="small"
-                    variant={smViewEnabled ? "contained" : "outlined"}
-                    color={smViewEnabled ? "primary" : "default"}
-                    onClick={handleToggleSMView}
-                    disabled={smLoading || !activeRun}
-                    startIcon={smLoading ? <CircularProgress size={14} /> : null}
-                    sx={{ 
-                      fontSize: '0.75rem',
-                      textTransform: 'none',
-                      minWidth: 80,
-                      height: 28,
-                      borderRadius: '8px',
-                    }}
-                  >
-                    {smLoading ? 'Profiling...' : 'SM View'}
-                  </Button>
-                </span>
-              </Tooltip>
-              {description && (
-              <Tooltip title={description} arrow placement="top">
-                <IconButton size="small" sx={{ borderRadius: '4px' }}>
-                  <InfoIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              )}
-            </Box>
-          }
-          sx={{ pb: 1 }}
-        />
-        <CardContent>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              py: 4,
-              minHeight: 200,
-            }}
-          >
-            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-              No data available yet. Start monitoring to see metrics.
-          </Typography>
-          </Box>
-        </CardContent>
-      </Card>
-    );
-  }
+  const sparklineColor = trendDirection === 'up' ? '#4caf50' : trendDirection === 'down' ? '#ef5350' : '#818cf8';
+
+  // Unique gradient ID to avoid SVG conflicts
+  const gradientId = `spark-${metricKey}-${gpuIds?.[0] ?? 'token'}`;
+
+  const handleClick = React.useCallback((e) => {
+    e.stopPropagation();
+    setExpanded((prev) => !prev);
+  }, []);
+
+  const hasData = data.length > 0;
 
   return (
-    <Card 
-      sx={{ 
-        borderRadius: '8px',
-        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-        transition: 'all 0.3s ease',
-        '&:hover': {
-          boxShadow: theme.shadows[8],
+    <Card
+      ref={cardRef}
+      sx={{
+        borderRadius: '16px',
+        border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+        transition: 'all 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+        '&:hover': expanded ? {} : {
+          boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.12)}`,
+          transform: 'translateY(-2px)',
+          borderColor: alpha(theme.palette.primary.main, 0.2),
         },
+        overflow: 'hidden',
       }}
     >
-      <CardHeader
-        avatar={
-          IconComponent ? (
+      {/* Stat Card Header — always visible, clickable */}
+      <CardContent
+        onClick={handleClick}
+        sx={{
+          p: 2.5,
+          pb: expanded ? 1.5 : 2.5,
+          '&:last-child': { pb: expanded ? 1.5 : 2.5 },
+          cursor: 'pointer',
+          transition: 'padding 0.3s ease',
+          userSelect: 'none',
+        }}
+      >
+        <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+          <Box sx={{ flex: 1 }}>
+            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.8rem' }}>
+                {title}
+                {unit && <Typography component="span" variant="caption" sx={{ ml: 0.5, opacity: 0.6 }}>/ {unit}</Typography>}
+              </Typography>
+              {description && (
+                <Tooltip title={description} arrow placement="top">
+                  <InfoIcon sx={{ fontSize: 14, color: 'text.disabled', cursor: 'help' }} onClick={(e) => e.stopPropagation()} />
+                </Tooltip>
+              )}
+            </Stack>
+            <Stack direction="row" alignItems="baseline" spacing={1.5}>
+              <Typography
+                variant="h4"
+                sx={{
+                  fontWeight: 800,
+                  lineHeight: 1.1,
+                  transition: 'all 0.3s ease',
+                  fontSize: expanded ? '1.75rem' : '2.125rem',
+                }}
+              >
+                {hasData ? formatValue(currentValue) : '--'}
+              </Typography>
+              {hasData && trendDirection !== 'flat' && (
+                <Chip
+                  size="small"
+                  label={`${trendDirection === 'up' ? '+' : '-'}${trendPercent.toFixed(0)}%`}
+                  sx={{
+                    height: 22,
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    backgroundColor: alpha(trendColor, 0.1),
+                    color: trendColor,
+                    borderRadius: '6px',
+                    '& .MuiChip-label': { px: 0.75 },
+                  }}
+                />
+              )}
+              {!hasData && (
+                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                  No data yet
+                </Typography>
+              )}
+            </Stack>
+          </Box>
+
+          {/* Mini sparkline in stat view */}
+          {!expanded && hasData && (
             <Box
               sx={{
-                p: 1,
-                borderRadius: '8px',
-                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                width: 100,
+                height: 48,
+                opacity: 1,
+                transition: 'opacity 0.3s ease',
+                flexShrink: 0,
+                mt: 1,
+                pointerEvents: 'none',
+              }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={sparklineData} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+                  <defs>
+                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={sparklineColor} stopOpacity={0.3} />
+                      <stop offset="95%" stopColor={sparklineColor} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <Area
+                    type="monotone"
+                    dataKey={isTokenMetric ? metricKey : `gpu_${gpuIds[0]}_${metricKey}`}
+                    stroke={sparklineColor}
+                    fill={`url(#${gradientId})`}
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    connectNulls
+                    isAnimationActive={false}
+                    dot={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </Box>
+          )}
+        </Stack>
+      </CardContent>
+
+      {/* Expanded chart section — animates in/out */}
+      <Box
+        sx={{
+          maxHeight: expanded ? 600 : 0,
+          opacity: expanded ? 1 : 0,
+          overflow: 'hidden',
+          transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease',
+        }}
+      >
+        {hasData ? (
+          <>
+            <CardContent sx={{ pt: 0, px: 2.5, height: 320 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data} margin={{ top: 12, right: 20, bottom: 12, left: 8 }}>
+                  <defs>
+                    {isTokenMetric ? (
+                      <linearGradient key="gradient-token" id={`gradient-token-${metricKey}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={theme.palette.primary.main} stopOpacity={0.3} />
+                        <stop offset="95%" stopColor={theme.palette.primary.main} stopOpacity={0.05} />
+                      </linearGradient>
+                    ) : (
+                      gpuIds.map((id, index) => {
+                        const colors = getGradientColors(COLOR_PALETTE[index % COLOR_PALETTE.length], index);
+                        return (
+                          <linearGradient key={`gradient-${id}-${metricKey}`} id={`gradient-${id}-${metricKey}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={colors.start} stopOpacity={0.3} />
+                            <stop offset="95%" stopColor={colors.end} stopOpacity={0.05} />
+                          </linearGradient>
+                        );
+                      })
+                    )}
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={alpha(theme.palette.divider, 0.3)} vertical={false} />
+                  <XAxis
+                    dataKey="timeLabel"
+                    minTickGap={24}
+                    stroke={theme.palette.text.secondary}
+                    tick={{ fontSize: 12, fill: theme.palette.text.secondary }}
+                    axisLine={{ stroke: alpha(theme.palette.divider, 0.5) }}
+                  />
+                  <YAxis
+                    domain={domain || ['auto', 'auto']}
+                    stroke={theme.palette.text.secondary}
+                    tick={{ fontSize: 12, fill: theme.palette.text.secondary }}
+                    axisLine={{ stroke: alpha(theme.palette.divider, 0.5) }}
+                  />
+                  <RechartsTooltip
+                    contentStyle={{
+                      backgroundColor: theme.palette.background.paper,
+                      border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                      borderRadius: 8,
+                      boxShadow: theme.shadows[4],
+                      padding: '8px 12px',
+                    }}
+                    labelStyle={{ color: theme.palette.text.primary, fontWeight: 600, marginBottom: 4 }}
+                    itemStyle={{ color: theme.palette.text.secondary, padding: '2px 0' }}
+                    cursor={{ stroke: alpha(theme.palette.primary.main, 0.3), strokeWidth: 1 }}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: 8 }} iconType="line" iconSize={12} />
+                  {isTokenMetric ? (
+                    <Area
+                      key="token-metric"
+                      type="monotone"
+                      dataKey={metricKey}
+                      name={title}
+                      stroke={theme.palette.primary.main}
+                      fill={`url(#gradient-token-${metricKey})`}
+                      strokeWidth={2.5}
+                      fillOpacity={1}
+                      connectNulls
+                      isAnimationActive={true}
+                      animationDuration={500}
+                      activeDot={{ r: 5, fill: theme.palette.primary.main, strokeWidth: 2, stroke: theme.palette.background.paper }}
+                    />
+                  ) : (
+                    gpuIds.map((id, index) => {
+                      const colors = getGradientColors(COLOR_PALETTE[index % COLOR_PALETTE.length], index);
+                      return (
+                        <Area
+                          key={`gpu-${id}`}
+                          type="monotone"
+                          dataKey={`gpu_${id}_${metricKey}`}
+                          name={`GPU ${id}`}
+                          stroke={colors.start}
+                          fill={`url(#gradient-${id}-${metricKey})`}
+                          strokeWidth={2.5}
+                          fillOpacity={1}
+                          connectNulls
+                          isAnimationActive={true}
+                          animationDuration={500}
+                          activeDot={{ r: 5, fill: colors.start, strokeWidth: 2, stroke: theme.palette.background.paper }}
+                        />
+                      );
+                    })
+                  )}
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+
+            <CardContent sx={{ pt: 0, pb: 2, px: 2.5 }}>
+              <AIInsightsBox metricName={title} metricKey={metricKey} unit={unit} data={data} gpuIds={gpuIds} />
+            </CardContent>
+          </>
+        ) : (
+          <CardContent sx={{ pt: 0, px: 2.5 }}>
+            <Box
+              sx={{
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
+                py: 6,
+                borderTop: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
               }}
             >
-              <IconComponent sx={{ color: theme.palette.primary.main, fontSize: 20 }} />
-            </Box>
-          ) : null
-        }
-        title={
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            {title}
-          </Typography>
-        }
-        subheader={
-          unit ? (
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
-              Unit: {unit}
-            </Typography>
-          ) : undefined
-        }
-        action={
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <Tooltip title={smViewEnabled ? "Hide SM-level view" : "Show SM-level profiling (per-SM breakdown)"} arrow placement="top">
-              <span>
-                <Button
-                  size="small"
-                  variant={smViewEnabled ? "contained" : "outlined"}
-                  color={smViewEnabled ? "primary" : "default"}
-                  onClick={handleToggleSMView}
-                  disabled={smLoading || !activeRun}
-                  startIcon={smLoading ? <CircularProgress size={14} /> : null}
-                  sx={{ 
-                    fontSize: '0.75rem',
-                    textTransform: 'none',
-                    minWidth: 80,
-                    height: 28,
-                    borderRadius: '8px',
-                  }}
-                >
-                  {smLoading ? 'Profiling...' : 'SM View'}
-                </Button>
-              </span>
-            </Tooltip>
-            {description && (
-            <Tooltip title={description} arrow placement="top">
-              <IconButton size="small" sx={{ borderRadius: 1 }}>
-                <InfoIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            )}
-          </Box>
-        }
-        sx={{ pb: 1 }}
-      />
-      <CardContent sx={{ height: 320, pt: 0 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart 
-            data={data} 
-            margin={{ top: 12, right: 20, bottom: 12, left: 8 }}
-          >
-            <defs>
-              {isTokenMetric ? (
-                // Single gradient for token metrics
-                <linearGradient key="gradient-token" id="gradient-token" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={theme.palette.primary.main} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={theme.palette.primary.main} stopOpacity={0.05} />
-                </linearGradient>
-              ) : (
-                // Per-GPU gradients
-                gpuIds.map((id, index) => {
-                  const colors = getGradientColors(COLOR_PALETTE[index % COLOR_PALETTE.length], index);
-                  return (
-                    <linearGradient key={`gradient-${id}`} id={`gradient-${id}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={colors.start} stopOpacity={0.3} />
-                      <stop offset="95%" stopColor={colors.end} stopOpacity={0.05} />
-                    </linearGradient>
-                  );
-                })
-              )}
-            </defs>
-            <CartesianGrid 
-              strokeDasharray="3 3" 
-              stroke={alpha(theme.palette.divider, 0.3)}
-              vertical={false}
-            />
-            <XAxis 
-              dataKey="timeLabel" 
-              minTickGap={24}
-              stroke={theme.palette.text.secondary}
-              tick={{ fontSize: 12, fill: theme.palette.text.secondary }}
-              axisLine={{ stroke: alpha(theme.palette.divider, 0.5) }}
-            />
-            <YAxis 
-              domain={domain || ['auto', 'auto']}
-              stroke={theme.palette.text.secondary}
-              tick={{ fontSize: 12, fill: theme.palette.text.secondary }}
-              axisLine={{ stroke: alpha(theme.palette.divider, 0.5) }}
-            />
-            <RechartsTooltip 
-              contentStyle={{
-                backgroundColor: theme.palette.background.paper,
-                border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-                borderRadius: 8,
-                boxShadow: theme.shadows[4],
-                padding: '8px 12px',
-              }}
-              labelStyle={{
-                color: theme.palette.text.primary,
-                fontWeight: 600,
-                marginBottom: 4,
-              }}
-              itemStyle={{
-                color: theme.palette.text.secondary,
-                padding: '2px 0',
-              }}
-              cursor={{ stroke: alpha(theme.palette.primary.main, 0.3), strokeWidth: 1 }}
-            />
-            <Legend 
-              wrapperStyle={{ paddingTop: 8 }}
-              iconType="line"
-              iconSize={12}
-            />
-            {isTokenMetric ? (
-              // Token metrics are application-level - show as single line
-              <Area
-                key="token-metric"
-                type="monotone"
-                dataKey={metricKey}
-                name={title}
-                stroke={theme.palette.primary.main}
-                fill={`url(#gradient-token)`}
-                strokeWidth={2.5}
-                fillOpacity={1}
-                connectNulls
-                isAnimationActive={true}
-                animationDuration={300}
-                activeDot={{ r: 5, fill: theme.palette.primary.main, strokeWidth: 2, stroke: theme.palette.background.paper }}
-              />
-            ) : (
-              // GPU metrics - show per-GPU
-              gpuIds.map((id, index) => {
-                const colors = getGradientColors(COLOR_PALETTE[index % COLOR_PALETTE.length], index);
-                return (
-                  <Area
-                    key={`gpu-${id}`}
-                type="monotone"
-                dataKey={`gpu_${id}_${metricKey}`}
-                name={`GPU ${id}`}
-                    stroke={colors.start}
-                    fill={`url(#gradient-${id})`}
-                    strokeWidth={2.5}
-                    fillOpacity={1}
-                connectNulls
-                    isAnimationActive={true}
-                    animationDuration={300}
-                    activeDot={{ r: 5, fill: colors.start, strokeWidth: 2, stroke: theme.palette.background.paper }}
-              />
-                );
-              })
-            )}
-          </AreaChart>
-        </ResponsiveContainer>
-      </CardContent>
-      
-      {/* SM View Section - Only shown when toggle is ON */}
-      {smViewEnabled && (
-        <CardContent 
-          sx={{ 
-            pt: 0, 
-            borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            mt: 1,
-          }}
-        >
-          {smLoading && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 3 }}>
-              <CircularProgress size={24} />
-              <Typography variant="body2" color="text.secondary">
-                Running Nsight Compute profiling to collect per-SM metrics...
+              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                No data available yet. Start monitoring to see the time-series chart.
               </Typography>
             </Box>
-          )}
-          
-          {smError && (
-            <Alert 
-              severity="warning" 
-              sx={{ mb: 2, borderRadius: '8px' }} 
-              onClose={() => setSmError('')}
-            >
-              {smError}
-            </Alert>
-          )}
-          
-          {smData && !smLoading && (
-            <SMMetricsOverlay
-              gpuData={data}
-              smData={smData}
-              unit={unit}
-              domain={domain}
-            />
-          )}
-        </CardContent>
+          </CardContent>
+        )}
+      </Box>
+
+      {/* Collapse bar when expanded */}
+      {expanded && (
+        <Box
+          onClick={handleClick}
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            py: 1,
+            cursor: 'pointer',
+            '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.04) },
+            transition: 'background-color 0.2s ease',
+          }}
+        >
+          <Box
+            sx={{
+              width: 40,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: alpha(theme.palette.text.secondary, 0.2),
+              transition: 'background-color 0.2s ease',
+              '&:hover': { backgroundColor: alpha(theme.palette.text.secondary, 0.4) },
+            }}
+          />
+        </Box>
       )}
-      
-      <CardContent sx={{ pt: 0, pb: 2 }}>
-        <AIInsightsBox
-          metricName={title}
-          metricKey={metricKey}
-          unit={unit}
-          data={data}
-          gpuIds={gpuIds}
-        />
-      </CardContent>
     </Card>
   );
 };
@@ -1225,7 +1140,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
   const [deploymentJobs, setDeploymentJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [queueStats, setQueueStats] = useState(null);
-  const [metricView, setMetricView] = useState('enterprise'); // 'enterprise' | 'infra'
+  const [metricView] = useState('infra');
   const [activityLog, setActivityLog] = useState([]);
   const [profilingResult, setProfilingResult] = useState(null);
   const [profilingResultRunId, setProfilingResultRunId] = useState(null);
@@ -1332,12 +1247,8 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
   }, []);
 
   const metricsToRender = useMemo(() => {
-    const base =
-      metricView === 'enterprise'
-        ? METRIC_DEFINITIONS.filter((m) => ENTERPRISE_METRIC_IDS.has(m.id))
-        : METRIC_DEFINITIONS;
-    return base.filter((m) => metricToggles[m.id] !== false);
-  }, [metricView, metricToggles]);
+    return METRIC_DEFINITIONS.filter((m) => metricToggles[m.id] !== false);
+  }, [metricToggles]);
 
   const websocketRef = useRef(null);
   const deploymentPollRef = useRef(null);
@@ -2304,23 +2215,23 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
 
         {!instanceId && (
           <Alert
-            severity="info"
+            severity="success"
+            sx={{ alignItems: 'center', '& .MuiAlert-action': { pt: 0, alignItems: 'center' } }}
             action={
               onNavigateToInstances ? (
-                <Button color="inherit" size="small" onClick={onNavigateToInstances}>
-                  Manage Instances
+                <Button variant="outlined" color="secondary" size="small" sx={{ backgroundColor: '#fff', color: '#000' }} onClick={onNavigateToInstances}>
+                  Running Instances
                 </Button>
               ) : null
             }
           >
-            Select an instance from Manage Instances to get started.
+            Select a run from Running Instances to get started.
           </Alert>
         )}
 
 
         <Card variant="outlined" sx={{ borderRadius: '8px' }}>
           <CardHeader
-            avatar={<CloudIcon color="primary" />}
             title={<Typography variant="h6" sx={{ fontWeight: 600 }}>Instance Connection</Typography>}
             subheader={instanceId || 'No instance selected'}
             action={activeStatusChip}
@@ -2470,16 +2381,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
             >
               Stop Monitoring
             </Button>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={preserveData}
-                  onChange={(e) => setPreserveData(e.target.checked)}
-                  color="primary"
-                />
-              }
-              label="Preserve Prometheus data on teardown"
-            />
             <Box sx={{ flexGrow: 1 }} />
             <Button startIcon={<ReplayIcon />} onClick={handleRefreshRuns}>
               Refresh Runs
@@ -3139,70 +3040,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                   Monitor GPU performance metrics in real-time
                 </Typography>
               </Box>
-              <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
-                <ToggleButtonGroup
-                  size="small"
-                  value={metricView}
-                  exclusive
-                  onChange={(e, val) => val && setMetricView(val)}
-                  sx={{ borderRadius: 2 }}
-                >
-                  <ToggleButton value="enterprise" sx={{ textTransform: 'none', px: 1.5 }}>
-                    Executive View
-                  </ToggleButton>
-                  <ToggleButton value="infra" sx={{ textTransform: 'none', px: 1.5 }}>
-                    Deep Infra View
-                  </ToggleButton>
-                </ToggleButtonGroup>
-                <Button 
-                  size="small" 
-                  variant="outlined"
-                  onClick={handleShowAllMetrics}
-                  sx={{ borderRadius: 2 }}
-                >
-              Show All
-            </Button>
-                <Button 
-                  size="small" 
-                  variant="outlined"
-                  onClick={handleHideAllMetrics}
-                  sx={{ borderRadius: 2 }}
-                >
-              Hide All
-            </Button>
-            <FormControl size="small" sx={{ minWidth: 200 }}>
-              <InputLabel>Toggle Metrics</InputLabel>
-              <Select
-                value=""
-                label="Toggle Metrics"
-                onChange={(e) => {
-                  const metricId = e.target.value;
-                  if (metricId) {
-                    handleToggleMetric(metricId);
-                    e.target.value = '';
-                  }
-                }}
-                    sx={{ borderRadius: '8px' }}
-              >
-                {METRIC_DEFINITIONS.map((metric) => (
-                  <MenuItem key={metric.id} value={metric.id}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={metricToggles[metric.id] !== false}
-                          size="small"
-                          onChange={() => handleToggleMetric(metric.id)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      }
-                      label={metric.title}
-                      sx={{ m: 0 }}
-                    />
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-              </Stack>
             </Stack>
           </CardContent>
         </Card>
@@ -3304,91 +3141,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           })}
         </Grid>
 
-        <Stack direction="row" alignItems="center" justifyContent="space-between">
-          <Typography variant="h6">Historical Runs</Typography>
-          {runsLoading && <CircularProgress size={20} />}
-        </Stack>
-
-        {runs.length === 0 && !runsLoading ? (
-          <Alert severity="info">No telemetry runs recorded for this instance yet.</Alert>
-        ) : (
-          <Card variant="outlined">
-            <CardContent>
-              <Box
-                sx={{
-                  overflowX: 'auto',
-                  overflowY: 'hidden',
-                  '&::-webkit-scrollbar': {
-                    height: 8,
-                  },
-                  '&::-webkit-scrollbar-track': {
-                    backgroundColor: alpha(theme.palette.divider, 0.1),
-                    borderRadius: '4px',
-                  },
-                  '&::-webkit-scrollbar-thumb': {
-                    backgroundColor: alpha(theme.palette.text.secondary, 0.3),
-                    borderRadius: '4px',
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.text.secondary, 0.5),
-                    },
-                  },
-                }}
-              >
-                <Grid container spacing={2} sx={{ minWidth: 'max-content' }}>
-                  {runs.map((run) => (
-                    <Grid item xs={12} md={6} lg={4} key={run.run_id} sx={{ minWidth: 280 }}>
-                    <Card
-                      variant={selectedHistoricalRun?.run_id === run.run_id ? 'outlined' : 'elevation'}
-                      sx={{ height: '100%' }}
-                    >
-                      <CardContent>
-                        <Stack spacing={1}>
-                          <Typography variant="subtitle2" sx={{ fontFamily: 'monospace' }}>
-                            {run.run_id}
-                          </Typography>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <Chip
-                              size="small"
-                              color={
-                                run.status === 'active'
-                                  ? 'success'
-                                  : run.status === 'failed'
-                                  ? 'error'
-                                  : 'default'
-                              }
-                              label={run.status}
-                            />
-                            {run.summary?.avg_gpu_utilization != null && (
-                              <Chip
-                                size="small"
-                                color="primary"
-                                label={`Avg Util: ${run.summary.avg_gpu_utilization.toFixed(1)}%`}
-                              />
-                            )}
-                          </Stack>
-                          <Typography variant="body2" color="text.secondary">
-                            Started: {telemetryUtils.parseTimestamp(run.start_time)?.toLocaleString()}
-                          </Typography>
-                          {run.end_time && (
-                            <Typography variant="body2" color="text.secondary">
-                              Ended: {telemetryUtils.parseTimestamp(run.end_time)?.toLocaleString()}
-                            </Typography>
-                          )}
-                        </Stack>
-                      </CardContent>
-                      <CardActions>
-                        <Button size="small" onClick={() => selectHistoricalRun(run)}>
-                          View Metrics
-                        </Button>
-                      </CardActions>
-                    </Card>
-                  </Grid>
-                ))}
-                </Grid>
-              </Box>
-            </CardContent>
-          </Card>
-        )}
 
         {selectedHistoricalRun && (
           <Card 
@@ -3509,70 +3261,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                               View past performance metrics for this run
                             </Typography>
                           </Box>
-                          <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
-                            <ToggleButtonGroup
-                              size="small"
-                              value={metricView}
-                              exclusive
-                              onChange={(e, val) => val && setMetricView(val)}
-                              sx={{ borderRadius: 2 }}
-                            >
-                              <ToggleButton value="enterprise" sx={{ textTransform: 'none', px: 1.5 }}>
-                                Executive View
-                              </ToggleButton>
-                              <ToggleButton value="infra" sx={{ textTransform: 'none', px: 1.5 }}>
-                                Deep Infra View
-                              </ToggleButton>
-                            </ToggleButtonGroup>
-                            <Button 
-                              size="small" 
-                              variant="outlined"
-                              onClick={handleShowAllMetrics}
-                              sx={{ borderRadius: '8px' }}
-                            >
-                          Show All
-                        </Button>
-                            <Button 
-                              size="small" 
-                              variant="outlined"
-                              onClick={handleHideAllMetrics}
-                              sx={{ borderRadius: '8px' }}
-                            >
-                          Hide All
-                        </Button>
-                        <FormControl size="small" sx={{ minWidth: 200 }}>
-                          <InputLabel>Toggle Metrics</InputLabel>
-                          <Select
-                            value=""
-                            label="Toggle Metrics"
-                            onChange={(e) => {
-                              const metricId = e.target.value;
-                              if (metricId) {
-                                handleToggleMetric(metricId);
-                                e.target.value = '';
-                              }
-                            }}
-                                sx={{ borderRadius: '8px' }}
-                          >
-                            {METRIC_DEFINITIONS.map((metric) => (
-                              <MenuItem key={metric.id} value={metric.id}>
-                                <FormControlLabel
-                                  control={
-                                    <Switch
-                                      checked={metricToggles[metric.id] !== false}
-                                      size="small"
-                                      onChange={() => handleToggleMetric(metric.id)}
-                                      onClick={(e) => e.stopPropagation()}
-                                    />
-                                  }
-                                  label={metric.historicalTitle || metric.title}
-                                  sx={{ m: 0 }}
-                                />
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                          </Stack>
                         </Stack>
                       </CardContent>
                     </Card>
