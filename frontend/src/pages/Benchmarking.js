@@ -2770,7 +2770,7 @@ const Benchmarking = () => {
                                 }}
                               >
                                 <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                  {workflowBenchmarkStatus.logs || '(Waiting for output...)'}
+                                  {workflowBenchmarkStatus.logs || workflowBenchmarkStatus.message || '(Waiting for output...)'}
                                 </pre>
                               </Paper>
                             </AccordionDetails>

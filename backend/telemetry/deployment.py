@@ -1884,10 +1884,18 @@ volumes:
                 log_info "NVIDIA Container Toolkit not functional, installing..."
                 
                 # Fix broken apt state (common on fresh Scaleway/cloud images)
-                # Use --force-overwrite to resolve nvidia-kernel-common vs nvidia-firmware conflicts
+                # Remove nvidia-firmware-*-server packages that conflict with nvidia-kernel-common
+                # (Scaleway bare-metal ships these server variants which block DKMS module builds)
+                log_info "Removing conflicting nvidia-firmware-*-server packages if present..."
+                for pkg in $(dpkg -l 2>/dev/null | grep "^ii.*nvidia-firmware-.*-server" | awk '{print $2}'); do
+                    log_info "Removing conflicting package: $pkg"
+                    sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y --purge "$pkg" 2>/dev/null || \
+                        sudo dpkg --remove --force-remove-reinstreq "$pkg" 2>/dev/null || true
+                done
+                # Use --force-overwrite to resolve any remaining nvidia-kernel-common vs nvidia-firmware conflicts
                 log_info "Fixing broken package dependencies..."
                 sudo dpkg --force-overwrite --configure -a 2>&1 || true
-                sudo apt-get --fix-broken install -y 2>&1 || true
+                sudo DEBIAN_FRONTEND=noninteractive apt-get --fix-broken install -y 2>&1 || true
                 sudo apt-get autoremove -y 2>&1 || true
                 
                 distribution=$(. /etc/os-release; echo $ID$VERSION_ID)

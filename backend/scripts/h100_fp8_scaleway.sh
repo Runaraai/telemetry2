@@ -249,6 +249,25 @@ else
     echo "✅ Driver is working correctly"
     nvidia-smi
     nvidia-smi topo -m
+    # Ensure nvidia-uvm module is loaded (required for CUDA inside Docker/vLLM)
+    sudo modprobe nvidia_uvm 2>/dev/null || true
+    if [ -e /dev/nvidia-uvm ]; then
+        echo "✅ nvidia-uvm module loaded (/dev/nvidia-uvm present)"
+    else
+        echo "⚠️  nvidia-uvm not loaded — attempting DKMS rebuild..."
+        DRIVER_VER=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | tr -d ' ')
+        DRIVER_MAJOR=$(echo "$DRIVER_VER" | cut -d. -f1)
+        # Remove server firmware package that blocks nvidia-kernel-common install
+        if dpkg -l "nvidia-firmware-${DRIVER_MAJOR}-server-${DRIVER_VER}" 2>/dev/null | grep -q "^ii"; then
+            $APT_GET remove -y --purge "nvidia-firmware-${DRIVER_MAJOR}-server-${DRIVER_VER}" 2>/dev/null || \
+                sudo dpkg --remove --force-remove-reinstreq "nvidia-firmware-${DRIVER_MAJOR}-server-${DRIVER_VER}" 2>/dev/null || true
+        fi
+        $APT_GET install -y --allow-downgrades "nvidia-kernel-common-${DRIVER_MAJOR}" 2>&1 || true
+        $APT_GET -f install -y 2>&1 || true
+        sudo depmod -a 2>/dev/null || true
+        sudo modprobe nvidia_uvm 2>/dev/null || true
+        [ -e /dev/nvidia-uvm ] && echo "✅ nvidia-uvm loaded after DKMS rebuild" || echo "⚠️  nvidia-uvm still not loaded — reboot may be required"
+    fi
 fi
 
 # Phase 2.5: Docker Installation

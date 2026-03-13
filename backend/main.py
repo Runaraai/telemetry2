@@ -9003,142 +9003,103 @@ def workflow_deploy_task(request: DeployVLLMRequest, pem_file_path: str, log_dir
         stdin, stdout, stderr = ssh.exec_command(cmd)
         
         log_file = os.path.join(log_dir, "deploy.log")
+        script_lines = []
         with open(log_file, 'w') as f:
             for line in stdout:
                 f.write(line)
                 f.flush()
-        
+                script_lines.append(line.strip())
+
         exit_status = stdout.channel.recv_exit_status()
-        
+
+        # Extract container ID from the last non-empty line of the deploy script output
+        # (docker run -d prints only the container ID as the last line)
+        container_id = None
+        for line in reversed(script_lines):
+            if len(line) == 64 and all(c in '0123456789abcdef' for c in line):
+                container_id = line
+                break
+        if container_id:
+            logger.info(f"vLLM container ID: {container_id}")
+        else:
+            logger.warning("Could not extract container ID from deploy script output")
+
         # Wait for server to be ready
         with open(status_file, 'w') as f:
-            json.dump({"status": "running", "message": "Waiting for vLLM server to be ready..."}, f)
-        
+            json.dump({"status": "running", "message": "Waiting for vLLM model to load (may take 5–10 min)..."}, f)
+
         logger.info("Waiting for vLLM server to be ready...")
-        max_wait = 600  # Increased to 10 minutes for large models
-        wait_interval = 10  # Check every 10 seconds
+        max_wait = 600  # 10 minutes for large models
+        wait_interval = 10
         elapsed = 0
         server_ready = False
         container_running = False
-        
+
         while elapsed < max_wait:
             time.sleep(wait_interval)
             elapsed += wait_interval
-            
-            # Check if container exists (running or exited) - use sudo to match script
-            check_container_cmd = "sudo docker ps -a --filter name=vllm --format '{{.Status}}' 2>/dev/null || echo 'not_running'"
+
+            # Check container by ID first (exact), then fall back to name filter
+            if container_id:
+                check_container_cmd = f"sudo docker inspect --format '{{{{.State.Status}}}}' {container_id} 2>/dev/null || echo 'not_found'"
+            else:
+                check_container_cmd = "sudo docker ps -a --filter name=^/vllm$ --format '{{{{.Status}}}}' 2>/dev/null || echo 'not_running'"
             stdin, stdout, stderr = ssh.exec_command(check_container_cmd)
             container_status = stdout.read().decode().strip()
             
-            if "not_running" not in container_status and container_status:
+            # docker inspect returns "running", "exited", "dead", "not_found"; old name filter returns "Up Xs", "Exited (N)"
+            is_exited = container_status in ("exited", "dead", "not_found", "not_running", "") or \
+                        "Exited" in container_status or "Dead" in container_status
+            is_alive = container_status == "running" or ("Up" in container_status and "Exited" not in container_status)
+
+            if is_exited and container_status not in ("", "not_found", "not_running"):
+                container_running = False
+                # Container crashed — fetch crash logs using ID (persists since we removed --rm)
+                logger.error(f"Container exited! Status: {container_status}")
+                try:
+                    log_src = container_id if container_id else "vllm"
+                    stdin, stdout, stderr = ssh.exec_command(f"sudo docker logs {log_src} --tail 150 2>&1")
+                    container_logs = stdout.read().decode()
+                    logger.error(f"Container crash logs:\n{container_logs[:2000]}")
+                    container_log_file = os.path.join(log_dir, "vllm_container.log")
+                    with open(container_log_file, 'w') as f:
+                        f.write(container_logs)
+                    first_error = next((l for l in container_logs.splitlines() if "error" in l.lower() or "fatal" in l.lower()), "")
+                    with open(status_file, 'w') as f:
+                        json.dump({"status": "failed", "message": f"Container crashed. {first_error[:200]}"}, f)
+                except Exception as e:
+                    logger.error(f"Could not fetch container logs: {e}")
+                    with open(status_file, 'w') as f:
+                        json.dump({"status": "failed", "message": "Container crashed. Could not fetch logs."}, f)
+                break
+            elif is_alive:
                 container_running = True
-                # Check if container exited
-                if "Exited" in container_status or "Dead" in container_status or "not_running" in container_status:
-                    # Container crashed or doesn't exist, get logs
-                    logger.error(f"Container exited or not found! Status: {container_status}")
-                    try:
-                        # Try to get logs from exited container
-                        stdin, stdout, stderr = ssh.exec_command("sudo docker logs vllm --tail 100 2>&1")
-                        container_logs = stdout.read().decode()
-                        if not container_logs:
-                            # Try to get logs by container ID if name doesn't work
-                            stdin, stdout, stderr = ssh.exec_command("sudo docker ps -a --filter name=vllm --format '{{.ID}}' 2>/dev/null | head -1")
-                            container_id = stdout.read().decode().strip()
-                            if container_id:
-                                stdin, stdout, stderr = ssh.exec_command(f"sudo docker logs {container_id} --tail 100 2>&1")
-                                container_logs = stdout.read().decode()
-                        logger.error(f"Container logs:\n{container_logs}")
-                        container_log_file = os.path.join(log_dir, "vllm_container.log")
-                        with open(container_log_file, 'w') as f:
-                            f.write(container_logs)
-                        with open(status_file, 'w') as f:
-                            json.dump({"status": "failed", "message": f"Container exited. Check logs for details."}, f)
-                        break
-                    except Exception as e:
-                        logger.error(f"Could not fetch container logs: {e}")
-                        with open(status_file, 'w') as f:
-                            json.dump({"status": "failed", "message": f"Container exited and could not fetch logs: {str(e)}"}, f)
-                        break
+                # Container is running — check /v1/models (only returns 200 after model is fully loaded)
+                http_check_cmd = "curl -s -o /dev/null -w '%{http_code}' -m 10 http://localhost:8000/v1/models 2>/dev/null || echo '000'"
+                stdin2, stdout2, stderr2 = ssh.exec_command(http_check_cmd)
+                http_code = stdout2.read().decode().strip()
+                if http_code == "200":
+                    server_ready = True
+                    logger.info(f"✅ vLLM model loaded and ready after {elapsed}s")
+                    with open(status_file, 'w') as f:
+                        json.dump({"status": "completed", "message": f"Deploy completed successfully - model ready after {elapsed}s"}, f)
+                    break
                 else:
-                    # Container is running, check health
-                    # Try /health first, then /v1/models, check for HTTP 200 or valid JSON
-                    # Use a more robust check that combines both endpoints
-                    check_cmd = """curl -s -f -m 5 http://localhost:8000/health 2>/dev/null && echo "HEALTH_OK" || (curl -s -f -m 5 http://localhost:8000/v1/models 2>/dev/null | head -1 && echo "MODELS_OK" || echo "FAILED")"""
-                    stdin, stdout, stderr = ssh.exec_command(check_cmd)
-                    check_output = stdout.read().decode().strip()
-                    check_error = stderr.read().decode().strip()
-                    
-                    # Also check HTTP status code explicitly
-                    http_check_cmd = "curl -s -o /dev/null -w '%{http_code}' -m 5 http://localhost:8000/health 2>/dev/null || curl -s -o /dev/null -w '%{http_code}' -m 5 http://localhost:8000/v1/models 2>/dev/null || echo '000'"
-                    stdin2, stdout2, stderr2 = ssh.exec_command(http_check_cmd)
-                    http_code = stdout2.read().decode().strip()
-                    
-                    # Server is ready if:
-                    # 1. HTTP code is 200, OR
-                    # 2. We get a valid response from health/models endpoint (not empty, not "FAILED")
-                    is_ready = False
-                    if http_code == "200":
-                        is_ready = True
-                        logger.info(f"✅ Health check passed: HTTP {http_code}")
-                    elif check_output and "FAILED" not in check_output and len(check_output) > 0:
-                        # Got a valid response (either health or models endpoint)
-                        is_ready = True
-                        logger.info(f"✅ Health check passed: Got valid response from server")
-                    elif check_output and ("HEALTH_OK" in check_output or "MODELS_OK" in check_output):
-                        is_ready = True
-                        logger.info(f"✅ Health check passed: Endpoint responded")
-                    
-                    if is_ready:
-                        server_ready = True
-                        logger.info(f"✅ vLLM server is ready after {elapsed}s (HTTP {http_code})")
-                        with open(status_file, 'w') as f:
-                            json.dump({"status": "completed", "message": f"Deploy completed successfully - server ready after {elapsed}s"}, f)
-                        break
-                    else:
-                        logger.debug(f"Health check not ready yet: http_code={http_code}, output={check_output[:100]}")
-            else:
-                # Container doesn't exist yet or never started
-                # Check if it exited immediately by looking at all containers
-                check_exited_cmd = "sudo docker ps -a --filter 'name=vllm' --format '{{.Status}}' 2>/dev/null | head -1 || echo 'not_found'"
-                stdin, stdout, stderr = ssh.exec_command(check_exited_cmd)
-                exited_status = stdout.read().decode().strip()
-                if "Exited" in exited_status:
-                    logger.error(f"Container exited immediately! Status: {exited_status}")
-                    try:
-                        stdin, stdout, stderr = ssh.exec_command("sudo docker logs vllm --tail 100 2>&1")
-                        container_logs = stdout.read().decode()
-                        logger.error(f"Container logs:\n{container_logs}")
-                        container_log_file = os.path.join(log_dir, "vllm_container.log")
-                        with open(container_log_file, 'w') as f:
-                            f.write(container_logs)
-                        with open(status_file, 'w') as f:
-                            json.dump({"status": "failed", "message": "Container exited immediately. Check logs for details."}, f)
-                        break
-                    except:
-                        pass
-            
+                    logger.debug(f"Model not ready yet: http_code={http_code}")
+            # else: container not yet visible — still starting up
+
             status_msg = f"Waiting for server... ({elapsed}s/{max_wait}s)"
             if container_running:
-                status_msg += " - Container running, checking health..."
+                status_msg += " - Container running, loading model..."
                 # Periodically fetch container logs to show progress (every 30 seconds)
                 if elapsed % 30 == 0:
                     try:
-                        # Use sudo to match the script
-                        stdin, stdout, stderr = ssh.exec_command("sudo docker logs vllm --tail 20 2>&1")
+                        log_src = container_id if container_id else "vllm"
+                        stdin, stdout, stderr = ssh.exec_command(f"sudo docker logs {log_src} --tail 20 2>&1")
                         container_logs = stdout.read().decode()
-                        if not container_logs or "No such container" in container_logs:
-                            # Try to find container by ID or check if it exited
-                            stdin, stdout, stderr = ssh.exec_command("sudo docker ps -a --filter name=vllm --format '{{.ID}} {{.Status}}' 2>/dev/null | head -1")
-                            container_info = stdout.read().decode().strip()
-                            if container_info:
-                                container_id = container_info.split()[0] if container_info else None
-                                if container_id:
-                                    stdin, stdout, stderr = ssh.exec_command(f"sudo docker logs {container_id} --tail 20 2>&1")
-                                    container_logs = stdout.read().decode()
                         container_log_file = os.path.join(log_dir, "vllm_container.log")
                         with open(container_log_file, 'w') as f:
                             f.write(container_logs)
-                        # Append to deploy log as well
                         with open(log_file, 'a') as f:
                             f.write(f"\n--- Container logs at {elapsed}s ---\n{container_logs}\n")
                     except Exception as e:
@@ -9184,7 +9145,7 @@ def workflow_deploy_task(request: DeployVLLMRequest, pem_file_path: str, log_dir
                 final_check_cmd = "curl -s -f -m 5 http://localhost:8000/health 2>/dev/null && echo 'READY' || echo 'NOT_READY'"
                 stdin, stdout, stderr = ssh.exec_command(final_check_cmd)
                 final_output = stdout.read().decode().strip()
-                if "READY" in final_output:
+                if final_output == "READY":
                     server_ready = True
                     logger.info("✅ Server became ready on final check!")
             except Exception as e:
@@ -9443,36 +9404,38 @@ def workflow_benchmark_task(request: RunBenchmarkRequest, pem_file_path: str, lo
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(request.ssh_host, username=request.ssh_user, key_filename=pem_file_path, timeout=30)
 
-        # vLLM takes ~2–3 min to load the model after container start. Wait for it to be ready
-        # before querying /v1/models or running the smoke test (HTTP_STATUS:000 = not ready yet).
+        # vLLM takes 3-10 min to load the model. Wait on /v1/models (not /health — vLLM's
+        # /health returns 200 immediately before the model is loaded).
         import time
         with open(status_file, 'w') as f:
-            json.dump({"status": "running", "message": "Waiting for vLLM server to be ready (may take 2–3 min)..."}, f)
+            json.dump({"status": "running", "message": "Waiting for vLLM model to load (may take 5–10 min)..."}, f)
 
-        max_wait = 300  # 5 minutes
+        max_wait = 600  # 10 minutes
         poll_interval = 10
         elapsed = 0
+        vllm_ready = False
         while elapsed < max_wait:
             _, chk_out, _ = ssh.exec_command(
-                "curl -sf -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/health 2>/dev/null || echo '000'"
+                "curl -sf -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/v1/models 2>/dev/null || echo '000'"
             )
-            status = chk_out.read().decode().strip()
-            if status == "200":
-                logger.info(f"vLLM server ready after {elapsed}s")
+            http_code = chk_out.read().decode().strip()
+            if http_code == "200":
+                logger.info(f"vLLM model ready after {elapsed}s")
+                vllm_ready = True
                 break
             time.sleep(poll_interval)
             elapsed += poll_interval
             with open(status_file, 'w') as f:
                 json.dump({
                     "status": "running",
-                    "message": f"Waiting for vLLM server... ({elapsed}s elapsed, max {max_wait}s)",
+                    "message": f"Waiting for vLLM model to load... ({elapsed}s elapsed, max {max_wait}s)",
                 }, f)
 
-        if elapsed >= max_wait:
+        if not vllm_ready:
             with open(status_file, 'w') as f:
                 json.dump({
                     "status": "failed",
-                    "message": "vLLM server did not become ready within 5 minutes. Check: docker ps | grep vllm; docker logs vllm | tail -100",
+                    "message": "vLLM model did not load within 10 minutes. Check: docker ps | grep vllm; docker logs vllm | tail -100",
                 }, f)
             ssh.close()
             return

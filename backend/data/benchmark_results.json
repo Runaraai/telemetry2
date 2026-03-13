@@ -1,5 +1,55 @@
 [
   {
+    "id": "42253cbe",
+    "timestamp": "2026-03-13T18:39:18.218135",
+    "ssh_host": "51.159.150.190",
+    "model_name": "Qwen/Qwen3.5-9B",
+    "metrics": {
+      "output_throughput_tok_s": 2039.58,
+      "total_throughput_tok_s": 4079.17,
+      "request_throughput_req_s": 7.97,
+      "mean_ttft_ms": 404.34,
+      "mean_itl_ms": 29.51,
+      "mean_tpot_ms": 29.62
+    },
+    "config": {
+      "input_seq_len": 256,
+      "output_seq_len": 256,
+      "num_requests": 512,
+      "max_concurrency": 64,
+      "request_rate": 64.0
+    },
+    "telemetry_run_id": null,
+    "started_at": "2026-03-13T18:37:52.027891",
+    "completed_at": "2026-03-13T18:39:18.218143",
+    "gpu_info": {}
+  },
+  {
+    "id": "d8c2a2dc",
+    "timestamp": "2026-03-13T17:19:22.135626",
+    "ssh_host": "51.159.150.190",
+    "model_name": "Qwen/Qwen3.5-9B",
+    "metrics": {
+      "output_throughput_tok_s": 3604.18,
+      "total_throughput_tok_s": 7208.36,
+      "request_throughput_req_s": 3.52,
+      "mean_ttft_ms": 1227.52,
+      "mean_itl_ms": 34.26,
+      "mean_tpot_ms": 34.29
+    },
+    "config": {
+      "input_seq_len": 1024,
+      "output_seq_len": 1024,
+      "num_requests": 1024,
+      "max_concurrency": 129,
+      "request_rate": 128.0
+    },
+    "telemetry_run_id": null,
+    "started_at": "2026-03-13T17:13:44.573986",
+    "completed_at": "2026-03-13T17:19:22.135634",
+    "gpu_info": {}
+  },
+  {
     "id": "929373a3",
     "timestamp": "2026-03-13T08:09:38.406385",
     "ssh_host": "51.159.150.190",

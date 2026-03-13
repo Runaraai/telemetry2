@@ -82,37 +82,67 @@ if ! "$NVIDIA_SMI" &> /dev/null; then
     exit 1
 fi
 
-# Configure NVIDIA Container Runtime to only expose compute capabilities
-# This prevents mount failures for missing Vulkan/display/graphics libraries on cloud instances
-echo "Configuring NVIDIA Container Runtime..."
-
-# Ensure NVIDIA Container Toolkit is configured for Docker
-sudo nvidia-ctk runtime configure --runtime=docker 2>/dev/null || true
-
-# Create stub files for NVIDIA libraries that the container toolkit tries to mount
-# The toolkit reads ldconfig cache to build mount list; missing .so files cause fatal errors
-echo "Creating stub files for missing NVIDIA libraries..."
-DRIVER_VERSION=$("$NVIDIA_SMI" --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | tr -d '[:space:]')
-if [ -n "$DRIVER_VERSION" ]; then
-    NVIDIA_LIB_DIR="/usr/lib/x86_64-linux-gnu"
-    for lib in libnvidia-vulkan-producer.so libnvidia-api.so.1; do
-        VERSIONED="${NVIDIA_LIB_DIR}/${lib%.so*}.so.${DRIVER_VERSION}"
-        if [ ! -f "$VERSIONED" ] && [ ! -f "${NVIDIA_LIB_DIR}/${lib}" ]; then
-            echo "  Creating stub: ${VERSIONED}"
-            sudo touch "$VERSIONED" 2>/dev/null || true
-        fi
-    done
-    # Create missing vulkan ICD/layer files
-    sudo mkdir -p /usr/share/vulkan/icd.d /usr/share/vulkan/implicit_layer.d /usr/share/egl/egl_external_platform.d 2>/dev/null || true
-    [ ! -f /usr/share/vulkan/icd.d/nvidia_icd.json ] && echo '{"ICD":{"api_version":"1.3","library_path":"libGLX_nvidia.so.0"}}' | sudo tee /usr/share/vulkan/icd.d/nvidia_icd.json > /dev/null 2>/dev/null || true
-    [ ! -f /usr/share/vulkan/implicit_layer.d/nvidia_layers.json ] && echo '{"file_format_version":"1.0.0","layer":{"name":"VK_LAYER_NV_optimus","type":"INSTANCE","library_path":"libGLX_nvidia.so.0","api_version":"1.3","implementation_version":"1","description":"NVIDIA optimus layer"}}' | sudo tee /usr/share/vulkan/implicit_layer.d/nvidia_layers.json > /dev/null 2>/dev/null || true
-    [ ! -f /usr/share/egl/egl_external_platform.d/15_nvidia_gbm.json ] && echo '{"file_format_version":"1.0.0","ICD":{"library_path":"libnvidia-egl-gbm.so.1"}}' | sudo tee /usr/share/egl/egl_external_platform.d/15_nvidia_gbm.json > /dev/null 2>/dev/null || true
+# Configure NVIDIA Container Runtime (only if not already configured)
+if ! sudo docker info 2>/dev/null | grep -q "nvidia"; then
+    echo "Configuring NVIDIA Container Runtime (first time)..."
+    sudo nvidia-ctk runtime configure --runtime=docker 2>&1 || true
+    sudo ldconfig 2>/dev/null || true
+    sudo systemctl restart docker 2>/dev/null || true
+    echo "Waiting for Docker to fully restart..."
+    sleep 10
+    echo "✅ NVIDIA Container Runtime configured"
+else
+    echo "✅ NVIDIA Container Runtime already configured, skipping restart"
 fi
 
-sudo systemctl restart docker 2>/dev/null || true
-sleep 3
+# Ensure nvidia-uvm kernel module is loaded (required for CUDA inside Docker)
+echo "Loading nvidia-uvm kernel module..."
 
-echo "✅ NVIDIA driver and Docker configured"
+# Fast path: try loading it (works if .ko exists and was just not auto-loaded)
+sudo modprobe nvidia-uvm 2>/dev/null || true
+
+# If still missing, the driver installation is incomplete — install nvidia-kernel-common via apt.
+# On Scaleway, nvidia-firmware-535-server conflicts with nvidia-kernel-common-535 (both own
+# the same firmware files). Remove the server variant first, then install the common package
+# which triggers DKMS to build nvidia_uvm.ko for the current kernel.
+if [ ! -e /dev/nvidia-uvm ]; then
+    echo "nvidia-uvm not available — fixing kernel modules via apt..."
+    DRIVER_MAJOR=$("$NVIDIA_SMI" --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | cut -d. -f1)
+    sudo apt-get update -qq 2>&1 || true
+    # Remove the conflicting server firmware package if present (it blocks nvidia-kernel-common install)
+    DRIVER_VER=$("$NVIDIA_SMI" --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | tr -d ' ')
+    if dpkg -l "nvidia-firmware-${DRIVER_MAJOR}-server-${DRIVER_VER}" 2>/dev/null | grep -q "^ii"; then
+        echo "Removing conflicting nvidia-firmware-${DRIVER_MAJOR}-server package..."
+        sudo dpkg -r --force-depends "nvidia-firmware-${DRIVER_MAJOR}-server-${DRIVER_VER}" 2>&1 || true
+    fi
+    # Install nvidia-kernel-common which triggers DKMS build of all modules including nvidia-uvm
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "nvidia-kernel-common-${DRIVER_MAJOR}" 2>&1 || \
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "nvidia-driver-${DRIVER_MAJOR}" 2>&1 || true
+    sudo DEBIAN_FRONTEND=noninteractive apt-get -f install -y 2>&1 || true
+    sudo depmod -a 2>&1 || true
+    sudo modprobe nvidia-uvm 2>&1 || true
+fi
+
+# If module is loaded but device file still missing, create it from /proc/devices
+if [ ! -e /dev/nvidia-uvm ]; then
+    UVM_MAJOR=$(grep nvidia-uvm /proc/devices 2>/dev/null | awk '{print $1}')
+    if [ -n "$UVM_MAJOR" ]; then
+        echo "Creating /dev/nvidia-uvm device node (major=$UVM_MAJOR)..."
+        sudo mknod -m 666 /dev/nvidia-uvm c "$UVM_MAJOR" 0 2>/dev/null || true
+        sudo mknod -m 666 /dev/nvidia-uvm-tools c "$UVM_MAJOR" 1 2>/dev/null || true
+    fi
+fi
+
+# Verify GPU devices are accessible on the host
+echo "Checking GPU device availability..."
+if ls /dev/nvidia0 /dev/nvidiactl /dev/nvidia-uvm &>/dev/null; then
+    echo "✅ GPU device files present: $(ls /dev/nvidia* 2>/dev/null | tr '\n' ' ')"
+else
+    echo "❌ GPU device files still missing: $(ls /dev/nvidia* 2>/dev/null | tr '\n' ' ')"
+    echo "❌ /proc/devices nvidia entries: $(grep -i nvidia /proc/devices 2>/dev/null || echo 'none')"
+    echo "❌ Loaded kernel modules: $(lsmod 2>/dev/null | grep nvidia || echo 'none')"
+    exit 1
+fi
 
 # Detect GPU information
 GPU_COUNT=$(detect_gpu_count)
@@ -153,13 +183,20 @@ echo "=========================================="
 echo "Pulling vLLM image..."
 sudo docker pull vllm/vllm-openai:latest
 
-# Stop existing container if running
-docker rm -f vllm 2>/dev/null || true
+# Stop any existing vLLM container and free port 8000
+sudo docker stop vllm 2>/dev/null || true
+sudo docker rm -f vllm 2>/dev/null || true
+# Kill any process holding port 8000 (leftover from previous runs)
+sudo fuser -k 8000/tcp 2>/dev/null || true
+sleep 2
 
-# Run vLLM server with adaptive parameters
+# Run vLLM server with adaptive parameters (no --rm so crash logs persist)
 echo "Starting vLLM server..."
-sudo docker run --rm -d --name vllm \
+sudo docker run -d --name vllm \
+  --runtime=nvidia \
   --gpus all \
+  --shm-size=10.24gb \
+  --ulimit memlock=-1 \
   -e NVIDIA_VISIBLE_DEVICES=all \
   -e NVIDIA_DRIVER_CAPABILITIES=compute,utility \
   -p 8000:8000 \

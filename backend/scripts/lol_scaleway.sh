@@ -9,22 +9,29 @@ echo "Checking NVIDIA driver state..."
 if ! nvidia-smi &>/dev/null 2>&1; then
     echo "⚠️  nvidia-smi not working, attempting to fix driver packages..."
 
-    # Fix dpkg conflicts (nvidia-kernel-common vs nvidia-firmware-server)
+    # Remove nvidia-firmware-*-server packages that conflict with nvidia-kernel-common
+    # (Scaleway bare-metal ships these server variants which block DKMS module builds)
+    for pkg in $(dpkg -l 2>/dev/null | grep "^ii.*nvidia-firmware-.*-server" | awk '{print $2}'); do
+        echo "Removing conflicting package: $pkg"
+        sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y --purge "$pkg" 2>/dev/null || \
+            sudo dpkg --remove --force-remove-reinstreq "$pkg" 2>/dev/null || true
+    done
+
+    # Fix remaining dpkg broken state
     sudo dpkg --force-overwrite --configure -a 2>&1 | tail -5 || true
-    sudo apt-get --fix-broken install -y 2>&1 | tail -5 || true
+    sudo DEBIAN_FRONTEND=noninteractive apt-get --fix-broken install -y 2>&1 | tail -5 || true
 
     # Rebuild DKMS modules if missing
     if ! lsmod | grep -q '^nvidia'; then
         DRIVER_VER=$(dpkg -l 2>/dev/null | grep -oP 'nvidia-dkms-\K[0-9]+' | head -1)
         if [ -n "$DRIVER_VER" ]; then
             echo "Rebuilding DKMS modules for nvidia/$DRIVER_VER..."
-            sudo dkms install nvidia/$DRIVER_VER -k $(uname -r) 2>&1 | tail -5 || true
+            sudo dkms install "nvidia/$DRIVER_VER" -k "$(uname -r)" 2>&1 | tail -5 || true
         fi
         sudo modprobe nvidia 2>/dev/null || true
-        sudo modprobe nvidia_uvm 2>/dev/null || true
     fi
+    sudo modprobe nvidia_uvm 2>/dev/null || true
 
-    # Verify fix worked
     if nvidia-smi &>/dev/null 2>&1; then
         echo "✅ NVIDIA driver fixed successfully"
     else
@@ -32,6 +39,8 @@ if ! nvidia-smi &>/dev/null 2>&1; then
     fi
 else
     echo "✅ NVIDIA driver working"
+    # Also load nvidia-uvm even when driver is working (may not be auto-loaded)
+    sudo modprobe nvidia_uvm 2>/dev/null || true
 fi
 
 # Configure Docker/containerd to use /scratch if available (Scaleway has 5.8TB there)

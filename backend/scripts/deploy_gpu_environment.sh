@@ -282,14 +282,72 @@ phase_docker() {
     log_step_warn "docker_install" "Docker Installation" "You may need to log out and back in for docker group membership to take effect"
 }
 
+# Helper: ensure nvidia-uvm kernel module is loaded (required for CUDA in Docker containers)
+# On Scaleway/bare-metal, the driver may be installed via .run without DKMS — missing nvidia-uvm.
+# This installs the apt kernel modules package which rebuilds all modules via DKMS for the
+# current kernel, including nvidia-uvm, without conflicting with the existing userspace driver.
+ensure_nvidia_uvm() {
+    # Already loaded
+    if lsmod | grep -q nvidia_uvm || [ -e /dev/nvidia-uvm ]; then
+        log_info "nvidia-uvm module already loaded"
+        return 0
+    fi
+
+    # Try loading it (works if .ko exists but wasn't auto-loaded)
+    sudo modprobe nvidia-uvm 2>/dev/null && return 0
+
+    log_info "nvidia-uvm not loadable — installing kernel modules package via apt..."
+    local driver_major
+    driver_major=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | cut -d. -f1)
+
+    if [ -z "$driver_major" ]; then
+        log_step_warn "nvidia_driver" "NVIDIA Driver" "Cannot determine driver version to install kernel modules"
+        return 1
+    fi
+
+    sudo apt-get update -qq 2>&1 || true
+
+    # On Scaleway/bare-metal, nvidia-firmware-<ver>-server conflicts with nvidia-kernel-common.
+    # Both own the same firmware files. Remove the server variant to unblock the install.
+    local driver_ver
+    driver_ver=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | tr -d ' ')
+    if dpkg -l "nvidia-firmware-${driver_major}-server-${driver_ver}" 2>/dev/null | grep -q "^ii"; then
+        log_info "Removing conflicting nvidia-firmware-${driver_major}-server package..."
+        sudo dpkg -r --force-depends "nvidia-firmware-${driver_major}-server-${driver_ver}" 2>&1 || true
+    fi
+
+    # Install nvidia-kernel-common which triggers DKMS build including nvidia-uvm.ko
+    if sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "nvidia-kernel-common-${driver_major}" 2>&1; then
+        log_info "Installed nvidia-kernel-common-${driver_major}"
+    else
+        log_info "Falling back to full nvidia-driver-${driver_major}..."
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "nvidia-driver-${driver_major}" 2>&1 || true
+    fi
+    sudo DEBIAN_FRONTEND=noninteractive apt-get -f install -y 2>&1 || true
+
+    sudo depmod -a 2>&1 || true
+    sudo modprobe nvidia-uvm 2>&1 || true
+
+    if lsmod | grep -q nvidia_uvm || [ -e /dev/nvidia-uvm ]; then
+        log_info "nvidia-uvm loaded successfully"
+        return 0
+    else
+        log_step_warn "nvidia_driver" "NVIDIA Driver" "nvidia-uvm still not loadable after package install — reboot may be required"
+        return 1
+    fi
+}
+
 # Phase 3: NVIDIA Driver Installation
 phase_nvidia_driver() {
     log_step_start "nvidia_driver" "NVIDIA Driver Installation" "Installing NVIDIA GPU drivers"
-    
+
     if command_exists nvidia-smi; then
         if nvidia-smi &>/dev/null 2>&1; then
             local driver_version=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -1)
-            log_step_skip "nvidia_driver" "NVIDIA Driver Installation" "NVIDIA drivers already installed and working: ${driver_version}"
+            log_info "NVIDIA drivers already installed and working: ${driver_version}"
+            # Also ensure nvidia-uvm is available (required for CUDA inside Docker/vLLM)
+            ensure_nvidia_uvm || true
+            log_step_success "nvidia_driver" "NVIDIA Driver Installation" "NVIDIA drivers ready (version: ${driver_version})"
             return 0
         else
             log_step_warn "nvidia_driver" "NVIDIA Driver Installation" "nvidia-smi exists but is not working properly - may need reboot"
@@ -320,6 +378,7 @@ phase_nvidia_driver() {
     if command_exists nvidia-smi; then
         # Test if drivers are working (may require reboot)
         if nvidia-smi &>/dev/null 2>&1; then
+            ensure_nvidia_uvm || true
             log_step_success "nvidia_driver" "NVIDIA Driver Installation" "NVIDIA drivers installed and working"
         else
             log_step_warn "nvidia_driver" "NVIDIA Driver Installation" "NVIDIA drivers installed but require reboot to function"
