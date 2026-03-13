@@ -439,6 +439,36 @@ const Benchmarking = () => {
     }
   };
 
+  const fetchInferenceStatus = React.useCallback(async () => {
+    if (!rwSshHost || !rwSshKey) return;
+    try {
+      const pemBase64 = encodePemToBase64(rwSshKey);
+      const result = await apiService.inferenceStatus({
+        ssh_host: rwSshHost,
+        ssh_user: rwSshUser,
+        pem_base64: pemBase64,
+      });
+      setInferenceStatus(prev => ({
+        running: result.running ?? false,
+        model: result.model ?? prev?.model ?? null,
+        url: result.url ?? `http://${rwSshHost}:8000`,
+        uptime: result.uptime ?? prev?.uptime ?? null,
+        error: result.error ?? null,
+      }));
+    } catch (e) {
+      // Silently ignore - e.g. SSH unreachable; don't overwrite known-good state
+    }
+  }, [rwSshHost, rwSshUser, rwSshKey]);
+
+  // Sync inference status from GPU when credentials available (e.g. from instanceData or connection).
+  // Poll periodically so state is correct after page refresh or when returning from another tab.
+  useEffect(() => {
+    if (!rwSshHost || !rwSshKey) return;
+    fetchInferenceStatus();
+    const interval = setInterval(fetchInferenceStatus, 15000);
+    return () => clearInterval(interval);
+  }, [rwSshHost, rwSshKey, fetchInferenceStatus]);
+
   const handleCheckEnvironment = async (host, user, pemB64, provider) => {
     const sshHost = host || rwSshHost;
     const sshUser = user || rwSshUser;
@@ -457,9 +487,13 @@ const Benchmarking = () => {
         model_path: getWorkflowModelPath(selectedModel),
       });
       setEnvState(result);
-      if (result.vllm_running) {
-        setInferenceStatus({ running: true, model: result.vllm_model, url: `http://${sshHost}:8000`, uptime: null, error: null });
-      }
+      setInferenceStatus(prev => ({
+        running: Boolean(result.vllm_running),
+        model: result.vllm_model ?? prev?.model ?? null,
+        url: `http://${sshHost}:8000`,
+        uptime: prev?.uptime ?? null,
+        error: null,
+      }));
       appendWorkflowEvent('environment', 'info', `Environment check: driver=${result.driver} docker=${result.docker} model=${result.model} vllm=${result.vllm_running}`);
     } catch (e) {
       setEnvState({ error: e.message });
@@ -1770,7 +1804,8 @@ const Benchmarking = () => {
                               ssh_host: rwSshHost,
                           ssh_user: rwSshUser,
                               pem_base64: pemBase64,
-                              cloud_provider: rwCloudProvider
+                              cloud_provider: rwCloudProvider,
+                              model_name: selectedModel
                             });
                             setWorkflowCheckStatus({
                           loading: false, 

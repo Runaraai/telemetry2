@@ -4,6 +4,36 @@
 
 set -e
 
+# Fix broken NVIDIA driver packages (common after setup script reboot)
+echo "Checking NVIDIA driver state..."
+if ! nvidia-smi &>/dev/null 2>&1; then
+    echo "⚠️  nvidia-smi not working, attempting to fix driver packages..."
+
+    # Fix dpkg conflicts (nvidia-kernel-common vs nvidia-firmware-server)
+    sudo dpkg --force-overwrite --configure -a 2>&1 | tail -5 || true
+    sudo apt-get --fix-broken install -y 2>&1 | tail -5 || true
+
+    # Rebuild DKMS modules if missing
+    if ! lsmod | grep -q '^nvidia'; then
+        DRIVER_VER=$(dpkg -l 2>/dev/null | grep -oP 'nvidia-dkms-\K[0-9]+' | head -1)
+        if [ -n "$DRIVER_VER" ]; then
+            echo "Rebuilding DKMS modules for nvidia/$DRIVER_VER..."
+            sudo dkms install nvidia/$DRIVER_VER -k $(uname -r) 2>&1 | tail -5 || true
+        fi
+        sudo modprobe nvidia 2>/dev/null || true
+        sudo modprobe nvidia_uvm 2>/dev/null || true
+    fi
+
+    # Verify fix worked
+    if nvidia-smi &>/dev/null 2>&1; then
+        echo "✅ NVIDIA driver fixed successfully"
+    else
+        echo "❌ NVIDIA driver still not working. Instance may need a manual reboot."
+    fi
+else
+    echo "✅ NVIDIA driver working"
+fi
+
 # Configure Docker/containerd to use /scratch if available (Scaleway has 5.8TB there)
 if [ -d "/scratch" ] && [ -w "/scratch" ]; then
     echo "Configuring Docker to use /scratch partition for storage..."
@@ -95,12 +125,14 @@ if [ -d "/scratch" ] && [ -w "/scratch" ]; then
 else
     MODEL_DIR="${HOME}/BM/models"
 fi
-mkdir -p "$MODEL_DIR/scout17b-fp8dyn"
+MODEL_NAME="${MODEL_NAME:-Qwen/Qwen3.5-9B}"
+MODEL_BASENAME=$(basename "$MODEL_NAME")
+mkdir -p "$MODEL_DIR/$MODEL_BASENAME"
 
 # Download the model
 hf download \
-  RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic \
-  --local-dir "$MODEL_DIR/scout17b-fp8dyn" || echo "⚠️  Model download had issues"
+  "$MODEL_NAME" \
+  --local-dir "$MODEL_DIR/$MODEL_BASENAME" || echo "⚠️  Model download had issues"
 
 
 

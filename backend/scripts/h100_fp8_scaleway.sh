@@ -17,10 +17,30 @@ if [ ! -f "$ALLOW_DOWNGRADE_CONF" ]; then
     trap 'sudo rm -f "$ALLOW_DOWNGRADE_CONF" 2>/dev/null || true' EXIT
 fi
 
+# Wait for apt/dpkg lock (unattended-upgrades or other processes may hold it)
+wait_for_apt_lock() {
+    local max_wait=300
+    local waited=0
+    while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \
+          sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
+          sudo fuser /var/cache/apt/archives/lock >/dev/null 2>&1; do
+        if [ $waited -ge $max_wait ]; then
+            echo "❌ Timed out waiting for apt lock (held by another process)"
+            return 1
+        fi
+        echo "⏳ Waiting for apt lock to be released (another process using package manager)..."
+        sleep 10
+        waited=$((waited + 10))
+    done
+    return 0
+}
+
 apt_update() {
+    wait_for_apt_lock || return 1
     $APT_GET update "$@"
 }
 apt_install() {
+    wait_for_apt_lock || return 1
     # Allow downgrades because upstream repos can serve slightly older toolkit/DCGM versions
     $APT_GET install -y --allow-downgrades "$@"
 }
@@ -84,6 +104,9 @@ df -h
 # Phase 2: NVIDIA Driver Installation
 echo ""
 echo "=== Phase 2: NVIDIA Driver Installation ==="
+
+# Wait for apt lock (unattended-upgrades often runs on first boot)
+wait_for_apt_lock || { echo "❌ Could not acquire apt lock"; exit 1; }
 
 # Clean up conflicting NVIDIA Container Toolkit GPG keys before updating
 echo "Cleaning up conflicting NVIDIA Container Toolkit configurations..."
@@ -188,6 +211,9 @@ else
            $APT_GET --fix-broken install -y && \
            $APT_GET install -y --allow-downgrades --no-install-recommends linux-headers-$(uname -r) nvidia-driver-535-server; then
             echo "✅ NVIDIA Driver 535-server installed successfully"
+            # Fix firmware file conflicts between nvidia-kernel-common and nvidia-firmware-server
+            sudo dpkg --force-overwrite --configure -a 2>/dev/null || true
+            $APT_GET --fix-broken install -y 2>/dev/null || true
             echo "⚠️  WARNING: NVIDIA Driver installation requires a reboot."
             echo "⚠️  The driver has been installed, but the system needs to reboot for it to take effect."
             REBOOT_NEEDED=true
@@ -195,7 +221,9 @@ else
             # Installation failed - check if package is already installed
             if dpkg -l | grep -q "^ii.*nvidia-driver-535-server"; then
                 echo "⚠️  Driver installation failed, but nvidia-driver-535-server package is already installed."
-                echo "⚠️  The driver package exists but may not be properly configured."
+                echo "Attempting to fix dpkg state (firmware conflicts)..."
+                sudo dpkg --force-overwrite --configure -a 2>/dev/null || true
+                $APT_GET --fix-broken install -y 2>/dev/null || true
                 echo "⚠️  A reboot may be needed to activate the driver."
                 # Only set reboot if driver is not loaded (package installed but not working)
                 if ! nvidia-smi &> /dev/null; then
@@ -226,6 +254,9 @@ fi
 # Phase 2.5: Docker Installation
 echo ""
 echo "=== Phase 2.5: Docker Installation ==="
+
+# Wait for any background apt processes (e.g. unattended-upgrades) to finish
+wait_for_apt_lock || { echo "❌ Could not acquire apt lock"; exit 1; }
 
 # Check if Docker is already installed
 if command -v docker &> /dev/null && docker --version &> /dev/null; then
@@ -281,6 +312,9 @@ docker compose version
 # Phase 3: CUDA and Development Tools Setup
 echo ""
 echo "=== Phase 3: CUDA and Development Tools Setup ==="
+
+# Wait for apt lock before cleanup/install
+wait_for_apt_lock || { echo "❌ Could not acquire apt lock"; exit 1; }
 
 # Cleanup from previous interrupted apt/dpkg runs (common after low-disk failures)
 echo "Cleaning package cache and recovering package manager state..."

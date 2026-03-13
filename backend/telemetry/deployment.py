@@ -39,7 +39,18 @@ from uuid import UUID, uuid4
 
 import paramiko
 
-from .schemas import DeploymentRequest, TeardownRequest
+from .schemas import DeploymentRequest, DeploymentLogsRequest, TeardownRequest
+
+
+@dataclass
+class _TeardownCreds:
+    """Minimal credentials for fallback teardown (has same attrs as DeploymentRequest for _connect/_perform_teardown)."""
+
+    ssh_host: str
+    ssh_port: int
+    ssh_user: str
+    ssh_key: str
+    run_id: UUID
 
 
 @dataclass
@@ -104,6 +115,65 @@ class DeploymentManager:
         )
 
         await self._update_record(record.deployment_id, status="completed", message="Stack torn down")
+
+    async def teardown_with_credentials(
+        self,
+        ssh_host: str,
+        ssh_user: str,
+        pem_content: str,
+        run_id: UUID,
+        preserve_data: bool,
+        ssh_port: int = 22,
+    ) -> None:
+        """Tear down stack via SSH using explicit credentials (used when deployment record not found)."""
+        creds = _TeardownCreds(
+            ssh_host=ssh_host,
+            ssh_port=ssh_port,
+            ssh_user=ssh_user,
+            ssh_key=pem_content,
+            run_id=run_id,
+        )
+        await asyncio.to_thread(self._perform_teardown, creds, preserve_data)
+
+    def fetch_logs(self, req: DeploymentLogsRequest) -> Dict[str, str]:
+        """SSH to host and return docker compose logs for telemetry services."""
+        import base64
+
+        key_content = req.ssh_key
+        if not key_content and req.pem_base64:
+            key_content = base64.b64decode(req.pem_base64).decode("utf-8")
+        if not key_content:
+            raise ValueError("Either ssh_key or pem_base64 is required")
+
+        creds = _TeardownCreds(
+            ssh_host=req.ssh_host,
+            ssh_port=req.ssh_port,
+            ssh_user=req.ssh_user,
+            ssh_key=key_content,
+            run_id=req.run_id,
+        )
+        remote_dir = f"/tmp/gpu-telemetry-{req.run_id}"
+        services = (
+            [req.service]
+            if req.service and req.service != "all"
+            else ["nvidia-smi-exporter", "dcgm-exporter", "dcgm-health-exporter", "token-exporter", "prometheus"]
+        )
+        result: Dict[str, str] = {}
+        ssh = self._connect(creds)
+        try:
+            dir_ok = self._exec_safe(ssh, f"test -d {remote_dir} && echo ok").strip() == "ok"
+            if not dir_ok:
+                result["_error"] = f"Directory {remote_dir} not found. Has monitoring been deployed for this run?"
+                return result
+            for svc in services:
+                out = self._exec_safe(
+                    ssh,
+                    f"cd {remote_dir} && sudo docker compose logs --tail={req.tail} {svc} 2>&1",
+                )
+                result[svc] = out or "(no output)"
+        finally:
+            ssh.close()
+        return result
 
     async def _find_record(self, instance_id: str, run_id: UUID) -> Optional[DeploymentRecord]:
         async with self._lock:
@@ -184,6 +254,14 @@ class DeploymentManager:
             logger.info(f"System validation complete: {system_info['gpu_count']} GPU(s), "
                        f"Driver: {system_info['driver_version']}, "
                        f"DCGM: {system_info['dcgm_version']}")
+
+            # Step 1b: Tear down ALL old telemetry stacks FIRST (before prerequisites).
+            # This ensures orphaned Prometheus (e.g. from failed Stop, backend restart)
+            # is stopped before we deploy. Prevents run_id mismatch: old stack sending
+            # to old run while UI shows new run.
+            logger.info("Tearing down any existing telemetry stacks (old runs)...")
+            self._cleanup_port_conflicts(ssh)
+            self._cleanup_old_telemetry_instances(ssh)
             
             # Step 2: Setup remote directory
             remote_dir = f"/tmp/gpu-telemetry-{request.run_id}"
@@ -224,12 +302,7 @@ class DeploymentManager:
             logger.info("Running remote prerequisite checks and installation...")
             self._exec(ssh, f"cd {remote_dir} && sudo bash ./check_prerequisites.sh")
             
-            # Step 6: Clean up port conflicts and old telemetry instances
-            logger.info("Cleaning up port conflicts and old telemetry instances...")
-            self._cleanup_port_conflicts(ssh)
-            self._cleanup_old_telemetry_instances(ssh)
-            
-            # Step 7: Deploy stack
+            # Step 6: Deploy stack (cleanup already done at start)
             logger.info("Starting Docker Compose stack...")
             # Force recreate DCGM exporter if profiling mode is enabled to ensure it picks up the configuration
             if request.enable_profiling and system_info.get('dcgm_image'):
@@ -530,6 +603,27 @@ class DeploymentManager:
         system_info['dcgm_image'] = dcgm_image
         system_info['dcgm_version'] = 'detected' if dcgm_image else 'not_installed'
         
+        # Detect NVIDIA ML library path and versioned filename (for precise container mounts).
+        # We mount only libnvidia-ml.so.1 and its versioned counterpart into the container's
+        # standard lib path so nvidia-smi can dlopen it without overriding container glibc.
+        nvml_so = self._exec_safe(
+            ssh,
+            "find /usr/lib /usr/lib64 /usr/lib/x86_64-linux-gnu -maxdepth 2 -name 'libnvidia-ml.so.1' 2>/dev/null | head -1"
+        ).strip()
+        if nvml_so and nvml_so.startswith('/'):
+            system_info['nvidia_lib_path'] = nvml_so.rsplit('/', 1)[0]
+        else:
+            system_info['nvidia_lib_path'] = '/usr/lib/x86_64-linux-gnu'
+        logger.info(f"Detected NVIDIA lib path: {system_info['nvidia_lib_path']}")
+
+        # Find versioned libnvidia-ml.so (e.g. libnvidia-ml.so.535.288.01)
+        nvml_versioned = self._exec_safe(
+            ssh,
+            f"ls {system_info['nvidia_lib_path']}/libnvidia-ml.so.*.* 2>/dev/null | head -1 | xargs -r basename"
+        ).strip()
+        system_info['nvidia_ml_versioned'] = nvml_versioned if nvml_versioned else ''
+        logger.info(f"Detected versioned NVML: {system_info['nvidia_ml_versioned']}")
+        
         # Check port availability
         required_ports = [9400, 9401, 9402, 9403, 9090]
         system_info['blocked_ports'] = self._check_port_availability(ssh, required_ports)
@@ -697,48 +791,57 @@ class DeploymentManager:
         dcgm_image = system_info.get('dcgm_image')
         has_dcgm = dcgm_image is not None
         
-        # Generate device mappings dynamically based on GPU count
+        # GPU device passthrough for nvidia-smi access.
+        # We mount only the NVIDIA-specific .so files (not the whole lib dir),
+        # so the container's own glibc is not overridden. nvidia-smi uses dlopen
+        # to load libnvidia-ml.so.1 at runtime; mounting that file directly into
+        # the container's standard lib path makes it discoverable without LD_LIBRARY_PATH.
+        nvidia_lib_path = system_info.get('nvidia_lib_path', '/usr/lib/x86_64-linux-gnu')
+        # Find the versioned libnvidia-ml.so (e.g. libnvidia-ml.so.535.288.01)
+        nvidia_ml_versioned = system_info.get('nvidia_ml_versioned', '')
+
         gpu_devices = []
         for i in range(gpu_count):
             gpu_devices.append(f'      - "/dev/nvidia{i}:/dev/nvidia{i}"')
-        
         gpu_devices_str = '\n'.join(gpu_devices) + '\n' + '\n'.join([
             '      - "/dev/nvidiactl:/dev/nvidiactl"',
             '      - "/dev/nvidia-uvm:/dev/nvidia-uvm"',
             '      - "/dev/nvidia-uvm-tools:/dev/nvidia-uvm-tools"'
         ])
-        
-        # Build DCGM exporter service if DCGM is available
+
+        # Mount specific NVIDIA ML libs into container's standard lib path.
+        # This avoids overriding glibc while still letting nvidia-smi find its libs.
+        nvidia_ml_so = f'{nvidia_lib_path}/libnvidia-ml.so.1'
+        nvidia_ml_vso = f'{nvidia_lib_path}/{nvidia_ml_versioned}' if nvidia_ml_versioned else ''
+        nvidia_lib_mounts = f'      - {nvidia_ml_so}:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:ro'
+        if nvidia_ml_vso:
+            nvidia_lib_mounts += f'\n      - {nvidia_ml_vso}:/usr/lib/x86_64-linux-gnu/{nvidia_ml_versioned}:ro'
+
+        # Build DCGM exporter service if DCGM is available.
+        # Uses runtime: nvidia so the container toolkit injects all NVIDIA libs automatically.
         dcgm_service = ""
         if has_dcgm:
-            # Note: The DCGM exporter image has all necessary libraries built-in.
-            # Do NOT bind-mount CUDA/NVML libraries into container library paths.
-            # On hosts using the NVIDIA container runtime hook, that causes a
-            # symlink/create conflict during container init (device or resource busy).
             dcgm_service = f"""
   dcgm-exporter:
     image: {dcgm_image}
+    runtime: nvidia
     privileged: true
     network_mode: host
     volumes:
       - ./dcgm-collectors.csv:/etc/dcgm-exporter/dcp-metrics-included.csv:ro
-      - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro
     environment:
-      LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu:/usr/local/dcgm/lib64
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
       DCGM_EXPORTER_LISTEN: ":9400"
       DCGM_EXPORTER_KUBERNETES: "false"
       DCGM_EXPORTER_COLLECTORS: "/etc/dcgm-exporter/dcp-metrics-included.csv"
       DCGM_EXPORTER_INTERVAL: "{dcgm_interval}"
       DCGM_EXPORTER_ENABLE_PROFILING: "{str(request.enable_profiling).lower()}"
-      NVIDIA_VISIBLE_DEVICES: all
-      NVIDIA_DRIVER_CAPABILITIES: compute,utility
     cap_add:
       - SYS_ADMIN
-    devices:
-{gpu_devices_str}
     restart: unless-stopped
 """
-        
+
         # Build prometheus depends_on list
         prometheus_deps = []
         if has_dcgm:
@@ -749,42 +852,36 @@ class DeploymentManager:
             "      - token-exporter"
         ])
         prometheus_depends = '\n'.join(prometheus_deps)
-        
+
         compose_content = f"""
 services:{dcgm_service}
   nvidia-smi-exporter:
     image: python:3.11-slim
     privileged: true
+    network_mode: host
     command: python3 /app/nvidia-smi-exporter.py
     volumes:
       - ./nvidia-smi-exporter.py:/app/nvidia-smi-exporter.py:ro
       - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro
+{nvidia_lib_mounts}
     environment:
       NVIDIA_VISIBLE_DEVICES: all
-      NVIDIA_DRIVER_CAPABILITIES: compute,utility
-      LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu
-    ports:
-      - "9401:9401"
     restart: unless-stopped
-    network_mode: host
     devices:
 {gpu_devices_str}
 
   dcgm-health-exporter:
     image: python:3.11-slim
     privileged: true
+    network_mode: host
     command: python3 /app/dcgm-health-exporter.py
     volumes:
       - ./dcgm-health-exporter.py:/app/dcgm-health-exporter.py:ro
       - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro
+{nvidia_lib_mounts}
     environment:
       NVIDIA_VISIBLE_DEVICES: all
-      NVIDIA_DRIVER_CAPABILITIES: compute,utility
-      LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu
-    ports:
-      - "9403:9403"
     restart: unless-stopped
-    network_mode: host
     devices:
 {gpu_devices_str}
 
@@ -1717,10 +1814,33 @@ volumes:
             
             # Verify driver actually works (not just that the binary exists)
             if ! nvidia-smi &>/dev/null 2>&1; then
-                log_error "nvidia-smi exists but the NVIDIA driver is not working correctly."
-                log_error "The host may need a reboot or manual driver repair (e.g. apt --fix-broken install)."
-                log_error "Please fix the driver state and try Start Monitoring again."
-                exit 1
+                log_info "nvidia-smi failed, attempting auto-repair..."
+
+                # Step 1: Fix broken dpkg/apt state (firmware conflicts)
+                sudo dpkg --force-overwrite --configure -a 2>&1 | tail -3 || true
+                sudo apt-get --fix-broken install -y 2>&1 | tail -3 || true
+
+                # Step 2: Rebuild DKMS modules if missing
+                if ! lsmod | grep -q '^nvidia'; then
+                    DRIVER_VER=$(dpkg -l 2>/dev/null | grep -oP 'nvidia-dkms-\K[0-9]+' | head -1)
+                    if [ -n "$DRIVER_VER" ]; then
+                        log_info "Rebuilding DKMS modules for nvidia/$DRIVER_VER..."
+                        sudo dkms install "nvidia/$DRIVER_VER" -k "$(uname -r)" 2>&1 | tail -5 || true
+                    fi
+                fi
+
+                # Step 3: Load kernel modules
+                sudo modprobe nvidia 2>/dev/null || true
+                sudo modprobe nvidia_uvm 2>/dev/null || true
+                sleep 2
+
+                if ! nvidia-smi &>/dev/null 2>&1; then
+                    log_error "nvidia-smi still not working after auto-repair."
+                    log_error "The host may need a reboot after driver installation."
+                    log_error "Try: sudo reboot, then run Start Monitoring again."
+                    exit 1
+                fi
+                log_info "NVIDIA driver repaired and kernel modules loaded successfully."
             fi
 
             # Extract GPU information
@@ -1742,6 +1862,13 @@ volumes:
             # Test if GPU access works in Docker
             if ! docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi &>/dev/null 2>&1; then
                 log_info "NVIDIA Container Toolkit not functional, installing..."
+                
+                # Fix broken apt state (common on fresh Scaleway/cloud images)
+                # Use --force-overwrite to resolve nvidia-kernel-common vs nvidia-firmware conflicts
+                log_info "Fixing broken package dependencies..."
+                sudo dpkg --force-overwrite --configure -a 2>&1 || true
+                sudo apt-get --fix-broken install -y 2>&1 || true
+                sudo apt-get autoremove -y 2>&1 || true
                 
                 distribution=$(. /etc/os-release; echo $ID$VERSION_ID)
                 

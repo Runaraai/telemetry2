@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import shlex
 from datetime import datetime, timezone
 from typing import Any, Dict, List
@@ -20,6 +21,8 @@ from ..schemas import (
     DeploymentJobListResponse,
     DeploymentJobRead,
     DeploymentJobUpdate,
+    DeploymentLogsRequest,
+    DeploymentLogsResponse,
     DeploymentRequest,
     DeploymentResponse,
     DeploymentStatusResponse,
@@ -100,17 +103,21 @@ async def deploy_instance(
     instance_id: str,
     payload: DeploymentRequest,
     deployment_type: str = Query("ssh", description="Deployment type: 'ssh' or 'agent'"),
+    sync: bool = Query(False, description="If true, deploy synchronously (bypass queue); recommended when queue worker has issues"),
     current_user: User = Depends(get_current_user),
     repo: TelemetryRepository = Depends(get_repository),
 ) -> DeploymentResponse:
     """
-    Deploy telemetry stack via queue. Uses the supplied run_id if it already exists;
+    Deploy telemetry stack. Uses the supplied run_id if it already exists;
     otherwise creates a new run locally so remote_write has a target.
+    
+    By default uses a background queue. Set sync=true to deploy immediately in-process.
     
     Args:
         instance_id: The instance identifier
         payload: Deployment request (SSH fields optional for agent deployment)
         deployment_type: "ssh" for SSH push, "agent" for agent pull (default: "ssh")
+        sync: If true, deploy directly without queue (default: False)
     """
     if deployment_type not in ["ssh", "agent"]:
         raise HTTPException(
@@ -170,7 +177,17 @@ async def deploy_instance(
     if created_run_in_request or token_updated_in_request:
         await repo.session.commit()
 
-    # Enqueue deployment job instead of starting directly
+    # Synchronous deploy (bypass queue) - recommended when queue worker has issues
+    if sync and deployment_type == "ssh":
+        record = await deployment_manager.start_deployment(instance_id, payload)
+        return DeploymentResponse(
+            deployment_id=record.deployment_id,
+            run_id=run_id,
+            status="deploying",
+            message="Deployment started (sync mode). Poll status for progress.",
+        )
+
+    # Enqueue deployment job
     job_data = DeploymentJobCreate(
         instance_id=instance_id,
         run_id=run_id,
@@ -180,8 +197,7 @@ async def deploy_instance(
         payload=job_payload,
     )
     job = await queue_manager.enqueue_job(job_data)
-    
-    # Return response with job_id as deployment_id for backward compatibility
+
     return DeploymentResponse(
         deployment_id=job.job_id,
         run_id=run_id,
@@ -279,9 +295,22 @@ async def teardown_instance(
         await deployment_manager.teardown(instance_id, payload)
         teardown_status = "completed"
     except ValueError as e:
-        # Deployment record not found (e.g., backend restarted)
-        # This is OK - we'll still update the run status
-        teardown_status = f"deployment_not_found: {str(e)}"
+        # Deployment record not found (e.g., backend restarted). Try fallback teardown via SSH.
+        if payload.ssh_host and payload.ssh_user and payload.pem_base64:
+            try:
+                pem_content = base64.b64decode(payload.pem_base64).decode("utf-8")
+                await deployment_manager.teardown_with_credentials(
+                    ssh_host=payload.ssh_host,
+                    ssh_user=payload.ssh_user,
+                    pem_content=pem_content,
+                    run_id=payload.run_id,
+                    preserve_data=payload.preserve_data,
+                )
+                teardown_status = "completed"
+            except Exception as fallback_exc:
+                teardown_status = f"fallback_teardown_error: {fallback_exc}"
+        else:
+            teardown_status = f"deployment_not_found: {str(e)}"
     except Exception as e:
         teardown_status = f"error: {str(e)}"
 
@@ -304,6 +333,34 @@ async def teardown_instance(
         "teardown_status": teardown_status,
         "run_update_status": run_update_status,
     }
+
+
+@router.post("/{instance_id}/logs", response_model=DeploymentLogsResponse, status_code=status.HTTP_200_OK)
+async def fetch_deployment_logs(
+    instance_id: str,
+    payload: DeploymentLogsRequest,
+    current_user: User = Depends(get_current_user),
+) -> DeploymentLogsResponse:
+    """
+    Fetch docker compose logs from telemetry exporters on the GPU host.
+    Use this to debug failing exporters (e.g. nvidia-smi-exporter, dcgm-exporter).
+    Requires SSH credentials (ssh_host, ssh_user, ssh_key or pem_base64).
+    """
+    if not payload.ssh_key and not payload.pem_base64:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either ssh_key or pem_base64 is required",
+        )
+    try:
+        logs = await asyncio.to_thread(deployment_manager.fetch_logs, payload)
+        return DeploymentLogsResponse(run_id=payload.run_id, logs=logs)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to fetch logs: {e}",
+        )
 
 
 @router.post("/{instance_id}/cleanup", status_code=status.HTTP_200_OK)

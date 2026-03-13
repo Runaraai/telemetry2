@@ -772,6 +772,8 @@ class InstanceOrchestrator:
                 "Setup phase: NVIDIA Container Toolkit..."
             )
             nvidia_toolkit_cmd = (
+                "sudo dpkg --configure -a 2>&1 || true && "
+                "sudo apt-get --fix-broken install -y 2>&1 || true && "
                 "distribution=$(. /etc/os-release;echo $ID$VERSION_ID) && "
                 "curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | "
                 "sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg && "

@@ -51,6 +51,7 @@ import {
   VpnKey as VpnKeyIcon,
   ArrowForward as ArrowForwardIcon,
   ArrowBack as ArrowBackIcon,
+  BugReport as BugReportIcon,
 } from '@mui/icons-material';
 import {
   ResponsiveContainer,
@@ -176,30 +177,22 @@ const InfoCard = React.memo(({ icon: Icon, title, subtitle, children, color = 'p
 InfoCard.displayName = 'InfoCard';
 
 const deriveDefaultBackendUrl = () => {
-  // If REACT_APP_API_URL is explicitly set (even if empty), use it
-  if (process.env.REACT_APP_API_URL !== undefined) {
-    // Empty string means use relative URLs (current origin)
-    if (process.env.REACT_APP_API_URL === '') {
-      return '';
-    }
-    return process.env.REACT_APP_API_URL;
+  // Explicit backend URL for telemetry (GPU must reach this for remote_write)
+  if (process.env.REACT_APP_BACKEND_URL) {
+    return process.env.REACT_APP_BACKEND_URL.replace(/\/$/, '');
   }
-
+  // Fallback to API URL if set
+  if (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL !== '') {
+    return process.env.REACT_APP_API_URL.replace(/\/$/, '');
+  }
   if (typeof window !== 'undefined') {
     const origin = window.location.origin;
-    // For telemetry deployment, we need a routable URL (not localhost)
-    // If accessing via localhost, use the external IP for deployment
     if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      // Default to hosted API domain that remote instances can reach
-      // Fallback to environment variable or empty string for relative URLs
-      return process.env.REACT_APP_API_URL || '';
+      return '';
     }
-    // Otherwise use the same origin
     return origin;
   }
-
-  // Fallback to environment variable or empty string for relative URLs
-  return process.env.REACT_APP_API_URL || '';
+  return '';
 };
 
 const DEFAULT_BACKEND_URL = deriveDefaultBackendUrl();
@@ -1147,7 +1140,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
   const [telemetryStep, setTelemetryStep] = useState(0);
   const [metricsTab, setMetricsTab] = useState(0);
   const [instance, setInstance] = useState(instanceData || null);
-  const [sshUser, setSshUser] = useState(instanceData?.sshUser || 'ubuntu');
+  const [sshUser, setSshUser] = useState('root');
   const [sshHost, setSshHost] = useState(instanceData?.ipAddress || '');
   const [sshKey, setSshKey] = useState(() => decodePem(instanceData?.pemBase64));
   const [pollInterval, setPollInterval] = useState(5);
@@ -1172,8 +1165,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
   const [hasProfilingData, setHasProfilingData] = useState(false);
   const [websocketConnectedAt, setWebsocketConnectedAt] = useState(null);
   const [lastDataReceivedAt, setLastDataReceivedAt] = useState(null);
-  const [componentStatus, setComponentStatus] = useState(null);
-  const [componentStatusLoading, setComponentStatusLoading] = useState(false);
   const [deploymentJobs, setDeploymentJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [queueStats, setQueueStats] = useState(null);
@@ -1182,6 +1173,9 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
   const [profilingResult, setProfilingResult] = useState(null);
   const [profilingResultRunId, setProfilingResultRunId] = useState(null);
   const [kernelRunLoading, setKernelRunLoading] = useState(false);
+  const [logsDialogOpen, setLogsDialogOpen] = useState(false);
+  const [logsContent, setLogsContent] = useState(null);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   // Workload benchmark state
   const [benchmarkConfig, setBenchmarkConfig] = useState({
@@ -1311,9 +1305,10 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           setSshKey(decodePem(stored.pemBase64));
         }
       }
-      if (data.sshUser) {
+      if (data.sshUser && data.sshUser !== 'ubuntu') {
         setSshUser(data.sshUser);
       }
+      // ubuntu is normalized to root (root is default for GPU instances)
       if (data.ipAddress || data.ip) {
         setSshHost(data.ipAddress || data.ip);
       }
@@ -1450,32 +1445,6 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
       setError(friendlyError(err, 'Failed to cancel job'));
     }
   }, [fetchDeploymentJobs]);
-
-  const fetchComponentStatus = useCallback(async () => {
-    if (!activeRun || !instanceId) return;
-    
-    setComponentStatusLoading(true);
-    try {
-      const response = await apiService.getTelemetryComponentStatus(instanceId, activeRun.run_id);
-      setComponentStatus(response);
-    } catch (err) {
-      console.error('Failed to load component status', err);
-      setComponentStatus(null);
-    } finally {
-      setComponentStatusLoading(false);
-    }
-  }, [activeRun, instanceId]);
-
-  useEffect(() => {
-    if (activeRun && monitoringState === 'running') {
-      fetchComponentStatus();
-      // Poll component status every 30 seconds
-      const interval = setInterval(fetchComponentStatus, 30000);
-      return () => clearInterval(interval);
-    } else {
-      setComponentStatus(null);
-    }
-  }, [activeRun, monitoringState, fetchComponentStatus]);
 
   const appendRealtimeSamples = useCallback((samples) => {
     if (!samples || samples.length === 0) {
@@ -1880,6 +1849,11 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
       setError('SSH private key required. Upload a PEM file from Manage Instances.');
       return;
     }
+    if (!backendUrl || !backendUrl.startsWith('http')) {
+      setError('Backend URL required. Set a routable URL (e.g. http://your-server:8000) that the GPU instance can reach for metrics.');
+      appendLog('error', 'Backend URL must be a valid http:// or https:// URL reachable from the GPU.');
+      return;
+    }
 
     const { gpuModel, gpuCount } = extractGpuInfo(instance || {});
 
@@ -1939,16 +1913,42 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
     async (run) => {
       if (!run || !instanceId) return;
       try {
-        await apiService.teardownTelemetryStack(instanceId, {
+        const payload = {
           run_id: run.run_id,
           preserve_data: preserveData,
-        });
+          ssh_host: sshHost || undefined,
+          ssh_user: sshUser || undefined,
+          pem_base64: sshKey ? btoa(sshKey) : undefined,
+        };
+        await apiService.teardownTelemetryStack(instanceId, payload);
       } catch (err) {
         console.warn('Failed to teardown telemetry stack', err);
       }
     },
-    [instanceId, preserveData]
+    [instanceId, preserveData, sshHost, sshUser, sshKey]
   );
+
+  const handleViewLogs = useCallback(async () => {
+    if (!instanceId || !activeRun || !sshHost || !sshUser || !sshKey) return;
+    setLogsDialogOpen(true);
+    setLogsLoading(true);
+    setLogsContent(null);
+    try {
+      const data = await apiService.fetchTelemetryLogs(instanceId, {
+        run_id: activeRun.run_id,
+        ssh_host: sshHost,
+        ssh_user: sshUser,
+        pem_base64: btoa(sshKey),
+        service: 'all',
+        tail: 100,
+      });
+      setLogsContent(data.logs || {});
+    } catch (err) {
+      setLogsContent({ _error: friendlyError(err, 'Failed to fetch logs') });
+    } finally {
+      setLogsLoading(false);
+    }
+  }, [instanceId, activeRun, sshHost, sshUser, sshKey]);
 
   const handleStopMonitoring = useCallback(async () => {
     if (!activeRun) return;
@@ -2252,7 +2252,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
 
         {/* Step Indicator */}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-          {['Instance Connection', 'Inference Server', 'Workload Benchmark', 'Kernel Profiling', 'Telemetry'].map((label, idx) => (
+          {['Instance Connection', 'Telemetry'].map((label, idx) => (
             <Box
               key={label}
               onClick={() => setTelemetryStep(idx)}
@@ -2290,7 +2290,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
               >
                 {label}
               </Typography>
-              {idx < 4 && (
+              {idx < 1 && (
                 <Box sx={{ width: 24, height: 1, backgroundColor: alpha('#000', 0.15), mx: 0.5 }} />
               )}
             </Box>
@@ -2351,8 +2351,8 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                   fullWidth
                   value={sshUser}
                   onChange={(e) => setSshUser(e.target.value)}
-                  placeholder="ubuntu"
-                  helperText="SSH username (usually 'ubuntu' or 'root')"
+                  placeholder="root"
+                  helperText="SSH username (usually 'root' or 'ubuntu')"
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
                 />
               </Grid>
@@ -2379,7 +2379,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                   fullWidth
                   value={backendUrl}
                   onChange={(e) => setBackendUrl(e.target.value)}
-                  helperText="Reachable URL for this dio backend"
+                  helperText="URL the GPU instance can reach (e.g. http://your-server-ip:8000). Required for metrics."
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
                 />
               </Grid>
@@ -2466,6 +2466,18 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
             >
               Stop Monitoring
             </Button>
+            <Tooltip title="View exporter logs (for debugging GPU metrics)">
+              <span>
+                <Button
+                  variant="outlined"
+                  startIcon={<BugReportIcon />}
+                  onClick={handleViewLogs}
+                  disabled={!activeRun || !sshHost || !sshKey}
+                >
+                  View Logs
+                </Button>
+              </span>
+            </Tooltip>
             <Box sx={{ flexGrow: 1 }} />
             <Button startIcon={<ReplayIcon />} onClick={handleRefreshRuns}>
               Refresh Runs
@@ -2551,656 +2563,8 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
         </Box>
         </React.Fragment>)}
 
-        {/* Step 1: Inference Server */}
+        {/* Step 1: Telemetry */}
         {telemetryStep === 1 && (<React.Fragment>
-
-        {/* ── Inference (vLLM) Control Card ─────────────────────────────── */}
-          <Card variant="outlined" sx={{ mb: 2 }}>
-            <CardHeader
-              title="Inference Server"
-              subheader="Start or stop the vLLM inference server on the connected GPU instance"
-              action={
-                <Chip
-                  label={
-                    inferenceStatus === 'running' ? 'Running' :
-                    inferenceStatus === 'starting' ? 'Starting…' :
-                    inferenceStatus === 'stopping' ? 'Stopping…' :
-                    inferenceStatus === 'stopped' ? 'Stopped' :
-                    inferenceStatus === 'error' ? 'Error' :
-                    'Unknown'
-                  }
-                  color={
-                    inferenceStatus === 'running' ? 'success' :
-                    inferenceStatus === 'error' ? 'error' :
-                    inferenceStatus === 'starting' || inferenceStatus === 'stopping' ? 'warning' :
-                    'default'
-                  }
-                  size="small"
-                />
-              }
-            />
-            <CardContent>
-              <TextField
-                label="Model path or HuggingFace ID"
-                value={inferenceModel}
-                onChange={(e) => setInferenceModel(e.target.value)}
-                fullWidth
-                size="small"
-                placeholder="e.g. mistralai/Mistral-7B-Instruct-v0.2"
-                helperText="Leave blank to use the default model configured during setup"
-                sx={{ mb: 1 }}
-              />
-            </CardContent>
-            <CardActions sx={{ px: 2, pb: 2 }}>
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={inferenceStatus === 'starting' ? <CircularProgress size={14} /> : <PlayIcon />}
-                onClick={handleStartInference}
-                disabled={!sshHost || inferenceStatus === 'starting' || inferenceStatus === 'running' || inferenceStatus === 'stopping'}
-              >
-                {inferenceStatus === 'starting' ? 'Starting…' : 'Start Inference'}
-              </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={inferenceStatus === 'stopping' ? <CircularProgress size={14} /> : <StopIcon />}
-                onClick={handleStopInference}
-                disabled={!sshHost || inferenceStatus !== 'running'}
-              >
-                {inferenceStatus === 'stopping' ? 'Stopping…' : 'Stop Inference'}
-              </Button>
-              <Button
-                size="small"
-                onClick={fetchInferenceStatus}
-                disabled={!sshHost}
-                sx={{ ml: 'auto' }}
-              >
-                Refresh Status
-              </Button>
-            </CardActions>
-          </Card>
-
-        {message && <Alert severity="success">{message}</Alert>}
-        {error && <Alert severity="error">{error}</Alert>}
-
-        {deploymentId && (
-          <Alert severity="info">
-            Deployment ID: {deploymentId}
-            {deploymentStatus?.status ? ` • Status: ${deploymentStatus.status}` : ''}
-            {deploymentStatus?.message ? ` • ${deploymentStatus.message}` : ''}
-          </Alert>
-        )}
-
-        {/* Nav buttons for step 1 */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBackIcon />}
-            onClick={() => setTelemetryStep(0)}
-            sx={{ borderRadius: 2, fontWeight: 600, px: 4 }}
-          >
-            Back
-          </Button>
-          <Button
-            variant="contained"
-            endIcon={<ArrowForwardIcon />}
-            onClick={() => setTelemetryStep(2)}
-            sx={{
-              backgroundColor: '#16a34a',
-              color: '#fff',
-              borderRadius: 2,
-              fontWeight: 600,
-              px: 4,
-              '&:hover': { backgroundColor: '#15803d' },
-            }}
-          >
-            Next
-          </Button>
-        </Box>
-        </React.Fragment>)}
-
-        {/* Step 2: Workload Benchmark */}
-        {telemetryStep === 2 && (<React.Fragment>
-
-        {/* Run Summary - workload, bottleneck, kernel, GPU aggregates */}
-        {profilingResult && (
-          <Card variant="outlined" sx={{ mb: 2 }}>
-            <CardHeader
-              title="Run Summary"
-              subheader={profilingResultRunId ? `Run ${profilingResultRunId.substring(0, 8)}...` : null}
-              action={
-                instanceId && profilingResultRunId && (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={handleRunKernelAnalysis}
-                    disabled={kernelRunLoading}
-                    startIcon={kernelRunLoading ? <CircularProgress size={14} /> : null}
-                  >
-                    {kernelRunLoading ? 'Running...' : 'Run Kernel Analysis'}
-                  </Button>
-                )
-              }
-            />
-            <CardContent>
-              <Grid container spacing={2}>
-                {profilingResult.workload && (
-                  <>
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary">TTFT P50</Typography>
-                      <Typography variant="h6">{profilingResult.workload.ttft_p50_ms != null ? Number(profilingResult.workload.ttft_p50_ms).toFixed(2) : '-'} ms</Typography>
-                    </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary">TTFT P95</Typography>
-                      <Typography variant="h6">{profilingResult.workload.ttft_p95_ms != null ? Number(profilingResult.workload.ttft_p95_ms).toFixed(2) : '-'} ms</Typography>
-                    </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary">Throughput</Typography>
-                      <Typography variant="h6">{profilingResult.workload.throughput_tok_sec != null ? Number(profilingResult.workload.throughput_tok_sec).toFixed(1) : '-'} tok/s</Typography>
-                    </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary">Success rate</Typography>
-                      <Typography variant="h6">
-                        {profilingResult.workload.num_requests > 0
-                          ? `${Math.round((profilingResult.workload.successful_requests / profilingResult.workload.num_requests) * 100)}%`
-                          : '-'}
-                      </Typography>
-                    </Grid>
-                  </>
-                )}
-                {profilingResult.bottleneck && (
-                  <Grid item xs={12}>
-                    <Typography variant="caption" color="text.secondary">Bottleneck: </Typography>
-                    <Chip label={profilingResult.bottleneck.primary_bottleneck || 'unknown'} size="small" sx={{ ml: 0.5 }} />
-                    {profilingResult.bottleneck.mfu_pct != null && (
-                      <Typography component="span" variant="body2" sx={{ ml: 1 }}>
-                        MFU: {Number(profilingResult.bottleneck.mfu_pct).toFixed(1)}%
-                      </Typography>
-                    )}
-                  </Grid>
-                )}
-                {profilingResult.gpu && (
-                  <Grid item xs={12}>
-                    <Typography variant="caption" color="text.secondary">GPU aggregates: </Typography>
-                    <Typography component="span" variant="body2">
-                      util {profilingResult.gpu.util_mean_pct != null ? Number(profilingResult.gpu.util_mean_pct).toFixed(1) : '-'}% |
-                      SM active {profilingResult.gpu.sm_active_mean_pct != null ? Number(profilingResult.gpu.sm_active_mean_pct).toFixed(1) : '-'}% |
-                      power {profilingResult.gpu.power_mean_w != null ? Number(profilingResult.gpu.power_mean_w).toFixed(0) : '-'} W |
-                      temp {profilingResult.gpu.temp_mean_c != null ? Number(profilingResult.gpu.temp_mean_c).toFixed(0) : '-'} °C
-                    </Typography>
-                  </Grid>
-                )}
-                {Array.isArray(profilingResult.kernel_profiles) && profilingResult.kernel_profiles.length > 0 && profilingResult.kernel_profiles[0].categories?.length > 0 && (
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Kernel breakdown</Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {profilingResult.kernel_profiles[0].categories.map((c, i) => (
-                        <Chip key={i} label={`${c.category}: ${Number(c.pct).toFixed(1)}%`} size="small" variant="outlined" />
-                      ))}
-                    </Box>
-                  </Grid>
-                )}
-                {Array.isArray(profilingResult.bottleneck?.recommendations) && profilingResult.bottleneck.recommendations.length > 0 && (
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Recommendations</Typography>
-                    <Stack spacing={0.25}>
-                      {profilingResult.bottleneck.recommendations.map((r, i) => (
-                        <Typography key={i} variant="body2">• {r}</Typography>
-                      ))}
-                    </Stack>
-                  </Grid>
-                )}
-              </Grid>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ================================================================ */}
-        {/* Workload Benchmark Card                                         */}
-        {/* ================================================================ */}
-          <Card variant="outlined">
-            <CardHeader
-              title={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <SpeedIcon color="primary" fontSize="small" />
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>Workload Benchmark</Typography>
-                </Box>
-              }
-              subheader="Collect TTFT, inter-token latency and throughput from vLLM via streaming API"
-            />
-            <CardContent>
-              <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={12} md={5}>
-                  <TextField
-                    label="vLLM Server URL"
-                    fullWidth
-                    size="small"
-                    value={benchmarkConfig.vllmServer}
-                    onChange={(e) => setBenchmarkConfig((p) => ({ ...p, vllmServer: e.target.value }))}
-                    placeholder="http://localhost:8000"
-                    helperText="Accessible from the GPU instance"
-                    disabled={benchmarkLoading}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                  />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <TextField
-                    label="Model Name"
-                    fullWidth
-                    size="small"
-                    value={benchmarkConfig.model}
-                    onChange={(e) => setBenchmarkConfig((p) => ({ ...p, model: e.target.value }))}
-                    placeholder="auto-detect"
-                    helperText="Leave blank to auto-detect"
-                    disabled={benchmarkLoading}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                  />
-                </Grid>
-                <Grid item xs={6} md={2}>
-                  <TextField
-                    label="Requests"
-                    type="number"
-                    fullWidth
-                    size="small"
-                    value={benchmarkConfig.numRequests}
-                    onChange={(e) => setBenchmarkConfig((p) => ({ ...p, numRequests: parseInt(e.target.value) || 50 }))}
-                    inputProps={{ min: 1, max: 500 }}
-                    disabled={benchmarkLoading}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                  />
-                </Grid>
-                <Grid item xs={6} md={2}>
-                  <TextField
-                    label="Concurrency"
-                    type="number"
-                    fullWidth
-                    size="small"
-                    value={benchmarkConfig.concurrency}
-                    onChange={(e) => setBenchmarkConfig((p) => ({ ...p, concurrency: parseInt(e.target.value) || 4 }))}
-                    inputProps={{ min: 1, max: 32 }}
-                    disabled={benchmarkLoading}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                  />
-                </Grid>
-              </Grid>
-
-              {monitoringState === 'running' && activeRun && (
-                <Alert severity="info" sx={{ mb: 2, borderRadius: '8px' }}>
-                  Results will be attached to the active monitoring run <code>{activeRun.run_id?.substring(0, 8)}...</code>
-                </Alert>
-              )}
-              {monitoringState !== 'running' && (
-                <Alert severity="info" sx={{ mb: 2, borderRadius: '8px' }}>
-                  GPU monitoring is not active. A standalone workload run will be created.
-                </Alert>
-              )}
-
-              <Button
-                variant="contained"
-                onClick={handleRunWorkloadBenchmark}
-                disabled={benchmarkLoading || !instanceId}
-                startIcon={benchmarkLoading ? <CircularProgress size={16} /> : <PlayIcon />}
-                sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
-              >
-                {benchmarkLoading ? 'Benchmarking...' : 'Run Benchmark'}
-              </Button>
-
-              {benchmarkLoading && (
-                <Box sx={{ mt: 2 }}>
-                  <LinearProgress sx={{ borderRadius: 1, height: 6 }} />
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                    Running benchmark… {benchmarkElapsed}s elapsed (typically 30–120s)
-                  </Typography>
-                </Box>
-              )}
-
-              {/* Benchmark Results */}
-              {benchmarkResult?.workload && (
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600 }}>Results</Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={6} sm={3}>
-                      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
-                        <Typography variant="caption" color="text.secondary" display="block">TTFT P50</Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                          {benchmarkResult.workload.ttft_p50_ms != null ? `${Number(benchmarkResult.workload.ttft_p50_ms).toFixed(1)} ms` : '—'}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
-                        <Typography variant="caption" color="text.secondary" display="block">TTFT P95</Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                          {benchmarkResult.workload.ttft_p95_ms != null ? `${Number(benchmarkResult.workload.ttft_p95_ms).toFixed(1)} ms` : '—'}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
-                        <Typography variant="caption" color="text.secondary" display="block">ITL P50</Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                          {benchmarkResult.workload.tpot_p50_ms != null ? `${Number(benchmarkResult.workload.tpot_p50_ms).toFixed(1)} ms` : '—'}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
-                        <Typography variant="caption" color="text.secondary" display="block">Throughput</Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                          {benchmarkResult.workload.throughput_tok_sec != null ? `${Number(benchmarkResult.workload.throughput_tok_sec).toFixed(1)} tok/s` : '—'}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                    {benchmarkResult.workload.tpot_p95_ms != null && (
-                      <Grid item xs={6} sm={3}>
-                        <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
-                          <Typography variant="caption" color="text.secondary" display="block">ITL P95</Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                            {Number(benchmarkResult.workload.tpot_p95_ms).toFixed(1)} ms
-                          </Typography>
-                        </Paper>
-                      </Grid>
-                    )}
-                    {benchmarkResult.workload.throughput_req_sec != null && (
-                      <Grid item xs={6} sm={3}>
-                        <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
-                          <Typography variant="caption" color="text.secondary" display="block">Req/s</Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                            {Number(benchmarkResult.workload.throughput_req_sec).toFixed(2)}
-                          </Typography>
-                        </Paper>
-                      </Grid>
-                    )}
-                    {benchmarkResult.workload.num_requests > 0 && (
-                      <Grid item xs={6} sm={3}>
-                        <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
-                          <Typography variant="caption" color="text.secondary" display="block">Success</Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                            {Math.round((benchmarkResult.workload.successful_requests / benchmarkResult.workload.num_requests) * 100)}%
-                          </Typography>
-                        </Paper>
-                      </Grid>
-                    )}
-                  </Grid>
-                  {benchmarkResult.bottleneck && (
-                    <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                      <Typography variant="caption" color="text.secondary">Bottleneck:</Typography>
-                      <Chip label={benchmarkResult.bottleneck.primary_bottleneck || 'unknown'} size="small" color="warning" />
-                      {benchmarkResult.bottleneck.mfu_pct != null && (
-                        <Typography variant="body2">MFU: {Number(benchmarkResult.bottleneck.mfu_pct).toFixed(1)}%</Typography>
-                      )}
-                    </Box>
-                  )}
-                  {Array.isArray(benchmarkResult.bottleneck?.recommendations) && benchmarkResult.bottleneck.recommendations.length > 0 && (
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>Recommendations</Typography>
-                      {benchmarkResult.bottleneck.recommendations.map((r, i) => (
-                        <Typography key={i} variant="body2" sx={{ color: 'text.secondary' }}>• {r}</Typography>
-                      ))}
-                    </Box>
-                  )}
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-
-        {/* Nav buttons for step 2 */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBackIcon />}
-            onClick={() => setTelemetryStep(1)}
-            sx={{ borderRadius: 2, fontWeight: 600, px: 4 }}
-          >
-            Back
-          </Button>
-          <Button
-            variant="contained"
-            endIcon={<ArrowForwardIcon />}
-            onClick={() => setTelemetryStep(3)}
-            sx={{
-              backgroundColor: '#16a34a',
-              color: '#fff',
-              borderRadius: 2,
-              fontWeight: 600,
-              px: 4,
-              '&:hover': { backgroundColor: '#15803d' },
-            }}
-          >
-            Next
-          </Button>
-        </Box>
-        </React.Fragment>)}
-
-        {/* Step 3: Kernel Profiling */}
-        {telemetryStep === 3 && (<React.Fragment>
-
-        {/* ================================================================ */}
-        {/* Kernel Profiling Card (separate run, overhead warning)           */}
-        {/* ================================================================ */}
-          <Card variant="outlined" sx={{ borderColor: 'warning.main' }}>
-            <CardHeader
-              title={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <BoltIcon color="warning" fontSize="small" />
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>Kernel Profiling</Typography>
-                  <Chip
-                    label="Separate run • ~5–10% overhead"
-                    size="small"
-                    color="warning"
-                    variant="outlined"
-                    sx={{ fontSize: '0.7rem' }}
-                  />
-                </Box>
-              }
-              subheader="Uses Chrome trace from vLLM to break down kernel time by category (attention, matmul, layernorm, etc.)"
-            />
-            <CardContent>
-              <Alert severity="warning" sx={{ mb: 2, borderRadius: '8px' }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>Prerequisites</Typography>
-                <Typography variant="body2">
-                  vLLM must be running with <code>--profiler-config</code>. This creates a <strong>new separate run</strong> — it does not share data with the active GPU monitoring run. Kernel profiling adds tracing overhead.
-                </Typography>
-              </Alert>
-
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Uses the vLLM server and model settings from the Workload Benchmark config above.
-              </Typography>
-
-              <Button
-                variant="outlined"
-                color="warning"
-                onClick={handleRunKernelProfile}
-                disabled={kernelProfileLoading || !instanceId || kernelProfilingReady?.ready === false}
-                startIcon={kernelProfileLoading ? <CircularProgress size={16} /> : <BoltIcon />}
-                sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
-              >
-                {kernelProfileLoading ? 'Profiling kernels...' : 'Run Kernel Profile'}
-              </Button>
-
-              {kernelProfileLoading && (
-                <Box sx={{ mt: 2 }}>
-                  <LinearProgress color="warning" sx={{ borderRadius: 1, height: 6 }} />
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                    Running kernel profiler… {kernelElapsed}s elapsed (typically 5–10 min)
-                  </Typography>
-                </Box>
-              )}
-
-              {kernelProfileRunId && !kernelProfileLoading && (
-                <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
-                  Run: {kernelProfileRunId.substring(0, 8)}...
-                </Typography>
-              )}
-
-              {/* Kernel Results */}
-              {kernelProfileResult && (
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600 }}>Kernel Breakdown</Typography>
-
-                  {Array.isArray(kernelProfileResult.kernel_profiles) && kernelProfileResult.kernel_profiles.length > 0 &&
-                   kernelProfileResult.kernel_profiles[0].categories?.length > 0 ? (
-                    <Box>
-                      {/* Bar chart using inline widths */}
-                      <Stack spacing={0.75}>
-                        {kernelProfileResult.kernel_profiles[0].categories
-                          .slice()
-                          .sort((a, b) => b.pct - a.pct)
-                          .map((cat, i) => (
-                            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                              <Typography variant="caption" sx={{ width: 120, flexShrink: 0, textTransform: 'capitalize' }}>
-                                {cat.category}
-                              </Typography>
-                              <Box sx={{ flex: 1, bgcolor: 'grey.100', borderRadius: 1, overflow: 'hidden', height: 18 }}>
-                                <Box
-                                  sx={{
-                                    width: `${Math.min(100, Number(cat.pct))}%`,
-                                    height: '100%',
-                                    bgcolor: i === 0 ? 'primary.main' : i === 1 ? 'secondary.main' : 'grey.400',
-                                    borderRadius: 1,
-                                    transition: 'width 0.4s ease',
-                                  }}
-                                />
-                              </Box>
-                              <Typography variant="caption" sx={{ width: 48, textAlign: 'right', flexShrink: 0, fontWeight: 600 }}>
-                                {Number(cat.pct).toFixed(1)}%
-                              </Typography>
-                            </Box>
-                          ))}
-                      </Stack>
-
-                      {/* Chip summary */}
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1.5 }}>
-                        {kernelProfileResult.kernel_profiles[0].categories.map((c, i) => (
-                          <Chip key={i} label={`${c.category}: ${Number(c.pct).toFixed(1)}%`} size="small" variant="outlined" />
-                        ))}
-                      </Box>
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">No kernel category data returned.</Typography>
-                  )}
-
-                  {kernelProfileResult.bottleneck && (
-                    <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="caption" color="text.secondary">Bottleneck:</Typography>
-                      <Chip label={kernelProfileResult.bottleneck.primary_bottleneck || 'unknown'} size="small" color="warning" />
-                    </Box>
-                  )}
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-
-        {/* Nav buttons for step 3 */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBackIcon />}
-            onClick={() => setTelemetryStep(2)}
-            sx={{
-              borderRadius: 2,
-              fontWeight: 600,
-              px: 4,
-            }}
-          >
-            Back
-          </Button>
-          <Button
-            variant="contained"
-            endIcon={<ArrowForwardIcon />}
-            onClick={() => setTelemetryStep(4)}
-            sx={{
-              backgroundColor: '#16a34a',
-              color: '#fff',
-              borderRadius: 2,
-              fontWeight: 600,
-              px: 4,
-              '&:hover': { backgroundColor: '#15803d' },
-            }}
-          >
-            Next
-          </Button>
-        </Box>
-        </React.Fragment>)}
-
-        {/* Step 4: Telemetry */}
-        {telemetryStep === 4 && (<React.Fragment>
-
-        {/* Component Status Indicators */}
-        {activeRun && (monitoringState === 'running' || monitoringState === 'deploying') && (
-          <Card sx={{ mb: 2 }}>
-            <CardHeader 
-              title="Component Status" 
-              action={
-                <IconButton size="small" onClick={fetchComponentStatus} disabled={componentStatusLoading}>
-                  <ReplayIcon fontSize="small" />
-                </IconButton>
-              }
-            />
-            <CardContent>
-              {componentStatusLoading ? (
-                <Box display="flex" justifyContent="center" p={2}>
-                  <CircularProgress size={24} />
-                </Box>
-              ) : componentStatus?.components ? (
-                <Grid container spacing={1}>
-                  {Object.entries(componentStatus.components)
-                    .sort(([a], [b]) => {
-                      // Sort: containers first, then prerequisites
-                      const aIsPrereq = a.startsWith('prereq_');
-                      const bIsPrereq = b.startsWith('prereq_');
-                      if (aIsPrereq && !bIsPrereq) return 1;
-                      if (!aIsPrereq && bIsPrereq) return -1;
-                      return a.localeCompare(b);
-                    })
-                    .map(([name, status]) => {
-                      const getStatusColor = (status) => {
-                        if (status.status === 'healthy') return '#4caf50'; // green
-                        if (status.status === 'error') return '#f44336'; // red
-                        return '#3d3d3a'; // white/gray for not_found
-                      };
-                      const getStatusLabel = (status) => {
-                        if (status.status === 'healthy') return '✓';
-                        if (status.status === 'error') return '✗';
-                        return '○';
-                      };
-                      // Clean up name for display
-                      let displayName = name.replace(/_/g, ' ');
-                      if (displayName.startsWith('prereq ')) {
-                        displayName = displayName.replace('prereq ', '');
-                      }
-                      return (
-                        <Grid item key={name}>
-                          <Tooltip title={status.message || status.status} arrow>
-                            <Chip
-                              label={`${getStatusLabel(status)} ${displayName}`}
-                              size="small"
-                              sx={{
-                                bgcolor: getStatusColor(status),
-                                color: status.status === 'not_found' ? '#666' : 'white',
-                                fontWeight: 500,
-                                fontSize: '0.75rem',
-                                minWidth: 120,
-                                '&:hover': {
-                                  opacity: 0.8,
-                                },
-                              }}
-                            />
-                          </Tooltip>
-                        </Grid>
-                      );
-                    })}
-                </Grid>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  Component status not available. {monitoringState === 'deploying' && 'Waiting for deployment...'}
-                </Typography>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
         {monitoringState === 'deploying' && (
           <Alert severity="info">Waiting for monitoring stack to become healthy...</Alert>
         )}
@@ -3210,54 +2574,49 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           </Alert>
         )}
         {monitoringState === 'running' && realtimeChart.data.length === 0 && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-              Connected but No Data Received
-            </Typography>
-            <Typography variant="body2">
-              WebSocket is connected for run <code>{activeRun?.run_id?.substring(0, 8)}...</code>, 
-              but no metrics are being received.
+          <Box sx={{
+            mb: 2,
+            p: 2,
+            borderRadius: 2,
+            border: (t) => `1px solid ${alpha(t.palette.warning.main, 0.25)}`,
+            bgcolor: (t) => alpha(t.palette.warning.main, 0.04),
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <CircularProgress size={14} sx={{ color: 'warning.main' }} />
+              <Typography variant="body2" sx={{ fontWeight: 600, color: 'warning.main' }}>
+                Waiting for metrics
+              </Typography>
               {websocketConnectedAt && (
-                <span> (Connected {Math.floor((Date.now() - websocketConnectedAt) / 1000)}s ago)</span>
-              )}
-            </Typography>
-            <Typography variant="body2" sx={{ mt: 1, fontWeight: 600 }}>
-              Most likely cause:
-            </Typography>
-            <Box component="ul" sx={{ mt: 0.5, mb: 1, pl: 2 }}>
-              <li><strong>The remote Prometheus instance is still configured with an old run_id</strong> - The Prometheus remote_write configuration needs to be updated with the new run_id</li>
-              <li>Metrics are being sent to a different (completed) run_id than the one you're viewing</li>
-              <li>The remote instance may not be sending metrics yet - check that Prometheus is scraping the exporters</li>
-            </Box>
-            {activeRun && (
-              <Box sx={{ mt: 2, p: 1.5, bgcolor: 'error.light', borderRadius: '4px', border: '1px solid', borderColor: 'error.main' }}>
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: 'error.dark' }}>
-                  🔧 Solution:
+                <Typography variant="caption" sx={{ color: 'text.disabled', ml: 'auto', fontFamily: 'monospace' }}>
+                  {Math.floor((Date.now() - websocketConnectedAt) / 1000)}s
                 </Typography>
-                {agentStatus ? (
-                  <>
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      This instance appears to have the provisioning agent running. Restart it to refresh Prometheus remote_write config:
-                      <br />
-                      <code style={{ fontSize: '0.85em' }}>sudo systemctl restart omniference-agent</code>
-                    </Typography>
-                    {agentSuggestedRunId && (
-                      <Typography variant="body2" sx={{ mb: 1 }}>
-                        Agent-reported run_id: <code style={{ fontSize: '0.85em' }}>{agentSuggestedRunId}</code>
-                      </Typography>
-                    )}
-                  </>
-                ) : (
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    Click "Stop Monitoring" then "Start Monitoring" again to redeploy Prometheus with the correct run_id: <code style={{ fontSize: '0.85em' }}>{activeRun.run_id}</code>
-                  </Typography>
-                )}
-                <Typography variant="caption" sx={{ display: 'block', mt: 1, fontFamily: 'monospace', color: 'text.secondary' }}>
-                  Current Active Run: {activeRun.run_id}
+              )}
+            </Box>
+            <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
+              WebSocket connected to run <code style={{ fontSize: '0.85em', color: 'inherit' }}>{activeRun?.run_id?.substring(0, 8)}</code>.
+              {' '}The remote monitoring stack may still be starting up. If this persists, try stopping and restarting monitoring.
+            </Typography>
+            {activeRun && websocketConnectedAt && (Date.now() - websocketConnectedAt) > 60000 && (
+              <Box sx={{
+                mt: 1.5,
+                p: 1.5,
+                borderRadius: 1.5,
+                bgcolor: (t) => alpha(t.palette.background.paper, 0.5),
+                border: (t) => `1px solid ${t.palette.divider}`,
+              }}>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                  Troubleshooting
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled', lineHeight: 1.6 }}>
+                  {agentStatus ? (
+                    <>Restart the provisioning agent: <code style={{ fontSize: '0.85em' }}>sudo systemctl restart omniference-agent</code></>
+                  ) : (
+                    <>Click "Stop Monitoring" then "Start Monitoring" to redeploy with a fresh configuration.</>
+                  )}
                 </Typography>
               </Box>
             )}
-          </Alert>
+          </Box>
         )}
         {monitoringState === 'running' && enableProfiling && realtimeChart.data.length > 10 && !hasProfilingData && (
           <Alert severity="warning" sx={{ mb: 2 }}>
@@ -3356,7 +2715,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
             <CardContent sx={{ p: 3 }}>
               <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>Bottleneck Analysis</Typography>
               <Typography variant="body2" color="text.secondary">
-                Bottleneck detection results will appear here after running a workload benchmark or kernel profile.
+                Bottleneck detection results appear here when integrated with workflow runs.
               </Typography>
               {benchmarkResult?.bottleneck && (
                 <Box sx={{ mt: 2 }}>
@@ -3387,7 +2746,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
               )}
               {!benchmarkResult?.bottleneck && !kernelProfileResult?.bottleneck && (
                 <Alert severity="info" sx={{ mt: 2, borderRadius: '8px' }}>
-                  Run a Workload Benchmark or Kernel Profile to see bottleneck analysis.
+                  Bottleneck analysis is available when integrated with workflow runs.
                 </Alert>
               )}
             </CardContent>
@@ -3412,7 +2771,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                 </Box>
               ) : (
                 <Alert severity="info" sx={{ mt: 2, borderRadius: '8px' }}>
-                  Run a Workload Benchmark or Kernel Profile to receive optimization suggestions.
+                  Optimization suggestions are available when integrated with workflow runs.
                 </Alert>
               )}
             </CardContent>
@@ -3571,12 +2930,12 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           </Card>
         )}
 
-        {/* Nav buttons for step 4 */}
+        {/* Nav buttons for step 1 */}
         <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 2 }}>
           <Button
             variant="outlined"
             startIcon={<ArrowBackIcon />}
-            onClick={() => setTelemetryStep(3)}
+            onClick={() => setTelemetryStep(0)}
             sx={{
               borderRadius: 2,
               fontWeight: 600,
@@ -3652,6 +3011,51 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
           >
             I Understand, Enable Profiling
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Exporter Logs Dialog */}
+      <Dialog
+        open={logsDialogOpen}
+        onClose={() => setLogsDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{ sx: { minHeight: '60vh' } }}
+      >
+        <DialogTitle>Telemetry Exporter Logs</DialogTitle>
+        <DialogContent>
+          {logsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : logsContent ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {Object.entries(logsContent).map(([service, log]) => (
+                <Paper key={service} variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontFamily: 'monospace' }}>
+                    {service}
+                  </Typography>
+                  <Box
+                    component="pre"
+                    sx={{
+                      fontSize: '0.7rem',
+                      fontFamily: 'monospace',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-all',
+                      maxHeight: 200,
+                      overflow: 'auto',
+                      m: 0,
+                    }}
+                  >
+                    {log}
+                  </Box>
+                </Paper>
+              ))}
+            </Box>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLogsDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>

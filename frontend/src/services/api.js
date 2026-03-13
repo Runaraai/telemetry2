@@ -14,6 +14,7 @@ const FRIENDLY_ERROR_MAP = [
   ["401", "Authentication required. Please log in again."],
   ["403", "Permission denied. You don't have access to this resource."],
   ["404", "Resource not found. It may have been deleted or the ID is wrong."],
+  ["backend_url must be", "Backend URL must be a routable http/https URL (e.g. http://your-server:8000) that the GPU can reach. localhost is not valid."],
 ];
 
 /**
@@ -21,7 +22,8 @@ const FRIENDLY_ERROR_MAP = [
  * Falls back to "Something went wrong. Check the activity log for details."
  */
 export const friendlyError = (err, fallback = 'Something went wrong. Check the activity log for details.') => {
-  const raw = err?.response?.data?.detail || err?.message || String(err || '');
+  let raw = err?.response?.data?.detail || err?.message || String(err || '');
+  if (Array.isArray(raw) && raw.length > 0) raw = raw[0]?.msg || raw[0]?.message || String(raw[0]);
   if (!raw) return fallback;
   for (const [substring, friendly] of FRIENDLY_ERROR_MAP) {
     if (raw.toLowerCase().includes(substring.toLowerCase())) return friendly;
@@ -423,8 +425,11 @@ export const apiService = {
   },
 
   // Telemetry Deployment
-  deployTelemetryStack: async (instanceId, payload, deploymentType = 'ssh') => {
-    const url = `/api/instances/${instanceId}/deploy${deploymentType ? `?deployment_type=${deploymentType}` : ''}`;
+  deployTelemetryStack: async (instanceId, payload, deploymentType = 'ssh', sync = true) => {
+    const params = new URLSearchParams();
+    if (deploymentType) params.set('deployment_type', deploymentType);
+    if (sync) params.set('sync', 'true');
+    const url = `/api/instances/${instanceId}/deploy?${params.toString()}`;
     const response = await api.post(url, payload);
     return response.data;
   },
@@ -447,6 +452,11 @@ export const apiService = {
 
   teardownTelemetryStack: async (instanceId, payload) => {
     const response = await api.post(`/api/instances/${instanceId}/teardown`, payload);
+    return response.data;
+  },
+
+  fetchTelemetryLogs: async (instanceId, payload) => {
+    const response = await api.post(`/api/instances/${instanceId}/logs`, payload);
     return response.data;
   },
 

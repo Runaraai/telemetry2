@@ -37,8 +37,8 @@ else
 fi
 
 # Model settings — override via environment variables
-MODEL_HF_ID="${MODEL_HF_ID:-RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic}"
-MODEL_LOCAL_DIR="${MODEL_LOCAL_DIR:-./models/scout17b-fp8dyn}"
+MODEL_HF_ID="${MODEL_HF_ID:-Qwen/Qwen3.5-9B}"
+MODEL_LOCAL_DIR="${MODEL_LOCAL_DIR:-./models/Qwen3.5-9B}"
 
 # Create model directory in BM folder
 mkdir -p "$MODEL_LOCAL_DIR"

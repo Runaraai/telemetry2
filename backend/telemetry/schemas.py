@@ -335,6 +335,32 @@ class TeardownRequest(BaseModel):
 
     run_id: UUID
     preserve_data: bool = False
+    ssh_host: Optional[str] = Field(None, description="SSH host for fallback teardown when deployment record not found")
+    ssh_user: Optional[str] = Field(None, description="SSH user for fallback teardown")
+    pem_base64: Optional[str] = Field(None, description="Base64-encoded PEM for fallback teardown (optional if backend has saved key)")
+
+
+class DeploymentLogsRequest(BaseModel):
+    """Request payload for fetching telemetry exporter logs from a GPU host."""
+
+    run_id: UUID
+    ssh_host: str
+    ssh_user: str
+    ssh_key: Optional[str] = Field(None, description="SSH private key content")
+    pem_base64: Optional[str] = Field(None, description="Base64-encoded PEM (alternative to ssh_key)")
+    ssh_port: int = Field(default=22, ge=1, le=65535)
+    service: Optional[str] = Field(
+        None,
+        description="Service name: nvidia-smi-exporter, dcgm-exporter, dcgm-health-exporter, token-exporter, prometheus, or 'all'",
+    )
+    tail: int = Field(default=100, ge=1, le=2000, description="Number of log lines per service")
+
+
+class DeploymentLogsResponse(BaseModel):
+    """Response with telemetry exporter logs."""
+
+    run_id: UUID
+    logs: Dict[str, str] = Field(default_factory=dict, description="Service name -> log output")
 
 
 class PolicyEventRead(BaseModel):

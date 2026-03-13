@@ -1760,6 +1760,7 @@ class CheckInstanceRequest(BaseModel):
     ssh_user: str = "ubuntu"
     pem_base64: Optional[str] = None
     cloud_provider: str = "lambda"  # "lambda" or "scaleway"
+    model_name: str = "Qwen/Qwen3.5-9B"
 
 class DeployVLLMRequest(BaseModel):
     """Request model for vLLM deployment (lol4.sh)"""
@@ -8101,9 +8102,31 @@ def workflow_setup_task(request: SetupInstanceRequest, pem_file_path: str, log_d
             except Exception as e:
                 logger.warning(f"Failed to persist HF token on remote host: {e}")
         
+        # Check and free disk space on remote host before uploading scripts
+        logger.info("Checking remote disk space...")
+        stdin_chk, stdout_chk, stderr_chk = ssh.exec_command(
+            "df -h / | tail -1 | awk '{print $5}' | tr -d '%'"
+        )
+        try:
+            usage_pct = int(stdout_chk.read().decode().strip())
+            logger.info(f"Remote root disk usage: {usage_pct}%")
+            if usage_pct >= 90:
+                logger.warning(f"Remote disk usage is {usage_pct}%, attempting cleanup...")
+                cleanup_cmd = (
+                    "sudo apt-get clean 2>/dev/null; "
+                    "sudo rm -rf /tmp/*.log /tmp/pip-* /tmp/hf-* 2>/dev/null; "
+                    "sudo journalctl --vacuum-size=50M 2>/dev/null; "
+                    "echo 'Cleanup done'"
+                )
+                stdin_cl, stdout_cl, stderr_cl = ssh.exec_command(cleanup_cmd)
+                stdout_cl.read()  # Wait for completion
+                logger.info("Remote disk cleanup completed")
+        except Exception as e:
+            logger.warning(f"Could not check/clean remote disk space: {e}")
+
         # Upload scripts
         backend_dir = os.path.dirname(os.path.abspath(__file__))
-        
+
         # Upload detect_gpu_info.sh
         cloud_provider = getattr(request, 'cloud_provider', 'lambda').lower()
         if cloud_provider == 'scaleway':
@@ -8113,7 +8136,16 @@ def workflow_setup_task(request: SetupInstanceRequest, pem_file_path: str, log_d
         
         local_detect = os.path.join(backend_dir, "scripts", "detect_gpu_info.sh")
         if os.path.exists(local_detect):
-            sftp.put(local_detect, remote_detect)
+            try:
+                sftp.put(local_detect, remote_detect)
+            except IOError as e:
+                if "size mismatch" in str(e) or "No space" in str(e):
+                    raise RuntimeError(
+                        f"Remote instance has no disk space left. Cannot upload setup scripts. "
+                        f"Please ensure the instance has at least 150GB of storage, or manually "
+                        f"free space on the remote host (e.g., 'apt-get clean', remove old files in /tmp)."
+                    ) from e
+                raise
             ssh.exec_command(f"chmod +x {remote_detect}")
         else:
             logger.error(f"❌ detect_gpu_info.sh not found at {local_detect}")
@@ -8432,9 +8464,10 @@ def workflow_check_task(request: CheckInstanceRequest, pem_file_path: str, log_d
         with open(status_file, 'w') as f:
             json.dump({"status": "running", "message": "Executing check script..."}, f)
         
-        # Execute check script
+        # Execute check script with model name
         log_path = "/root/check.log" if cloud_provider == 'scaleway' else "/home/ubuntu/check.log"
-        cmd = f"bash {remote_check} 2>&1 | tee {log_path}"
+        model_name = getattr(request, 'model_name', 'Qwen/Qwen3.5-9B')
+        cmd = f"MODEL_NAME='{model_name}' MODEL_HF_ID='{model_name}' bash {remote_check} 2>&1 | tee {log_path}"
         stdin, stdout, stderr = ssh.exec_command(cmd)
         
         log_file = os.path.join(log_dir, "check.log")

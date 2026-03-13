@@ -455,8 +455,8 @@ CUDA_DIST=$(detect_cuda_distribution)
 
 validate_gpu_detected
 
-MODEL_NAME="${MODEL_NAME:-RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic}"
-MODEL_PATH="${MODEL_PATH:-/home/${SETUP_USER}/BM/models/scout17b-fp8dyn}"
+MODEL_NAME="${MODEL_NAME:-Qwen/Qwen3.5-9B}"
+MODEL_PATH="${MODEL_PATH:-/home/${SETUP_USER}/BM/models/Qwen3.5-9B}"
 
 echo "Detected GPU Configuration:"
 echo "  GPU Count: $GPU_COUNT"
@@ -870,8 +870,8 @@ else
 
     validate_environment
     HF_TOKEN="${HF_TOKEN:?ERROR: HF_TOKEN must be set}"
-    MODEL_NAME="${MODEL_NAME:-RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic}"
-    MODEL_PATH="${MODEL_PATH:-/home/${SETUP_USER}/BM/models/scout17b-fp8dyn}"
+    MODEL_NAME="${MODEL_NAME:-Qwen/Qwen3.5-9B}"
+    MODEL_PATH="${MODEL_PATH:-/home/${SETUP_USER}/BM/models/Qwen3.5-9B}"
 
     echo "Model Configuration:"
     echo "  Model Name: $MODEL_NAME"
