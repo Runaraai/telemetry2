@@ -12,6 +12,8 @@
   "51.159.150.190": {
     "setup_completed_at": "2026-03-13T04:50:51.325746",
     "check_completed_at": "2026-03-13T04:51:46.634299",
-    "last_verified_at": "2026-03-13T04:51:46.634135"
+    "last_verified_at": "2026-03-13T04:51:46.634135",
+    "vllm_completed_at": "2026-03-13T06:07:34.479050",
+    "vllm_model": "/scratch/BM/models/Qwen3.5-9B"
   }
 }

@@ -7717,6 +7717,14 @@ class StopBenchmarkRequest(BaseModel):
     workflow_id: str  # Used to update status file so polling shows cancelled
 
 
+class StopWorkflowRequest(BaseModel):
+    """Generic request to cancel a running workflow phase."""
+    ssh_host: str
+    ssh_user: str = "ubuntu"
+    pem_base64: Optional[str] = None
+    workflow_id: str
+
+
 @app.post("/api/workflow/stop-benchmark")
 async def workflow_stop_benchmark(request: StopBenchmarkRequest):
     """
@@ -7765,6 +7773,90 @@ async def workflow_stop_benchmark(request: StopBenchmarkRequest):
     except Exception as e:
         logger.error("Stop benchmark failed: host=%s error=%s", request.ssh_host, e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/workflow/stop-setup")
+async def workflow_stop_setup(request: StopWorkflowRequest):
+    """
+    Cancel a running setup workflow. Marks status as cancelled so frontend poll stops.
+    The background SSH task may continue but the UI will show cancelled.
+    """
+    log_dir = f"logs/{request.workflow_id}"
+    status_file = os.path.join(log_dir, "setup_status.json")
+    if os.path.exists(log_dir):
+        try:
+            with open(status_file, "w") as f:
+                import json as _json
+                _json.dump({"status": "cancelled", "message": "Setup cancelled by user"}, f)
+        except Exception as e:
+            logger.warning("Could not write cancelled status for setup: %s", e)
+    logger.info("Setup cancelled: host=%s workflow=%s", request.ssh_host, request.workflow_id)
+    return {"status": "cancelled", "message": "Setup cancelled"}
+
+
+@app.post("/api/workflow/stop-check")
+async def workflow_stop_check(request: StopWorkflowRequest):
+    """
+    Cancel a running check workflow. Marks status as cancelled so frontend poll stops.
+    """
+    log_dir = f"logs/{request.workflow_id}"
+    status_file = os.path.join(log_dir, "check_status.json")
+    if os.path.exists(log_dir):
+        try:
+            with open(status_file, "w") as f:
+                import json as _json
+                _json.dump({"status": "cancelled", "message": "Check cancelled by user"}, f)
+        except Exception as e:
+            logger.warning("Could not write cancelled status for check: %s", e)
+    logger.info("Check cancelled: host=%s workflow=%s", request.ssh_host, request.workflow_id)
+    return {"status": "cancelled", "message": "Check cancelled"}
+
+
+@app.post("/api/workflow/stop-kernel-profile")
+async def workflow_stop_kernel_profile(request: StopWorkflowRequest):
+    """
+    Stop a running kernel profiling job on the remote instance.
+    Kills the agent.py process and the runara-vllm container, marks status as cancelled.
+    """
+    import paramiko
+
+    logger.info("Stop kernel profile: host=%s workflow=%s", request.ssh_host, request.workflow_id)
+
+    pem_file_path = _resolve_workflow_pem_file(
+        ssh_host=request.ssh_host,
+        ssh_user=request.ssh_user,
+        pem_base64=request.pem_base64,
+    )
+
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(request.ssh_host, username=request.ssh_user, key_filename=pem_file_path, timeout=15)
+
+        stdin, stdout, stderr = ssh.exec_command(
+            "pkill -f 'agent.py' 2>/dev/null; "
+            "docker stop runara-vllm 2>/dev/null; "
+            "docker rm -f runara-vllm 2>/dev/null; "
+            "echo STOPPED",
+            timeout=30,
+        )
+        stdout.read()
+        ssh.close()
+    except Exception as e:
+        logger.warning("Could not SSH to stop kernel profile: %s", e)
+
+    log_dir = f"logs/{request.workflow_id}"
+    status_file = os.path.join(log_dir, "kernel_profile_status.json")
+    if os.path.exists(log_dir):
+        try:
+            with open(status_file, "w") as f:
+                import json as _json
+                _json.dump({"status": "cancelled", "message": "Kernel profiling stopped by user"}, f)
+        except Exception as e:
+            logger.warning("Could not write cancelled status for kernel profile: %s", e)
+
+    logger.info("Kernel profiling stopped: host=%s", request.ssh_host)
+    return {"status": "stopped", "message": f"Kernel profiling stopped on {request.ssh_host}"}
 
 
 @app.post("/api/inference/start")
@@ -9479,6 +9571,29 @@ def workflow_benchmark_task(request: RunBenchmarkRequest, pem_file_path: str, lo
                     "output_snippet": output[-2000:] if len(output) > 2000 else output,
                 }, f)
             logger.info(f"Benchmark completed: {metrics}")
+
+            # Push benchmark metrics to token exporter (port 9402) so Prometheus
+            # picks them up and they appear on the Telemetry Inference tab.
+            try:
+                ssh2 = paramiko.SSHClient()
+                ssh2.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh2.connect(request.ssh_host, username=request.ssh_user, key_filename=pem_file_path, timeout=15)
+                token_payload = {
+                    "tokens_per_second": metrics.get("output_throughput_tok_s", 0),
+                    "requests_per_second": metrics.get("request_throughput_req_s", 0),
+                    "ttft_p50_ms": metrics.get("mean_ttft_ms", 0),
+                    "ttft_p95_ms": metrics.get("mean_ttft_ms", 0),
+                    "total_tokens": int(metrics.get("total_throughput_tok_s", 0) * request.num_requests),
+                    "total_requests": request.num_requests,
+                }
+                import json as _json
+                payload_str = _json.dumps(token_payload).replace("'", "\\'")
+                push_cmd = f"curl -s -X POST http://localhost:9402/update -H 'Content-Type: application/json' -d '{payload_str}' 2>/dev/null || true"
+                ssh2.exec_command(push_cmd)
+                ssh2.close()
+                logger.info("Pushed benchmark metrics to token exporter: %s", token_payload)
+            except Exception as push_err:
+                logger.warning("Failed to push benchmark metrics to token exporter: %s", push_err)
 
             # Persist benchmark result for the Benchmark Results page
             try:

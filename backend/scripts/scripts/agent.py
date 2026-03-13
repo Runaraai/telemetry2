@@ -971,6 +971,7 @@ def phase_ensure_vllm(
     auto_start: bool,
     gpu_mem_util: float,
     max_model_len: int,
+    need_profiler: bool = False,
 ) -> dict:
     """Check if vLLM is running; optionally start it (native or Docker)."""
     global _VLLM_PROC
@@ -998,7 +999,26 @@ def phase_ensure_vllm(
         if result["model"]:
             _ok(f"Model: {result['model']}")
         _check_profiler(server_url, result)
-        return result
+
+        # If kernel profiling requires the profiler endpoint but it's not available,
+        # restart vLLM with --profiler-config so the profiler endpoint becomes accessible.
+        if need_profiler and not result["has_profiler"] and auto_start:
+            _warn("vLLM is running without --profiler-config — restarting to enable kernel profiling ...")
+            # Preserve detected model for restart
+            if result["model"]:
+                model = result["model"]
+            _info("Stopping existing vLLM instance (docker stop vllm + pkill) ...")
+            _run(["bash", "-c",
+                  "docker stop vllm runara-vllm 2>/dev/null || true; "
+                  "docker rm -f vllm runara-vllm 2>/dev/null || true; "
+                  "pkill -f 'vllm.entrypoints' 2>/dev/null || true; "
+                  "sleep 5"
+                  ], timeout=35)
+            result["running"] = False
+            result["has_profiler"] = False
+            # Fall through to auto-start logic below
+        else:
+            return result
 
     if not auto_start:
         _fail(f"vLLM not reachable at {server_url}")
@@ -1599,6 +1619,7 @@ def main() -> None:
         auto_start=not args.no_start_vllm,
         gpu_mem_util=args.gpu_mem_util,
         max_model_len=args.max_model_len,
+        need_profiler=args.mode in ("kernel", "full"),
     )
     checks["vllm_running"]  = vllm["running"]
     checks["vllm_profiler"] = vllm["has_profiler"] if vllm["running"] else False

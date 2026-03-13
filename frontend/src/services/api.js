@@ -1143,6 +1143,21 @@ export const apiService = {
     return response.data;
   },
 
+  workflowStopSetup: async (params) => {
+    const response = await api.post('/api/workflow/stop-setup', params);
+    return response.data;
+  },
+
+  workflowStopCheck: async (params) => {
+    const response = await api.post('/api/workflow/stop-check', params);
+    return response.data;
+  },
+
+  workflowStopKernelProfile: async (params) => {
+    const response = await api.post('/api/workflow/stop-kernel-profile', params);
+    return response.data;
+  },
+
   getWorkflowLogs: async (workflowId, phase = null) => {
     const params = phase ? `?phase=${phase}` : '';
     const response = await api.get(`/api/workflow/logs/${workflowId}${params}`);

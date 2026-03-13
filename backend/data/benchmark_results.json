@@ -1,5 +1,77 @@
 [
   {
+    "id": "bb141dd9",
+    "timestamp": "2026-03-13T06:18:51.106136",
+    "ssh_host": "51.159.150.190",
+    "model_name": "Qwen/Qwen3.5-9B",
+    "metrics": {
+      "output_throughput_tok_s": 138.29,
+      "total_throughput_tok_s": 414.86,
+      "request_throughput_req_s": 1.08,
+      "mean_ttft_ms": 85.3,
+      "mean_itl_ms": 27.05,
+      "mean_tpot_ms": 27.26
+    },
+    "config": {
+      "input_seq_len": 256,
+      "output_seq_len": 128,
+      "num_requests": 50,
+      "max_concurrency": 4,
+      "request_rate": 10.0
+    },
+    "telemetry_run_id": null,
+    "started_at": "2026-03-13T06:17:47.960626",
+    "completed_at": "2026-03-13T06:18:51.106144"
+  },
+  {
+    "id": "17b1d595",
+    "timestamp": "2026-03-13T06:11:31.734760",
+    "ssh_host": "51.159.150.190",
+    "model_name": "Qwen/Qwen3.5-9B",
+    "metrics": {
+      "output_throughput_tok_s": 3640.93,
+      "total_throughput_tok_s": 7281.87,
+      "request_throughput_req_s": 7.11,
+      "mean_ttft_ms": 996.98,
+      "mean_itl_ms": 33.05,
+      "mean_tpot_ms": 33.12
+    },
+    "config": {
+      "input_seq_len": 512,
+      "output_seq_len": 512,
+      "num_requests": 1024,
+      "max_concurrency": 128,
+      "request_rate": 128.0
+    },
+    "telemetry_run_id": null,
+    "started_at": "2026-03-13T06:08:17.250367",
+    "completed_at": "2026-03-13T06:11:31.803598"
+  },
+  {
+    "id": "7f753ad7",
+    "timestamp": "2026-03-13T05:48:06.055801",
+    "ssh_host": "51.159.150.190",
+    "model_name": "Qwen/Qwen3.5-9B",
+    "metrics": {
+      "output_throughput_tok_s": 136.53,
+      "total_throughput_tok_s": 409.6,
+      "request_throughput_req_s": 1.07,
+      "mean_ttft_ms": 96.05,
+      "mean_itl_ms": 27.32,
+      "mean_tpot_ms": 27.53
+    },
+    "config": {
+      "input_seq_len": 256,
+      "output_seq_len": 128,
+      "num_requests": 50,
+      "max_concurrency": 4,
+      "request_rate": 10.0
+    },
+    "telemetry_run_id": null,
+    "started_at": "2026-03-13T05:47:02.375873",
+    "completed_at": "2026-03-13T05:48:06.055809"
+  },
+  {
     "id": "7cf286de",
     "timestamp": "2026-03-13T04:41:06.518553",
     "ssh_host": "51.159.150.190",

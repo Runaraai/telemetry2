@@ -941,18 +941,18 @@ volumes:
 
 """
 
-        # vLLM metrics scrape — added when vLLM is detected as running on port 8000.
-        # host.docker.internal resolves to the host from within Docker containers.
-        # This is optional/non-fatal: if vLLM is not running the job will produce no data.
+        # vLLM metrics scrape — always included; produces no data if vLLM isn't running.
+        # Prometheus runs with network_mode: host, so localhost:8000 reaches vLLM directly.
         vllm_scrape = f"""              - job_name: 'vllm'
                 static_configs:
-                  - targets: ['host.docker.internal:8000']
+                  - targets: ['localhost:8000']
                     labels:
                       exporter: 'vllm'
                       run_id: '{request.run_id}'
                 metrics_path: '/metrics'
                 scrape_interval: 5s
                 scrape_timeout: 4s
+                honor_labels: true
 
 """
         
@@ -1139,11 +1139,12 @@ volumes:
         return textwrap.dedent(
             """
             #!/usr/bin/env python3
+            import re
             import subprocess
-            import time
             import sys
-            from http.server import HTTPServer, BaseHTTPRequestHandler
             import threading
+            import time
+            from http.server import HTTPServer, BaseHTTPRequestHandler
 
             class MetricsCollector:
                 def __init__(self):
@@ -1170,13 +1171,13 @@ volumes:
 
                 def collect(self):
                     try:
-                        # Query comprehensive nvidia-smi metrics
+                        # Query nvidia-smi metrics - use clocks.current.graphics for SM/Graphics clock (works on datacenter GPUs)
                         cmd = [
                             'nvidia-smi',
                             '--query-gpu=index,name,uuid,temperature.gpu,utilization.gpu,utilization.memory,'
-                            'memory.total,memory.free,memory.used,power.draw,power.limit,clocks.sm,clocks.mem,'
-                            'clocks.gr,fan.speed,pcie.link.gen.current,pcie.link.width.current,encoder.stats.sessionCount,'
-                            'encoder.stats.averageFps,encoder.stats.averageLatency',
+                            'memory.total,memory.free,memory.used,power.draw,power.limit,'
+                            'clocks.current.graphics,clocks.current.memory,'
+                            'pcie.link.gen.current,pcie.link.width.current',
                             '--format=csv,noheader,nounits'
                         ]
                         result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
@@ -1197,13 +1198,12 @@ volumes:
                             
                             try:
                                 parts = [p.strip() for p in line.split(',')]
-                                if len(parts) < 20:
+                                if len(parts) < 15:
                                     print(f"WARNING: Incomplete metric data: {len(parts)} fields", file=sys.stderr)
                                     continue
                                 
                                 gpu_idx, name, uuid, temp, util_gpu, util_mem, mem_total, mem_free, mem_used, \\
-                                power_draw, power_limit, clock_sm, clock_mem, clock_gr, fan_speed, \\
-                                pcie_gen, pcie_width, enc_sessions, enc_fps, enc_latency = parts[:20]
+                                power_draw, power_limit, clock_gr, clock_mem, pcie_gen, pcie_width = parts[:15]
                                 
                                 labels = f'gpu="{gpu_idx}",name="{name}",uuid="{uuid}"'
                                 
@@ -1228,34 +1228,54 @@ volumes:
                                 # Power
                                 if power_draw and power_draw != '[N/A]':
                                     metrics_lines.append(f'nvidia_smi_power_draw_watts{{{labels}}} {power_draw}')
-                                if power_limit and power_limit != '[N/A]':
-                                    metrics_lines.append(f'nvidia_smi_power_limit_watts{{{labels}}} {power_limit}')
+                                # Power Limit: use -q -d POWER (user-recommended, reliable)
+                                try:
+                                    pw = subprocess.run(
+                                        ['nvidia-smi', '-q', '-d', 'POWER', '-i', str(gpu_idx)],
+                                        capture_output=True, text=True, timeout=5
+                                    )
+                                    if pw.returncode == 0 and pw.stdout:
+                                        m = re.search(r'Current Power Limit\\s+:\\s*([\\d.]+)\\s*W', pw.stdout)
+                                        if not m:
+                                            m = re.search(r'Power Limit\\s+:\\s*([\\d.]+)\\s*W', pw.stdout)
+                                        if m:
+                                            metrics_lines.append(f'nvidia_smi_power_limit_watts{{{labels}}} {m.group(1)}')
+                                        elif power_limit and power_limit != '[N/A]':
+                                            metrics_lines.append(f'nvidia_smi_power_limit_watts{{{labels}}} {power_limit}')
+                                except Exception:
+                                    if power_limit and power_limit != '[N/A]':
+                                        metrics_lines.append(f'nvidia_smi_power_limit_watts{{{labels}}} {power_limit}')
                                 
-                                # Clocks
-                                if clock_sm and clock_sm != '[N/A]':
-                                    metrics_lines.append(f'nvidia_smi_clock_sm_mhz{{{labels}}} {clock_sm}')
+                                # SM/Graphics Clock: use -q -d CLOCK (user-recommended, reliable)
+                                try:
+                                    clk = subprocess.run(
+                                        ['nvidia-smi', '-q', '-d', 'CLOCK', '-i', str(gpu_idx)],
+                                        capture_output=True, text=True, timeout=5
+                                    )
+                                    if clk.returncode == 0 and clk.stdout:
+                                        m = re.search(r'Graphics\\s+:\\s*(\\d+)\\s*MHz', clk.stdout)
+                                        if not m:
+                                            m = re.search(r'SM Clock\\s+:\\s*(\\d+)\\s*MHz', clk.stdout)
+                                        if not m:
+                                            m = re.search(r'SM\\s+:\\s*(\\d+)\\s*MHz', clk.stdout)
+                                        if m:
+                                            metrics_lines.append(f'nvidia_smi_clock_graphics_mhz{{{labels}}} {m.group(1)}')
+                                            metrics_lines.append(f'nvidia_smi_clock_sm_mhz{{{labels}}} {m.group(1)}')
+                                        elif clock_gr and clock_gr != '[N/A]':
+                                            metrics_lines.append(f'nvidia_smi_clock_graphics_mhz{{{labels}}} {clock_gr}')
+                                            metrics_lines.append(f'nvidia_smi_clock_sm_mhz{{{labels}}} {clock_gr}')
+                                except Exception:
+                                    if clock_gr and clock_gr != '[N/A]':
+                                        metrics_lines.append(f'nvidia_smi_clock_graphics_mhz{{{labels}}} {clock_gr}')
+                                        metrics_lines.append(f'nvidia_smi_clock_sm_mhz{{{labels}}} {clock_gr}')
                                 if clock_mem and clock_mem != '[N/A]':
                                     metrics_lines.append(f'nvidia_smi_clock_memory_mhz{{{labels}}} {clock_mem}')
-                                if clock_gr and clock_gr != '[N/A]':
-                                    metrics_lines.append(f'nvidia_smi_clock_graphics_mhz{{{labels}}} {clock_gr}')
-                                
-                                # Fan
-                                if fan_speed and fan_speed != '[N/A]':
-                                    metrics_lines.append(f'nvidia_smi_fan_speed_percent{{{labels}}} {fan_speed}')
                                 
                                 # PCIe
                                 if pcie_gen and pcie_gen != '[N/A]':
                                     metrics_lines.append(f'nvidia_smi_pcie_link_gen{{{labels}}} {pcie_gen}')
                                 if pcie_width and pcie_width != '[N/A]':
                                     metrics_lines.append(f'nvidia_smi_pcie_link_width{{{labels}}} {pcie_width}')
-                                
-                                # Encoder
-                                if enc_sessions and enc_sessions != '[N/A]':
-                                    metrics_lines.append(f'nvidia_smi_encoder_sessions{{{labels}}} {enc_sessions}')
-                                if enc_fps and enc_fps != '[N/A]':
-                                    metrics_lines.append(f'nvidia_smi_encoder_fps{{{labels}}} {enc_fps}')
-                                if enc_latency and enc_latency != '[N/A]':
-                                    metrics_lines.append(f'nvidia_smi_encoder_latency_us{{{labels}}} {enc_latency}')
                             
                             except Exception as line_error:
                                 print(f"WARNING: Failed to parse GPU metrics line: {line_error}", file=sys.stderr)

@@ -305,10 +305,10 @@ const Benchmarking = () => {
   const [vllmModelName, setVllmModelName] = useState('RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic');
   const [vllmModelPath, setVllmModelPath] = useState('/home/ubuntu/BM/models/scout17b-fp8dyn');
   const [vllmMaxTokens, setVllmMaxTokens] = useState('');
-  const [vllmMaxModelLen, setVllmMaxModelLen] = useState('');
-  const [vllmMaxNumSeqs, setVllmMaxNumSeqs] = useState('');
-  const [vllmGpuMemUtil, setVllmGpuMemUtil] = useState('');
-  const [vllmTensorParallel, setVllmTensorParallel] = useState('');
+  const [vllmMaxModelLen, setVllmMaxModelLen] = useState('16384');
+  const [vllmMaxNumSeqs, setVllmMaxNumSeqs] = useState('256');
+  const [vllmGpuMemUtil, setVllmGpuMemUtil] = useState('0.92');
+  const [vllmTensorParallel, setVllmTensorParallel] = useState('1');
   const [vllmDtype, setVllmDtype] = useState('auto');
   const [vllmEnforceEager, setVllmEnforceEager] = useState(true);
   const [vllmQuantization, setVllmQuantization] = useState('');
@@ -343,6 +343,9 @@ const Benchmarking = () => {
     kernel_profile: '',
   });
   const benchmarkPollRef = useRef(null);
+  const setupPollRef = useRef(null);
+  const checkPollRef = useRef(null);
+  const kernelPollRef = useRef(null);
 
   // Benchmark parameters for workflow
   const [workflowInputSeqLen, setWorkflowInputSeqLen] = useState(256);
@@ -582,6 +585,40 @@ const Benchmarking = () => {
       appendWorkflowEvent('benchmark', 'info', 'Benchmark stopped by user');
     } catch (e) {
       appendWorkflowEvent('benchmark', 'error', `Stop failed: ${e.message}`);
+    }
+  };
+
+  const handleStopSetup = () => {
+    if (setupPollRef.current) { clearInterval(setupPollRef.current); setupPollRef.current = null; }
+    setWorkflowSetupStatus(prev => ({ ...prev, loading: false, status: 'cancelled', message: 'Setup cancelled by user' }));
+    appendWorkflowEvent('setup', 'info', 'Setup cancelled by user');
+    if (rwSshHost && rwSshKey && workflowSetupStatus.workflowId) {
+      const pemBase64 = encodePemToBase64(rwSshKey);
+      apiService.workflowStopSetup({ ssh_host: rwSshHost, ssh_user: rwSshUser, pem_base64: pemBase64, workflow_id: workflowSetupStatus.workflowId }).catch(() => {});
+    }
+  };
+
+  const handleStopCheck = () => {
+    if (checkPollRef.current) { clearInterval(checkPollRef.current); checkPollRef.current = null; }
+    setWorkflowCheckStatus(prev => ({ ...prev, loading: false, status: 'cancelled', message: 'Check cancelled by user' }));
+    appendWorkflowEvent('check', 'info', 'Check cancelled by user');
+    if (rwSshHost && rwSshKey && workflowCheckStatus.workflowId) {
+      const pemBase64 = encodePemToBase64(rwSshKey);
+      apiService.workflowStopCheck({ ssh_host: rwSshHost, ssh_user: rwSshUser, pem_base64: pemBase64, workflow_id: workflowCheckStatus.workflowId }).catch(() => {});
+    }
+  };
+
+  const handleStopKernelProfile = async () => {
+    if (kernelPollRef.current) { clearInterval(kernelPollRef.current); kernelPollRef.current = null; }
+    setWorkflowKernelStatus(prev => ({ ...prev, loading: false, status: 'cancelled', message: 'Kernel profiling stopped by user' }));
+    appendWorkflowEvent('kernel_profile', 'info', 'Kernel profiling stopped by user');
+    if (rwSshHost && rwSshKey && workflowKernelStatus.workflowId) {
+      try {
+        const pemBase64 = encodePemToBase64(rwSshKey);
+        await apiService.workflowStopKernelProfile({ ssh_host: rwSshHost, ssh_user: rwSshUser, pem_base64: pemBase64, workflow_id: workflowKernelStatus.workflowId });
+      } catch (e) {
+        appendWorkflowEvent('kernel_profile', 'error', `Stop failed: ${e.message}`);
+      }
     }
   };
 
@@ -1546,6 +1583,8 @@ const Benchmarking = () => {
                                   ? 'Reboot Required'
                                   : workflowSetupStatus.status === 'started'
                                   ? 'Starting...'
+                                  : workflowSetupStatus.status === 'cancelled'
+                                  ? 'Stopped'
                                   : 'Not Started'
                               }
                               color={
@@ -1555,6 +1594,8 @@ const Benchmarking = () => {
                                   ? 'warning'
                                   : workflowSetupStatus.status === 'failed'
                                   ? 'error'
+                                  : workflowSetupStatus.status === 'cancelled'
+                                  ? 'warning'
                                   : workflowSetupStatus.status === 'running' || workflowSetupStatus.status === 'started'
                                   ? 'info'
                                   : 'default'
@@ -1592,6 +1633,7 @@ const Benchmarking = () => {
                         </Alert>
                       )}
 
+                    <Stack direction="row" spacing={1.5} alignItems="center">
                     <Button
                         variant="contained"
                         color="primary"
@@ -1602,6 +1644,10 @@ const Benchmarking = () => {
                             appendWorkflowEvent('setup', 'error', 'Cannot start setup: missing SSH host or key.');
                           return;
                         }
+                          // Clear stale persisted state — this is a fresh setup run
+                          setPersistedWorkflowState(null);
+                          setWorkflowCheckStatus({ loading: false, status: null, message: '', logs: '' });
+                          setWorkflowDeployStatus({ loading: false, status: null, message: '', logs: '' });
                           setWorkflowSetupStatus({ ...workflowSetupStatus, loading: true, status: null, message: 'Starting setup...' });
                           appendWorkflowEvent('setup', 'info', 'Starting setup phase...');
                           try {
@@ -1643,19 +1689,26 @@ const Benchmarking = () => {
                                   message: result.message || prev.message
                                 }));
                                 
-                                if (result.status === 'completed' || result.status === 'failed' || result.status === 'reboot_required') {
+                                if (result.status === 'completed' || result.status === 'failed' || result.status === 'reboot_required' || result.status === 'cancelled') {
                                   const evtType = result.status === 'completed' ? 'success'
                                     : result.status === 'reboot_required' ? 'warning'
+                                    : result.status === 'cancelled' ? 'info'
                                     : 'error';
                                   appendWorkflowEvent('setup', evtType, result.message || `Setup ${result.status}`);
-                                  clearInterval(pollLogs);
+                                  if (result.status !== 'cancelled') {
+                                    // Refresh persisted workflow state after setup completes
+                                    if (rwSshHost) {
+                                      apiService.getWorkflowState(rwSshHost).then(setPersistedWorkflowState).catch(() => {});
+                                    }
+                                  }
+                                  if (setupPollRef.current) { clearInterval(setupPollRef.current); setupPollRef.current = null; }
                                 }
                               } catch (e) {
                                 console.error('Failed to fetch logs:', e);
                               }
                             }, 2000);
-                            
-                            setTimeout(() => clearInterval(pollLogs), 1800000);
+                            setupPollRef.current = pollLogs;
+                            setTimeout(() => { if (setupPollRef.current) { clearInterval(setupPollRef.current); setupPollRef.current = null; } }, 1800000);
                           } catch (e) {
                             setWorkflowSetupStatus({ ...workflowSetupStatus, loading: false, status: 'error', message: e.response?.data?.detail || e.message });
                             setRunStatus(`Setup failed: ${e.response?.data?.detail || e.message}`);
@@ -1667,6 +1720,18 @@ const Benchmarking = () => {
                       >
                         {workflowSetupStatus.loading ? 'Running...' : 'Run Setup'}
                     </Button>
+                    {(workflowSetupStatus.status === 'running' || workflowSetupStatus.status === 'started') && (
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<PowerIcon />}
+                        onClick={handleStopSetup}
+                        sx={{ borderRadius: 2 }}
+                      >
+                        Stop
+                      </Button>
+                    )}
+                    </Stack>
 
                       {(workflowSetupStatus.loading || workflowSetupStatus.status === 'running' || workflowSetupStatus.status === 'started' || workflowSetupStatus.logs) && (
                         <Box sx={{ mt: 3 }}>
@@ -1759,6 +1824,8 @@ const Benchmarking = () => {
                                   ? 'Failed'
                                   : workflowCheckStatus.status === 'started'
                                   ? 'Starting...'
+                                  : workflowCheckStatus.status === 'cancelled'
+                                  ? 'Stopped'
                                   : 'Not Started'
                               }
                               color={
@@ -1766,6 +1833,8 @@ const Benchmarking = () => {
                                   ? 'success'
                                   : workflowCheckStatus.status === 'failed'
                                   ? 'error'
+                                  : workflowCheckStatus.status === 'cancelled'
+                                  ? 'warning'
                                   : workflowCheckStatus.status === 'running' || workflowCheckStatus.status === 'started'
                                   ? 'info'
                                   : 'default'
@@ -1807,6 +1876,7 @@ const Benchmarking = () => {
                         </Box>
                       )}
 
+                      <Stack direction="row" spacing={1.5} alignItems="center">
                       <Button
                         variant="contained"
                         color="primary"
@@ -1856,19 +1926,23 @@ const Benchmarking = () => {
                                   message: result.message || prev.message
                                 }));
                                 
-                                if (result.status === 'completed' || result.status === 'failed') {
+                                if (result.status === 'completed' || result.status === 'failed' || result.status === 'cancelled') {
                                   appendWorkflowEvent(
                                     'check',
-                                    result.status === 'completed' ? 'success' : 'error',
+                                    result.status === 'completed' ? 'success' : result.status === 'cancelled' ? 'info' : 'error',
                                     result.message || `Check ${result.status}`
                                   );
-                                  clearInterval(pollLogs);
+                                  if (result.status !== 'cancelled') {
+                                    if (rwSshHost) apiService.getWorkflowState(rwSshHost).then(setPersistedWorkflowState).catch(() => {});
+                                  }
+                                  if (checkPollRef.current) { clearInterval(checkPollRef.current); checkPollRef.current = null; }
                               }
                             } catch (e) {
                                 console.error('Failed to fetch logs:', e);
                             }
                             }, 2000);
-                            setTimeout(() => clearInterval(pollLogs), 1800000);
+                            checkPollRef.current = pollLogs;
+                            setTimeout(() => { if (checkPollRef.current) { clearInterval(checkPollRef.current); checkPollRef.current = null; } }, 1800000);
                       } catch (e) {
                             setWorkflowCheckStatus({ ...workflowCheckStatus, loading: false, status: 'error', message: e.response?.data?.detail || e.message });
                             setRunStatus(`Check failed: ${e.response?.data?.detail || e.message}`);
@@ -1880,6 +1954,18 @@ const Benchmarking = () => {
                       >
                         {workflowCheckStatus.loading ? 'Running...' : 'Run Check'}
                   </Button>
+                  {(workflowCheckStatus.status === 'running' || workflowCheckStatus.status === 'started') && (
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      startIcon={<PowerIcon />}
+                      onClick={handleStopCheck}
+                      sx={{ borderRadius: 2 }}
+                    >
+                      Stop
+                    </Button>
+                  )}
+                  </Stack>
 
                       {/* Phase 2 Environment Checklist - parsed from logs */}
                       {(workflowCheckStatus.loading || workflowCheckStatus.status === 'running' || workflowCheckStatus.status === 'started' || workflowCheckStatus.logs) && (() => {
@@ -2225,6 +2311,7 @@ const Benchmarking = () => {
                                     result.status === 'completed' ? 'success' : 'error',
                                     result.message || `Deploy ${result.status}`
                                   );
+                                  if (rwSshHost) apiService.getWorkflowState(rwSshHost).then(setPersistedWorkflowState).catch(() => {});
                                   clearInterval(pollLogs);
                                 }
                               } catch (e) {
@@ -2744,6 +2831,7 @@ const Benchmarking = () => {
                   {/* Phase 5: Kernel Profile */}
                   <Card
                     sx={{
+                      mt: 3,
                       mb: 3,
                       borderRadius: 3,
                       border: `2px solid ${
@@ -2790,6 +2878,8 @@ const Benchmarking = () => {
                                   ? 'Failed'
                                   : workflowKernelStatus.status === 'started'
                                   ? 'Starting...'
+                                  : workflowKernelStatus.status === 'cancelled'
+                                  ? 'Stopped'
                                   : 'Not Started'
                               }
                               color={
@@ -2797,6 +2887,8 @@ const Benchmarking = () => {
                                   ? 'success'
                                   : workflowKernelStatus.status === 'failed'
                                   ? 'error'
+                                  : workflowKernelStatus.status === 'cancelled'
+                                  ? 'warning'
                                   : workflowKernelStatus.status === 'running' || workflowKernelStatus.status === 'started'
                                   ? 'info'
                                   : 'default'
@@ -2883,17 +2975,21 @@ const Benchmarking = () => {
                                     }));
 
                                     if (result.status === 'failed') {
-                                      clearInterval(pollLogs);
+                                      if (kernelPollRef.current) { clearInterval(kernelPollRef.current); kernelPollRef.current = null; }
                                       appendWorkflowEvent('kernel_profile', 'error', result.message || 'Kernel profiling failed');
                                     } else if (result.status === 'completed') {
-                                      clearInterval(pollLogs);
+                                      if (kernelPollRef.current) { clearInterval(kernelPollRef.current); kernelPollRef.current = null; }
                                       appendWorkflowEvent('kernel_profile', 'success', 'Kernel profiling completed');
+                                    } else if (result.status === 'cancelled') {
+                                      if (kernelPollRef.current) { clearInterval(kernelPollRef.current); kernelPollRef.current = null; }
+                                      appendWorkflowEvent('kernel_profile', 'info', 'Kernel profiling stopped');
                                     }
                                   } catch (e) {
                                     console.error('Failed to fetch kernel profile logs:', e);
                                   }
                                 }, 2000);
-                                setTimeout(() => clearInterval(pollLogs), 1800000);
+                                kernelPollRef.current = pollLogs;
+                                setTimeout(() => { if (kernelPollRef.current) { clearInterval(kernelPollRef.current); kernelPollRef.current = null; } }, 1800000);
                               } catch (e) {
                                 setWorkflowKernelStatus({ loading: false, status: 'error', message: e.response?.data?.detail || e.message, workflowId: null, logs: '', errorDetails: null, runId: null });
                                 appendWorkflowEvent('kernel_profile', 'error', e.response?.data?.detail || e.message);
@@ -2904,6 +3000,18 @@ const Benchmarking = () => {
                           >
                             {workflowKernelStatus.loading ? 'Profiling...' : 'Run Kernel Profile'}
                           </Button>
+                          {(workflowKernelStatus.status === 'running' || workflowKernelStatus.status === 'started') && (
+                            <Button
+                              variant="outlined"
+                              color="error"
+                              startIcon={<PowerIcon />}
+                              onClick={handleStopKernelProfile}
+                              disabled={!rwSshHost || !rwSshKey}
+                              sx={{ borderRadius: 2, ml: 1 }}
+                            >
+                              Stop
+                            </Button>
+                          )}
 
                           {(workflowKernelStatus.loading || workflowKernelStatus.status === 'running' || workflowKernelStatus.status === 'started' || workflowKernelStatus.logs) && (
                             <Box sx={{ mt: 3 }}>

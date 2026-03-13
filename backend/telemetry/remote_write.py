@@ -177,6 +177,7 @@ _FIELD_MAPPINGS: Mapping[str, _FieldMapping] = {
     "nvidia_smi_power_limit_watts": _FieldMapping("power_limit_watts", lambda v: v),
     "nvidia_smi_temperature_celsius": _FieldMapping("temperature_celsius", lambda v: v),
     "nvidia_smi_clock_sm_mhz": _FieldMapping("sm_clock_mhz", lambda v: v),
+    "nvidia_smi_clock_graphics_mhz": _FieldMapping("sm_clock_mhz", lambda v: v),
     "nvidia_smi_clock_memory_mhz": _FieldMapping("memory_clock_mhz", lambda v: v),
     # Token exporter metrics (application-level, not GPU-specific)
     "tokens_per_second": _FieldMapping("tokens_per_second", lambda v: v),
