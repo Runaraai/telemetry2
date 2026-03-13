@@ -363,6 +363,53 @@ class DeploymentLogsResponse(BaseModel):
     logs: Dict[str, str] = Field(default_factory=dict, description="Service name -> log output")
 
 
+# --- Tune Instance (GPU clock & power) ---
+
+
+class TuneInstanceBase(BaseModel):
+    """Base schema for tune operations - SSH credentials."""
+
+    ssh_host: str = Field(..., description="GPU instance IP or hostname")
+    ssh_user: str = Field(default="root", description="SSH username (root for Scaleway, ubuntu for AWS/Lambda)")
+    ssh_key: Optional[str] = Field(None, description="SSH private key content")
+    pem_base64: Optional[str] = Field(None, description="Base64-encoded PEM (alternative to ssh_key)")
+
+
+class TuneSupportedClocksResponse(BaseModel):
+    """Response for supported clocks fetch."""
+
+    supported_clocks_mhz: List[int] = Field(
+        ...,
+        description="List of supported Graphics clock frequencies (MHz), sorted descending",
+    )
+
+
+class TunePowerLimitsResponse(BaseModel):
+    """Response for power limits fetch."""
+
+    current_power_limit_w: Optional[float] = Field(None, description="Current power limit (W)")
+    max_power_limit_w: Optional[float] = Field(None, description="Max power limit (W)")
+    min_power_limit_w: Optional[float] = Field(None, description="Min power limit (W) if available")
+
+
+class TuneCurrentClockResponse(BaseModel):
+    """Response for current clock fetch (for progress bar)."""
+
+    current_graphics_mhz: Optional[int] = Field(None, description="Current graphics clock (MHz)")
+
+
+class TuneSetClockRequest(TuneInstanceBase):
+    """Request to set GPU clock."""
+
+    frequency_mhz: int = Field(..., ge=0, description="Graphics clock frequency in MHz (must be in supported list)")
+
+
+class TuneSetPowerLimitRequest(TuneInstanceBase):
+    """Request to set power limit."""
+
+    watts: float = Field(..., gt=0, description="Power limit in watts")
+
+
 class PolicyEventRead(BaseModel):
     """Policy event response schema."""
 

@@ -1777,6 +1777,21 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
 
   useEffect(() => {
     if (monitoringState === 'idle' && activeRun && activeRun.status === 'active') {
+      // Eagerly fetch recent metrics from API so charts render instantly
+      // instead of waiting for WebSocket data (which can take 30s+)
+      (async () => {
+        try {
+          const metricsResp = await apiService.getTelemetryMetrics(activeRun.run_id, { limit: 300 });
+          const samples = metricsResp?.metrics || [];
+          if (samples.length > 0) {
+            enqueueRealtimeSamples(samples);
+            setLastDataReceivedAt(Date.now());
+          }
+        } catch (err) {
+          console.warn('Eager metric fetch failed (non-fatal)', err);
+        }
+      })();
+
       // Close any existing connection before connecting to new run_id
       if (websocketRef.current) {
         websocketRef.current.close();
@@ -1784,7 +1799,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
       }
       connectWebSocket(activeRun.run_id);
     }
-  }, [activeRun, monitoringState, connectWebSocket]);
+  }, [activeRun, monitoringState, connectWebSocket, enqueueRealtimeSamples]);
 
   const stopDeploymentPolling = useCallback(() => {
     if (deploymentPollRef.current) {
@@ -2578,44 +2593,17 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
             mb: 2,
             p: 2,
             borderRadius: 2,
-            border: (t) => `1px solid ${alpha(t.palette.warning.main, 0.25)}`,
-            bgcolor: (t) => alpha(t.palette.warning.main, 0.04),
+            border: '1px solid #3d3d3a',
+            bgcolor: 'rgba(26, 26, 24, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <CircularProgress size={14} sx={{ color: 'warning.main' }} />
-              <Typography variant="body2" sx={{ fontWeight: 600, color: 'warning.main' }}>
-                Waiting for metrics
-              </Typography>
-              {websocketConnectedAt && (
-                <Typography variant="caption" sx={{ color: 'text.disabled', ml: 'auto', fontFamily: 'monospace' }}>
-                  {Math.floor((Date.now() - websocketConnectedAt) / 1000)}s
-                </Typography>
-              )}
-            </Box>
-            <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
-              WebSocket connected to run <code style={{ fontSize: '0.85em', color: 'inherit' }}>{activeRun?.run_id?.substring(0, 8)}</code>.
-              {' '}The remote monitoring stack may still be starting up. If this persists, try stopping and restarting monitoring.
+            <CircularProgress size={16} sx={{ color: '#a8a8a0' }} />
+            <Typography variant="body2" sx={{ color: '#a8a8a0' }}>
+              Loading metrics for run <code style={{ fontSize: '0.85em', color: '#d4d4d4' }}>{activeRun?.run_id?.substring(0, 8)}</code>...
+              {' '}If this persists, try stopping and restarting monitoring.
             </Typography>
-            {activeRun && websocketConnectedAt && (Date.now() - websocketConnectedAt) > 60000 && (
-              <Box sx={{
-                mt: 1.5,
-                p: 1.5,
-                borderRadius: 1.5,
-                bgcolor: (t) => alpha(t.palette.background.paper, 0.5),
-                border: (t) => `1px solid ${t.palette.divider}`,
-              }}>
-                <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', display: 'block', mb: 0.5 }}>
-                  Troubleshooting
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.disabled', lineHeight: 1.6 }}>
-                  {agentStatus ? (
-                    <>Restart the provisioning agent: <code style={{ fontSize: '0.85em' }}>sudo systemctl restart omniference-agent</code></>
-                  ) : (
-                    <>Click "Stop Monitoring" then "Start Monitoring" to redeploy with a fresh configuration.</>
-                  )}
-                </Typography>
-              </Box>
-            )}
           </Box>
         )}
         {monitoringState === 'running' && enableProfiling && realtimeChart.data.length > 10 && !hasProfilingData && (

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Button, Chip, CircularProgress,
-  Alert, IconButton, Tooltip, Stack
+  Alert, IconButton, Tooltip, Stack, Dialog, DialogTitle, DialogContent,
+  DialogActions, Slider, Divider
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
@@ -13,8 +14,9 @@ import {
   Assessment as ProfileIcon,
   Dns as DnsIcon,
   RocketLaunch as RocketLaunchIcon,
+  Tune as TuneIcon,
 } from '@mui/icons-material';
-import { apiService } from '../services/api';
+import { apiService, friendlyError } from '../services/api';
 
 const SCW_BASE = 'https://api.scaleway.com/instance/v1/zones';
 
@@ -108,6 +110,21 @@ export default function RunningInstances() {
   const [actionLoading, setActionLoading] = useState({});
   const [actionError, setActionError] = useState({});
   const [scwCredential, setScwCredential] = useState(() => getLocalScalewayCredential());
+
+  // Tune Instance dialog
+  const [tuneOpen, setTuneOpen] = useState(false);
+  const [tuneInstance, setTuneInstance] = useState(null);
+  const [tuneSshKey, setTuneSshKey] = useState('');
+  const [tuneLoading, setTuneLoading] = useState(false);
+  const [tuneError, setTuneError] = useState('');
+  const [tuneSupportedClocks, setTuneSupportedClocks] = useState([]);
+  const [tuneCurrentClock, setTuneCurrentClock] = useState(null);
+  const [tuneClockIndex, setTuneClockIndex] = useState(0); // index into supported clocks (0 = max freq)
+  const [tunePowerCurrent, setTunePowerCurrent] = useState(null);
+  const [tunePowerMax, setTunePowerMax] = useState(null);
+  const [tunePowerMin, setTunePowerMin] = useState(null);
+  const [tunePowerSlider, setTunePowerSlider] = useState(0);
+  const [tuneAction, setTuneAction] = useState(''); // 'clock' | 'reset' | 'power' | ''
 
   // Load Scaleway credential from backend on mount
   useEffect(() => {
@@ -289,6 +306,120 @@ export default function RunningInstances() {
     });
   }
 
+  const handleTuneOpen = useCallback(async (inst) => {
+    const provider = inst.provider || 'scaleway';
+    const sshUser = provider === 'scaleway' ? 'root' : 'ubuntu';
+    setTuneInstance({ ...inst, sshUser });
+    setTuneOpen(true);
+    setTuneError('');
+    setTuneSupportedClocks([]);
+    setTuneCurrentClock(null);
+    setTunePowerCurrent(null);
+    setTunePowerMax(null);
+    setTunePowerMin(null);
+    setTuneLoading(true);
+    try {
+      const key = await apiService.getSSHPrivateKey();
+      if (!key) {
+        setTuneError('SSH private key not configured. Set SSH_PRIVATE_KEY in backend .env or add key in credentials.');
+        setTuneLoading(false);
+        return;
+      }
+      setTuneSshKey(key);
+      const base = {
+        ssh_host: inst.public_ip,
+        ssh_user: sshUser,
+        pem_base64: btoa(key),
+      };
+      const [clocksRes, powerRes, currentRes] = await Promise.all([
+        apiService.tuneFetchSupportedClocks(base),
+        apiService.tuneFetchPowerLimits(base),
+        apiService.tuneFetchCurrentClock(base),
+      ]);
+      const clocks = clocksRes?.supported_clocks_mhz || [];
+      setTuneSupportedClocks(clocks);
+      setTuneCurrentClock(currentRes?.current_graphics_mhz ?? null);
+      // Find index of current clock, or default to 0 (max freq)
+      const curr = currentRes?.current_graphics_mhz;
+      const idx = curr != null && clocks.length > 0
+        ? clocks.indexOf(curr)
+        : 0;
+      setTuneClockIndex(idx >= 0 ? idx : 0);
+      setTunePowerCurrent(powerRes?.current_power_limit_w ?? null);
+      setTunePowerMax(powerRes?.max_power_limit_w ?? null);
+      setTunePowerMin(powerRes?.min_power_limit_w ?? null);
+      setTunePowerSlider(powerRes?.current_power_limit_w ?? powerRes?.max_power_limit_w ?? 0);
+    } catch (e) {
+      setTuneError(friendlyError(e, 'Failed to fetch GPU tune data. Check SSH key and instance connectivity.'));
+    } finally {
+      setTuneLoading(false);
+    }
+  }, []);
+
+  const handleTuneClose = useCallback(() => {
+    setTuneOpen(false);
+    setTuneInstance(null);
+    setTuneAction('');
+  }, []);
+
+  const handleTuneSetClock = useCallback(async () => {
+    if (!tuneInstance || !tuneSshKey || tuneSupportedClocks.length === 0) return;
+    const freq = tuneSupportedClocks[tuneClockIndex];
+    setTuneAction('clock');
+    setTuneError('');
+    try {
+      await apiService.tuneSetClock({
+        ssh_host: tuneInstance.public_ip,
+        ssh_user: tuneInstance.sshUser,
+        pem_base64: btoa(tuneSshKey),
+        frequency_mhz: freq,
+      });
+      setTuneCurrentClock(freq);
+    } catch (e) {
+      setTuneError(friendlyError(e, 'Failed to set GPU clock.'));
+    } finally {
+      setTuneAction('');
+    }
+  }, [tuneInstance, tuneSshKey, tuneSupportedClocks, tuneClockIndex]);
+
+  const handleTuneResetClock = useCallback(async () => {
+    if (!tuneInstance || !tuneSshKey) return;
+    setTuneAction('reset');
+    setTuneError('');
+    try {
+      await apiService.tuneResetClock({
+        ssh_host: tuneInstance.public_ip,
+        ssh_user: tuneInstance.sshUser,
+        pem_base64: btoa(tuneSshKey),
+      });
+      setTuneCurrentClock(null);
+      if (tuneSupportedClocks.length > 0) setTuneClockIndex(0);
+    } catch (e) {
+      setTuneError(friendlyError(e, 'Failed to reset GPU clock.'));
+    } finally {
+      setTuneAction('');
+    }
+  }, [tuneInstance, tuneSshKey, tuneSupportedClocks]);
+
+  const handleTuneSetPower = useCallback(async () => {
+    if (!tuneInstance || !tuneSshKey || tunePowerMax == null) return;
+    setTuneAction('power');
+    setTuneError('');
+    try {
+      await apiService.tuneSetPowerLimit({
+        ssh_host: tuneInstance.public_ip,
+        ssh_user: tuneInstance.sshUser,
+        pem_base64: btoa(tuneSshKey),
+        watts: tunePowerSlider,
+      });
+      setTunePowerCurrent(tunePowerSlider);
+    } catch (e) {
+      setTuneError(friendlyError(e, 'Failed to set power limit.'));
+    } finally {
+      setTuneAction('');
+    }
+  }, [tuneInstance, tuneSshKey, tunePowerMax, tunePowerSlider]);
+
   const providerLabel = (provider) => {
     const labels = { scaleway: 'Scaleway', lambda: 'Lambda', nebius: 'Nebius' };
     return labels[provider] || provider;
@@ -346,6 +477,7 @@ export default function RunningInstances() {
                 <TableCell sx={{ fontWeight: 600, color: '#fff' }} align="center">Stop</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#fff' }} align="center">Profile</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#fff' }} align="center">Run Workload</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#fff' }} align="center">Tune</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -472,10 +604,23 @@ export default function RunningInstances() {
                           Run Workload
                         </Button>
                       </TableCell>
+                      <TableCell align="center">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          startIcon={<TuneIcon fontSize="small" />}
+                          onClick={() => handleTuneOpen(inst)}
+                          disabled={!canProfile}
+                          sx={{ textTransform: 'none', fontSize: '0.75rem', minWidth: 70 }}
+                        >
+                          Tune
+                        </Button>
+                      </TableCell>
                     </TableRow>
                     {actionError[inst.id] && (
                       <TableRow>
-                        <TableCell colSpan={9}>
+                        <TableCell colSpan={10}>
                           <Alert severity="error" sx={{ py: 0 }}>
                             {actionError[inst.id]}
                           </Alert>
@@ -490,6 +635,112 @@ export default function RunningInstances() {
           </Table>
         </TableContainer>
       )}
+
+      {/* Tune Instance Dialog */}
+      <Dialog open={tuneOpen} onClose={handleTuneClose} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600 }}>
+          Tune GPU — {tuneInstance?.name || tuneInstance?.id || 'Instance'}
+        </DialogTitle>
+        <DialogContent dividers>
+          {tuneLoading && (
+            <Box sx={{ py: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2 }}>
+              <CircularProgress size={24} />
+              <Typography color="text.secondary">Fetching GPU data...</Typography>
+            </Box>
+          )}
+          {tuneError && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setTuneError('')}>
+              {tuneError}
+            </Alert>
+          )}
+          {!tuneLoading && tuneInstance && (
+            <Stack spacing={3}>
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  GPU Clock (Graphics)
+                </Typography>
+                {tuneSupportedClocks.length > 0 ? (
+                  <>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      Current: {tuneCurrentClock != null ? `${tuneCurrentClock} MHz` : '—'} / Max: {tuneSupportedClocks[0]} MHz
+                    </Typography>
+                    <Slider
+                      value={tuneClockIndex}
+                      onChange={(_, v) => setTuneClockIndex(v)}
+                      min={0}
+                      max={Math.max(0, tuneSupportedClocks.length - 1)}
+                      step={1}
+                      valueLabelDisplay="auto"
+                      valueLabelFormat={(v) => `${tuneSupportedClocks[v] ?? 0} MHz`}
+                      disabled={!!tuneAction}
+                    />
+                    <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={handleTuneSetClock}
+                        disabled={!!tuneAction}
+                      >
+                        {tuneAction === 'clock' ? <CircularProgress size={16} /> : 'Apply'}
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={handleTuneResetClock}
+                        disabled={!!tuneAction}
+                      >
+                        {tuneAction === 'reset' ? <CircularProgress size={16} /> : 'Reset to Default'}
+                      </Button>
+                    </Stack>
+                  </>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">No supported clocks available</Typography>
+                )}
+              </Box>
+              <Divider />
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Power Limit
+                </Typography>
+                {tunePowerMax != null ? (
+                  <>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      Current: {tunePowerCurrent != null ? `${tunePowerCurrent} W` : '—'} / Max: {tunePowerMax} W
+                      {tunePowerMin != null && ` (min: ${tunePowerMin} W)`}
+                    </Typography>
+                    <Slider
+                      value={tunePowerSlider}
+                      onChange={(_, v) => setTunePowerSlider(v)}
+                      min={tunePowerMin ?? 0}
+                      max={tunePowerMax}
+                      step={1}
+                      valueLabelDisplay="auto"
+                      valueLabelFormat={(v) => `${v} W`}
+                      disabled={!!tuneAction}
+                    />
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={handleTuneSetPower}
+                      disabled={!!tuneAction}
+                      sx={{ mt: 1 }}
+                    >
+                      {tuneAction === 'power' ? <CircularProgress size={16} /> : 'Apply Power Limit'}
+                    </Button>
+                  </>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">Power limit info not available</Typography>
+                )}
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 1 }}>
+          <Button onClick={handleTuneClose} sx={{ textTransform: 'none' }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <style>{`
         @keyframes spin {

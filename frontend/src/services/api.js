@@ -460,6 +460,32 @@ export const apiService = {
     return response.data;
   },
 
+  // Tune Instance (GPU clock & power limit)
+  tuneFetchSupportedClocks: async (payload) => {
+    const response = await api.post('/api/instances/tune/supported-clocks', payload);
+    return response.data;
+  },
+  tuneFetchPowerLimits: async (payload) => {
+    const response = await api.post('/api/instances/tune/power-limits', payload);
+    return response.data;
+  },
+  tuneFetchCurrentClock: async (payload) => {
+    const response = await api.post('/api/instances/tune/current-clock', payload);
+    return response.data;
+  },
+  tuneSetClock: async (payload) => {
+    const response = await api.post('/api/instances/tune/set-clock', payload);
+    return response.data;
+  },
+  tuneResetClock: async (payload) => {
+    const response = await api.post('/api/instances/tune/reset-clock', payload);
+    return response.data;
+  },
+  tuneSetPowerLimit: async (payload) => {
+    const response = await api.post('/api/instances/tune/set-power-limit', payload);
+    return response.data;
+  },
+
   getTelemetryWebSocketUrl: (runId) => {
     const baseUrl = buildWsUrl(`/ws/runs/${runId}/live`);
     // Add JWT token if available for authenticated access
@@ -1107,6 +1133,11 @@ export const apiService = {
     return response.data;
   },
 
+  workflowStopBenchmark: async (params) => {
+    const response = await api.post('/api/workflow/stop-benchmark', params);
+    return response.data;
+  },
+
   workflowKernelProfile: async (params) => {
     const response = await api.post('/api/workflow/kernel-profile', params);
     return response.data;
@@ -1436,6 +1467,24 @@ export const apiService = {
 
   deleteCredential: async (credentialId) => {
     await api.delete(`/api/credentials/${credentialId}`);
+  },
+
+  // Benchmark Results
+  listBenchmarkResults: async (sshHost = null, limit = 50) => {
+    const params = { limit };
+    if (sshHost) params.ssh_host = sshHost;
+    const response = await api.get('/api/benchmark-results', { params });
+    return response.data;
+  },
+
+  getBenchmarkResult: async (resultId) => {
+    const response = await api.get(`/api/benchmark-results/${resultId}`);
+    return response.data;
+  },
+
+  getBenchmarkResultsByTelemetryRun: async (runId) => {
+    const response = await api.get(`/api/benchmark-results/by-telemetry-run/${runId}`);
+    return response.data;
   },
 };
 

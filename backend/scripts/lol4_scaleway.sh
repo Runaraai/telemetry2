@@ -82,46 +82,37 @@ if ! "$NVIDIA_SMI" &> /dev/null; then
     exit 1
 fi
 
-# Verify Docker can access GPUs
-# Ensure Docker is restarted if nvidia-ctk is configured
-if [ -f "/etc/docker/daemon.json" ] && grep -q "nvidia" /etc/docker/daemon.json; then
-    echo "NVIDIA Container Toolkit configured. Ensuring Docker is running..."
-    sudo systemctl restart docker 2>/dev/null || true
-    sleep 3
+# Configure NVIDIA Container Runtime to only expose compute capabilities
+# This prevents mount failures for missing Vulkan/display/graphics libraries on cloud instances
+echo "Configuring NVIDIA Container Runtime..."
+
+# Ensure NVIDIA Container Toolkit is configured for Docker
+sudo nvidia-ctk runtime configure --runtime=docker 2>/dev/null || true
+
+# Create stub files for NVIDIA libraries that the container toolkit tries to mount
+# The toolkit reads ldconfig cache to build mount list; missing .so files cause fatal errors
+echo "Creating stub files for missing NVIDIA libraries..."
+DRIVER_VERSION=$("$NVIDIA_SMI" --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | tr -d '[:space:]')
+if [ -n "$DRIVER_VERSION" ]; then
+    NVIDIA_LIB_DIR="/usr/lib/x86_64-linux-gnu"
+    for lib in libnvidia-vulkan-producer.so libnvidia-api.so.1; do
+        VERSIONED="${NVIDIA_LIB_DIR}/${lib%.so*}.so.${DRIVER_VERSION}"
+        if [ ! -f "$VERSIONED" ] && [ ! -f "${NVIDIA_LIB_DIR}/${lib}" ]; then
+            echo "  Creating stub: ${VERSIONED}"
+            sudo touch "$VERSIONED" 2>/dev/null || true
+        fi
+    done
+    # Create missing vulkan ICD/layer files
+    sudo mkdir -p /usr/share/vulkan/icd.d /usr/share/vulkan/implicit_layer.d /usr/share/egl/egl_external_platform.d 2>/dev/null || true
+    [ ! -f /usr/share/vulkan/icd.d/nvidia_icd.json ] && echo '{"ICD":{"api_version":"1.3","library_path":"libGLX_nvidia.so.0"}}' | sudo tee /usr/share/vulkan/icd.d/nvidia_icd.json > /dev/null 2>/dev/null || true
+    [ ! -f /usr/share/vulkan/implicit_layer.d/nvidia_layers.json ] && echo '{"file_format_version":"1.0.0","layer":{"name":"VK_LAYER_NV_optimus","type":"INSTANCE","library_path":"libGLX_nvidia.so.0","api_version":"1.3","implementation_version":"1","description":"NVIDIA optimus layer"}}' | sudo tee /usr/share/vulkan/implicit_layer.d/nvidia_layers.json > /dev/null 2>/dev/null || true
+    [ ! -f /usr/share/egl/egl_external_platform.d/15_nvidia_gbm.json ] && echo '{"file_format_version":"1.0.0","ICD":{"library_path":"libnvidia-egl-gbm.so.1"}}' | sudo tee /usr/share/egl/egl_external_platform.d/15_nvidia_gbm.json > /dev/null 2>/dev/null || true
 fi
 
-# Test with multiple CUDA base images (Scaleway may have different images available)
-GPU_TEST_PASSED=false
-for CUDA_IMAGE in "nvidia/cuda:12.0.0-base-ubuntu22.04" "nvidia/cuda:11.8.0-base-ubuntu22.04" "nvidia/cuda:12.0-base-ubuntu22.04"; do
-    if sudo docker run --rm --gpus all "$CUDA_IMAGE" nvidia-smi &> /dev/null 2>&1; then
-        GPU_TEST_PASSED=true
-        echo "✅ GPU access verified with $CUDA_IMAGE"
-        break
-    fi
-done
+sudo systemctl restart docker 2>/dev/null || true
+sleep 3
 
-if [ "$GPU_TEST_PASSED" = false ]; then
-    echo "⚠️  Docker GPU test failed with standard images. Attempting to fix..."
-    sudo nvidia-ctk runtime configure --runtime=docker 2>/dev/null || true
-    sudo systemctl restart docker 2>/dev/null || true
-    sleep 5
-    
-    # Try one more time
-    if sudo docker run --rm --gpus all nvidia/cuda:12.0.0-base-ubuntu22.04 nvidia-smi &> /dev/null 2>&1; then
-        echo "✅ GPU access verified after Docker restart"
-        GPU_TEST_PASSED=true
-    fi
-    
-    if [ "$GPU_TEST_PASSED" = false ]; then
-        echo "❌ ERROR: Docker cannot access GPUs."
-        echo "⚠️  This usually means:"
-        echo "   1. NVIDIA driver is not loaded (reboot may be needed)"
-        echo "   2. NVIDIA Container Toolkit is not properly configured"
-        echo "⚠️  Continuing anyway - vLLM may still work if driver is loaded..."
-    fi
-fi
-
-echo "✅ NVIDIA driver and GPU access verified"
+echo "✅ NVIDIA driver and Docker configured"
 
 # Detect GPU information
 GPU_COUNT=$(detect_gpu_count)
@@ -167,7 +158,10 @@ docker rm -f vllm 2>/dev/null || true
 
 # Run vLLM server with adaptive parameters
 echo "Starting vLLM server..."
-sudo docker run --rm -d --gpus all --name vllm \
+sudo docker run --rm -d --name vllm \
+  --gpus all \
+  -e NVIDIA_VISIBLE_DEVICES=all \
+  -e NVIDIA_DRIVER_CAPABILITIES=compute,utility \
   -p 8000:8000 \
   -v "${MODEL_PATH}:${CONTAINER_MODEL_PATH}" \
   vllm/vllm-openai:latest \

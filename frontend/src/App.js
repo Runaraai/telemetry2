@@ -11,6 +11,7 @@ import Benchmarking from './pages/Benchmarking';
 import ManageInstances from './pages/ManageInstances';
 import RunningInstances from './pages/RunningInstances';
 import Telemetry from './pages/Telemetry';
+import BenchmarkResults from './pages/BenchmarkResults';
 import LoginPage from './pages/Login';
 import OnboardingWizard from './components/OnboardingWizard';
 import theme from './theme';
@@ -26,6 +27,7 @@ function Sidebar() {
     { text: 'Instances', path: '/instances' },
     { text: 'Run Workload', path: '/profiling' },
     { text: 'Telemetry', path: '/telemetry' },
+    { text: 'Benchmark Results', path: '/benchmark-results' },
     { text: 'Running Instances', path: '/running-instances' },
   ];
 
@@ -217,6 +219,7 @@ function AppContent() {
           <Route path="/profiling" element={<ProtectedRoute><Benchmarking /></ProtectedRoute>} />
           <Route path="/instances" element={<ProtectedRoute><ManageInstances /></ProtectedRoute>} />
           <Route path="/telemetry" element={<ProtectedRoute><Telemetry /></ProtectedRoute>} />
+          <Route path="/benchmark-results" element={<ProtectedRoute><BenchmarkResults /></ProtectedRoute>} />
           <Route path="/running-instances" element={<ProtectedRoute><RunningInstances /></ProtectedRoute>} />
           <Route path="/login" element={<Navigate to="/" replace />} />
         </Routes>

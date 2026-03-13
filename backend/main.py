@@ -52,6 +52,7 @@ from telemetry.routes import (
     sm_profiling_router,
     websocket_router,
     ai_insights_router,
+    tune_router,
 )
 from routes.nebius import router as nebius_instance_router
 from telemetry.startup import init_telemetry
@@ -849,6 +850,7 @@ async def shutdown_telemetry() -> None:
 
 
 app.include_router(auth_router, prefix="/api/auth")
+app.include_router(tune_router, prefix="/api")  # before deployments so /instances/tune matches first
 app.include_router(runs_router, prefix="/api")
 app.include_router(metrics_router, prefix="/api")
 app.include_router(remote_write_router, prefix="/api")
@@ -1773,6 +1775,10 @@ class DeployVLLMRequest(BaseModel):
     gpu_memory_utilization: Optional[float] = None
     tensor_parallel_size: Optional[int] = None
     cloud_provider: str = "lambda"  # "lambda" or "scaleway"
+    dtype: str = "auto"
+    enforce_eager: bool = True
+    quantization: Optional[str] = None
+    port: int = 8000
 
 class RunBenchmarkRequest(BaseModel):
     """Request model for workload benchmark — uses vLLM official bench serve."""
@@ -1787,6 +1793,7 @@ class RunBenchmarkRequest(BaseModel):
     num_requests: int = 50
     request_rate: Optional[float] = None  # None = inf (max throughput)
     max_concurrency: int = 4
+    telemetry_run_id: Optional[str] = None  # Link to active telemetry run for GPU metrics
 
 
 class KernelProfileRequest(BaseModel):
@@ -7428,6 +7435,139 @@ async def get_workflow_state(ssh_host: str):
     }
 
 
+# ── Benchmark Results Persistence ─────────────────────────────────────────────
+# Stores benchmark results to a JSON file so users can view historical results.
+
+_BENCHMARK_RESULTS_FILE = os.path.join(os.path.dirname(__file__), "data", "benchmark_results.json")
+
+
+def _load_benchmark_results() -> list:
+    """Load all persisted benchmark results from disk."""
+    try:
+        os.makedirs(os.path.dirname(_BENCHMARK_RESULTS_FILE), exist_ok=True)
+        if os.path.exists(_BENCHMARK_RESULTS_FILE):
+            with open(_BENCHMARK_RESULTS_FILE, "r") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return []
+
+
+def _save_benchmark_results(results: list) -> None:
+    """Persist all benchmark results to disk."""
+    try:
+        os.makedirs(os.path.dirname(_BENCHMARK_RESULTS_FILE), exist_ok=True)
+        with open(_BENCHMARK_RESULTS_FILE, "w") as f:
+            json.dump(results, f, indent=2)
+    except Exception as e:
+        logger.warning("Failed to persist benchmark results: %s", e)
+
+
+def _store_benchmark_result(
+    ssh_host: str,
+    model_name: str,
+    metrics: dict,
+    config: dict,
+    telemetry_run_id: str = None,
+    started_at: str = None,
+    completed_at: str = None,
+) -> dict:
+    """Store a benchmark result with optional telemetry run linkage."""
+    import uuid
+    result = {
+        "id": str(uuid.uuid4())[:8],
+        "timestamp": datetime.utcnow().isoformat(),
+        "ssh_host": ssh_host,
+        "model_name": model_name,
+        "metrics": metrics,
+        "config": config,
+        "telemetry_run_id": telemetry_run_id,
+        "started_at": started_at,
+        "completed_at": completed_at or datetime.utcnow().isoformat(),
+    }
+    results = _load_benchmark_results()
+    results.insert(0, result)  # newest first
+    # Keep last 100 results
+    results = results[:100]
+    _save_benchmark_results(results)
+    return result
+
+
+@app.get("/api/benchmark-results")
+async def list_benchmark_results(ssh_host: str = None, limit: int = 50):
+    """List stored benchmark results, optionally filtered by host."""
+    results = _load_benchmark_results()
+    if ssh_host:
+        results = [r for r in results if r.get("ssh_host") == ssh_host]
+    return {"results": results[:limit]}
+
+
+@app.get("/api/benchmark-results/{result_id}")
+async def get_benchmark_result(result_id: str):
+    """Get a single benchmark result by ID."""
+    results = _load_benchmark_results()
+    for r in results:
+        if r.get("id") == result_id:
+            return r
+    raise HTTPException(status_code=404, detail="Benchmark result not found")
+
+
+@app.get("/api/benchmark-results/by-telemetry-run/{run_id}")
+async def get_benchmark_results_by_telemetry_run(run_id: str):
+    """Get benchmark results linked to a specific telemetry run."""
+    results = _load_benchmark_results()
+    matched = [r for r in results if r.get("telemetry_run_id") == run_id]
+    return {"results": matched}
+
+
+@app.get("/api/benchmark-results/{result_id}/gpu-summary")
+async def get_benchmark_gpu_summary(result_id: str):
+    """Get average GPU metrics during a benchmark run's time window."""
+    results = _load_benchmark_results()
+    result = None
+    for r in results:
+        if r.get("id") == result_id:
+            result = r
+            break
+    if not result:
+        raise HTTPException(status_code=404, detail="Benchmark result not found")
+    if not result.get("telemetry_run_id"):
+        return {"gpu_summary": None, "message": "No telemetry run linked to this benchmark"}
+    if not result.get("started_at") or not result.get("completed_at"):
+        return {"gpu_summary": None, "message": "No time window recorded for this benchmark"}
+
+    # Query telemetry metrics for the time window
+    try:
+        from telemetry.repository import get_repository
+        repo = await get_repository()
+        metrics = await repo.query_metrics(
+            run_id=result["telemetry_run_id"],
+            start_time=result["started_at"],
+            end_time=result["completed_at"],
+            limit=5000,
+        )
+        if not metrics:
+            return {"gpu_summary": None, "message": "No GPU metrics found for this time window"}
+
+        # Compute averages
+        gpu_util_values = [m.get("gpu_utilization") for m in metrics if m.get("gpu_utilization") is not None]
+        mem_util_values = [m.get("memory_utilization") for m in metrics if m.get("memory_utilization") is not None]
+        power_values = [m.get("power_draw") for m in metrics if m.get("power_draw") is not None]
+        temp_values = [m.get("temperature") for m in metrics if m.get("temperature") is not None]
+
+        summary = {
+            "sample_count": len(metrics),
+            "avg_gpu_utilization": round(sum(gpu_util_values) / len(gpu_util_values), 1) if gpu_util_values else None,
+            "avg_memory_utilization": round(sum(mem_util_values) / len(mem_util_values), 1) if mem_util_values else None,
+            "avg_power_draw": round(sum(power_values) / len(power_values), 1) if power_values else None,
+            "avg_temperature": round(sum(temp_values) / len(temp_values), 1) if temp_values else None,
+        }
+        return {"gpu_summary": summary}
+    except Exception as e:
+        logger.warning("Failed to fetch GPU summary for benchmark %s: %s", result_id, e)
+        return {"gpu_summary": None, "message": str(e)}
+
+
 # ── Environment Status Check ──────────────────────────────────────────────────
 
 class EnvironmentCheckRequest(BaseModel):
@@ -7558,6 +7698,8 @@ class InferenceStartRequest(BaseModel):
     gpu_memory_utilization: Optional[float] = None
     dtype: str = "auto"
     enforce_eager: bool = True
+    quantization: Optional[str] = None
+    port: int = 8000
 
 
 class InferenceStopRequest(BaseModel):
@@ -7565,6 +7707,64 @@ class InferenceStopRequest(BaseModel):
     ssh_host: str
     ssh_user: str = "ubuntu"
     pem_base64: Optional[str] = None
+
+
+class StopBenchmarkRequest(BaseModel):
+    """Request to stop a running benchmark on the remote instance."""
+    ssh_host: str
+    ssh_user: str = "ubuntu"
+    pem_base64: Optional[str] = None
+    workflow_id: str  # Used to update status file so polling shows cancelled
+
+
+@app.post("/api/workflow/stop-benchmark")
+async def workflow_stop_benchmark(request: StopBenchmarkRequest):
+    """
+    Stop the vLLM benchmark container on the remote instance.
+    The benchmark runs as docker container named 'vllm-bench'.
+    Updates benchmark_status.json so the frontend poll sees 'cancelled'.
+    """
+    import paramiko
+    import json
+
+    logger.info("Stop benchmark: host=%s workflow=%s", request.ssh_host, request.workflow_id)
+
+    pem_file_path = _resolve_workflow_pem_file(
+        ssh_host=request.ssh_host,
+        ssh_user=request.ssh_user,
+        pem_base64=request.pem_base64,
+    )
+
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(request.ssh_host, username=request.ssh_user, key_filename=pem_file_path, timeout=15)
+
+        stdin, stdout, stderr = ssh.exec_command(
+            "docker stop vllm-bench 2>/dev/null; docker rm vllm-bench 2>/dev/null; echo STOPPED",
+            timeout=30,
+        )
+        out = stdout.read().decode().strip()
+        ssh.close()
+
+        log_dir = f"logs/{request.workflow_id}"
+        status_file = os.path.join(log_dir, "benchmark_status.json")
+        if os.path.exists(log_dir):
+            try:
+                with open(status_file, "w") as f:
+                    json.dump({
+                        "status": "cancelled",
+                        "message": "Benchmark stopped by user",
+                    }, f)
+            except Exception as e:
+                logger.warning("Could not write cancelled status: %s", e)
+
+        logger.info("Benchmark stopped: host=%s", request.ssh_host)
+        return {"status": "stopped", "message": f"Benchmark stopped on {request.ssh_host}"}
+
+    except Exception as e:
+        logger.error("Stop benchmark failed: host=%s error=%s", request.ssh_host, e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/inference/start")
@@ -7600,11 +7800,15 @@ async def inference_start(request: InferenceStartRequest, background_tasks: Back
         gpu_memory_utilization=request.gpu_memory_utilization,
         tensor_parallel_size=request.tensor_parallel_size,
         cloud_provider=request.cloud_provider,
+        dtype=request.dtype,
+        enforce_eager=request.enforce_eager,
+        quantization=request.quantization,
+        port=request.port,
     )
 
     background_tasks.add_task(workflow_deploy_task, deploy_request, pem_file_path, log_dir)
 
-    inference_url = f"http://{request.ssh_host}:8000"
+    inference_url = f"http://{request.ssh_host}:{request.port}"
     return {
         "status": "started",
         "workflow_id": workflow_id,
@@ -8625,9 +8829,29 @@ def workflow_deploy_task(request: DeployVLLMRequest, pem_file_path: str, log_dir
                 deploy_content
             )
         
+        # Override dtype
+        if hasattr(request, 'dtype') and request.dtype and request.dtype != 'auto':
+            deploy_content = deploy_content.replace('--dtype auto', f'--dtype {request.dtype}')
+
+        # Override enforce_eager
+        if hasattr(request, 'enforce_eager') and not request.enforce_eager:
+            deploy_content = deploy_content.replace('--enforce-eager', '')
+
+        # Add quantization flag if specified
+        if hasattr(request, 'quantization') and request.quantization:
+            deploy_content = deploy_content.replace(
+                '--enforce-eager',
+                f'--quantization {request.quantization} --enforce-eager'
+            )
+
+        # Override port
+        if hasattr(request, 'port') and request.port and request.port != 8000:
+            deploy_content = deploy_content.replace('--port 8000', f'--port {request.port}')
+            deploy_content = deploy_content.replace('-p 8000:8000', f'-p {request.port}:{request.port}')
+
         # Ensure detached mode
         deploy_content = deploy_content.replace('--rm -it --gpus', '--rm -d --gpus')
-        
+
         with sftp.file(remote_deploy, 'w') as f:
             f.write(deploy_content)
         ssh.exec_command(f"chmod +x {remote_deploy}")
@@ -9197,8 +9421,10 @@ def workflow_benchmark_task(request: RunBenchmarkRequest, pem_file_path: str, lo
         import shlex
         model_arg = shlex.quote(model_name)
         tokenizer_arg = shlex.quote(tokenizer_id)
+        # Use fixed name vllm-bench so we can stop it via /api/workflow/stop-benchmark
         cmd = (
-            f"sudo docker run --rm --network host --entrypoint vllm vllm/vllm-openai:latest"
+            f"sudo docker stop vllm-bench 2>/dev/null; sudo docker rm vllm-bench 2>/dev/null; "
+            f"sudo docker run --rm --name vllm-bench --network host --entrypoint vllm vllm/vllm-openai:latest"
             f" bench serve"
             f" --backend openai-chat"
             f" --model {model_arg}"
@@ -9218,6 +9444,7 @@ def workflow_benchmark_task(request: RunBenchmarkRequest, pem_file_path: str, lo
             f" 2>&1"
         )
 
+        benchmark_started_at = datetime.utcnow().isoformat()
         with open(status_file, 'w') as f:
             json.dump({
                 "status": "running",
@@ -9252,7 +9479,35 @@ def workflow_benchmark_task(request: RunBenchmarkRequest, pem_file_path: str, lo
                     "output_snippet": output[-2000:] if len(output) > 2000 else output,
                 }, f)
             logger.info(f"Benchmark completed: {metrics}")
+
+            # Persist benchmark result for the Benchmark Results page
+            try:
+                _store_benchmark_result(
+                    ssh_host=request.ssh_host,
+                    model_name=request.model_name or request.model_path,
+                    metrics=metrics,
+                    config={
+                        "input_seq_len": request.input_seq_len,
+                        "output_seq_len": request.output_seq_len,
+                        "num_requests": request.num_requests,
+                        "max_concurrency": request.max_concurrency,
+                        "request_rate": request.request_rate,
+                    },
+                    telemetry_run_id=request.telemetry_run_id,
+                    started_at=benchmark_started_at,
+                )
+            except Exception as store_err:
+                logger.warning("Failed to store benchmark result: %s", store_err)
         else:
+            # Don't overwrite if user already stopped (status is 'cancelled')
+            try:
+                with open(status_file, 'r') as f:
+                    existing = json.load(f)
+                if existing.get("status") == "cancelled":
+                    logger.info("Benchmark was stopped by user (cancelled)")
+                    return
+            except Exception:
+                pass
             with open(status_file, 'w') as f:
                 json.dump({
                     "status": "failed",

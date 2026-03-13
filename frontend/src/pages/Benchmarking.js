@@ -38,6 +38,7 @@ import {
   Tooltip,
   AlertTitle,
   IconButton,
+  Switch,
 } from '@mui/material';
 import {
   LineChart,
@@ -308,6 +309,10 @@ const Benchmarking = () => {
   const [vllmMaxNumSeqs, setVllmMaxNumSeqs] = useState('');
   const [vllmGpuMemUtil, setVllmGpuMemUtil] = useState('');
   const [vllmTensorParallel, setVllmTensorParallel] = useState('');
+  const [vllmDtype, setVllmDtype] = useState('auto');
+  const [vllmEnforceEager, setVllmEnforceEager] = useState(true);
+  const [vllmQuantization, setVllmQuantization] = useState('');
+  const [vllmPort, setVllmPort] = useState('8000');
   const [vllmNumRequests, setVllmNumRequests] = useState(10);
   const [vllmBatchSize, setVllmBatchSize] = useState(1);
   const [vllmInputSeqLen, setVllmInputSeqLen] = useState(100);
@@ -337,7 +342,8 @@ const Benchmarking = () => {
     benchmark: '',
     kernel_profile: '',
   });
-  
+  const benchmarkPollRef = useRef(null);
+
   // Benchmark parameters for workflow
   const [workflowInputSeqLen, setWorkflowInputSeqLen] = useState(256);
   const [workflowOutputSeqLen, setWorkflowOutputSeqLen] = useState(128);
@@ -554,6 +560,28 @@ const Benchmarking = () => {
     } catch (e) {
       setInferenceLoading(false);
       appendWorkflowEvent('inference', 'error', e.response?.data?.detail || e.message);
+    }
+  };
+
+  const handleStopBenchmark = async () => {
+    if (!rwSshHost || !rwSshKey || !workflowBenchmarkStatus.workflowId) return;
+    try {
+      const pemBase64 = encodePemToBase64(rwSshKey);
+      await apiService.workflowStopBenchmark({
+        ssh_host: rwSshHost,
+        ssh_user: rwSshUser,
+        pem_base64: pemBase64,
+        workflow_id: workflowBenchmarkStatus.workflowId,
+      });
+      if (benchmarkPollRef.current) {
+        clearInterval(benchmarkPollRef.current);
+        benchmarkPollRef.current = null;
+      }
+      setWorkflowBenchmarkStatus((prev) => ({ ...prev, loading: false, status: 'cancelled', message: 'Benchmark stopped by user' }));
+      setRunStatus('Benchmark stopped');
+      appendWorkflowEvent('benchmark', 'info', 'Benchmark stopped by user');
+    } catch (e) {
+      appendWorkflowEvent('benchmark', 'error', `Stop failed: ${e.message}`);
     }
   };
 
@@ -2022,59 +2050,111 @@ const Benchmarking = () => {
                         </Box>
                       )}
 
-                      <Accordion sx={{ mb: 2, borderRadius: 2, '&:before': { display: 'none' } }}>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderRadius: 2 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>Advanced vLLM Parameters</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6}>
-                              <TextField
-                                size="small"
-                                fullWidth
-                                label="Tensor Parallel Size"
-                                placeholder="auto-detected"
-                                value={vllmTensorParallel}
-                                onChange={(e) => setVllmTensorParallel(e.target.value)}
-                                helperText="Number of GPUs for tensor parallelism"
-                              />
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <TextField
-                                size="small"
-                                fullWidth
-                                label="GPU Memory Utilization"
-                                placeholder="0.90"
-                                value={vllmGpuMemUtil}
-                                onChange={(e) => setVllmGpuMemUtil(e.target.value)}
-                                helperText="0.0–1.0"
-                              />
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <TextField
-                                size="small"
-                                fullWidth
-                                label="Max Model Length"
-                                placeholder="auto-detected"
-                                value={vllmMaxModelLen}
-                                onChange={(e) => setVllmMaxModelLen(e.target.value)}
-                                helperText="Context window tokens"
-                              />
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <TextField
-                                size="small"
-                                fullWidth
-                                label="Max Num Sequences"
-                                placeholder="auto-detected"
-                                value={vllmMaxNumSeqs}
-                                onChange={(e) => setVllmMaxNumSeqs(e.target.value)}
-                                helperText="Max concurrent requests"
-                              />
-                            </Grid>
+                      <Box sx={{ mb: 2, p: 2, borderRadius: 2, border: '1px solid #3d3d3a', bgcolor: alpha('#3d3d3a', 0.15) }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, mb: 2 }}>vLLM Server Parameters</Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={6} sm={4} md={3}>
+                            <TextField
+                              size="small"
+                              fullWidth
+                              label="Tensor Parallel"
+                              placeholder="auto"
+                              value={vllmTensorParallel}
+                              onChange={(e) => setVllmTensorParallel(e.target.value)}
+                              helperText="GPUs for parallelism"
+                            />
                           </Grid>
-                        </AccordionDetails>
-                      </Accordion>
+                          <Grid item xs={6} sm={4} md={3}>
+                            <TextField
+                              size="small"
+                              fullWidth
+                              label="GPU Memory Util"
+                              placeholder="0.92"
+                              value={vllmGpuMemUtil}
+                              onChange={(e) => setVllmGpuMemUtil(e.target.value)}
+                              helperText="0.0–1.0 (default: 0.92)"
+                            />
+                          </Grid>
+                          <Grid item xs={6} sm={4} md={3}>
+                            <TextField
+                              size="small"
+                              fullWidth
+                              label="Max Model Length"
+                              placeholder="auto"
+                              value={vllmMaxModelLen}
+                              onChange={(e) => setVllmMaxModelLen(e.target.value)}
+                              helperText="Context window tokens"
+                            />
+                          </Grid>
+                          <Grid item xs={6} sm={4} md={3}>
+                            <TextField
+                              size="small"
+                              fullWidth
+                              label="Max Num Sequences"
+                              placeholder="256"
+                              value={vllmMaxNumSeqs}
+                              onChange={(e) => setVllmMaxNumSeqs(e.target.value)}
+                              helperText="Max concurrent requests"
+                            />
+                          </Grid>
+                          <Grid item xs={6} sm={4} md={3}>
+                            <FormControl size="small" fullWidth>
+                              <InputLabel>Dtype</InputLabel>
+                              <Select
+                                label="Dtype"
+                                value={vllmDtype}
+                                onChange={(e) => setVllmDtype(e.target.value)}
+                              >
+                                <MenuItem value="auto">auto</MenuItem>
+                                <MenuItem value="float16">float16</MenuItem>
+                                <MenuItem value="bfloat16">bfloat16</MenuItem>
+                                <MenuItem value="float32">float32</MenuItem>
+                              </Select>
+                              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, ml: 0.5 }}>
+                                Weight precision
+                              </Typography>
+                            </FormControl>
+                          </Grid>
+                          <Grid item xs={6} sm={4} md={3}>
+                            <TextField
+                              size="small"
+                              fullWidth
+                              label="Quantization"
+                              placeholder="none"
+                              value={vllmQuantization}
+                              onChange={(e) => setVllmQuantization(e.target.value)}
+                              helperText="e.g. awq, gptq, fp8"
+                            />
+                          </Grid>
+                          <Grid item xs={6} sm={4} md={3}>
+                            <TextField
+                              size="small"
+                              fullWidth
+                              label="Port"
+                              placeholder="8000"
+                              value={vllmPort}
+                              onChange={(e) => setVllmPort(e.target.value)}
+                              helperText="Server listen port"
+                            />
+                          </Grid>
+                          <Grid item xs={6} sm={4} md={3}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={vllmEnforceEager}
+                                  onChange={(e) => setVllmEnforceEager(e.target.checked)}
+                                  size="small"
+                                />
+                              }
+                              label={<Typography variant="body2">Enforce Eager</Typography>}
+                              sx={{ mt: 1 }}
+                            />
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 0.5 }}>
+                              Disable CUDA graphs
+                            </Typography>
+                          </Grid>
+                        </Grid>
+                      </Box>
 
                   <Stack direction="row" spacing={2} alignItems="center">
                   <Button
@@ -2108,7 +2188,11 @@ const Benchmarking = () => {
                               max_model_len: vllmMaxModelLen ? Number(vllmMaxModelLen) : null,
                               max_num_seqs: vllmMaxNumSeqs ? Number(vllmMaxNumSeqs) : null,
                               gpu_memory_utilization: vllmGpuMemUtil ? Number(vllmGpuMemUtil) : null,
-                              tensor_parallel_size: vllmTensorParallel ? Number(vllmTensorParallel) : null
+                              tensor_parallel_size: vllmTensorParallel ? Number(vllmTensorParallel) : null,
+                              dtype: vllmDtype || 'auto',
+                              enforce_eager: vllmEnforceEager,
+                              quantization: vllmQuantization || null,
+                              port: vllmPort ? Number(vllmPort) : 8000,
                             });
                             setWorkflowDeployStatus({
                               loading: false,
@@ -2278,6 +2362,8 @@ const Benchmarking = () => {
                                   ? 'Complete'
                                   : workflowBenchmarkStatus.status === 'failed'
                                   ? 'Failed'
+                                  : workflowBenchmarkStatus.status === 'cancelled'
+                                  ? 'Cancelled'
                                   : workflowBenchmarkStatus.status === 'started'
                                   ? 'Starting...'
                                   : 'Not Started'
@@ -2287,6 +2373,8 @@ const Benchmarking = () => {
                                   ? 'success'
                                   : workflowBenchmarkStatus.status === 'failed'
                                   ? 'error'
+                                  : workflowBenchmarkStatus.status === 'cancelled'
+                                  ? 'default'
                                   : workflowBenchmarkStatus.status === 'running' || workflowBenchmarkStatus.status === 'started'
                                   ? 'info'
                                   : 'default'
@@ -2454,6 +2542,7 @@ const Benchmarking = () => {
                         );
                       })()}
 
+                <Stack direction="row" spacing={2} alignItems="center">
                 <Button
                   variant="contained"
                         color="primary"
@@ -2513,24 +2602,30 @@ const Benchmarking = () => {
                                   metrics: result.metrics || prev.metrics
                                 }));
                                 
-                                // Show error alert if failed
                                 if (result.status === 'failed') {
-                                  clearInterval(pollLogs);
+                                  if (benchmarkPollRef.current) { clearInterval(benchmarkPollRef.current); benchmarkPollRef.current = null; }
                                   setRunStatus(`Benchmark failed: ${result.message || 'Unknown error'}`);
                                   appendWorkflowEvent('benchmark', 'error', result.message || 'Unknown error');
                                   if (result.error_details) {
                                     console.error('Benchmark error details:', result.error_details);
                                   }
                                 } else if (result.status === 'completed') {
-                                  clearInterval(pollLogs);
+                                  if (benchmarkPollRef.current) { clearInterval(benchmarkPollRef.current); benchmarkPollRef.current = null; }
                                   setRunStatus(`Benchmark completed successfully`);
                                   appendWorkflowEvent('benchmark', 'success', 'Benchmark completed successfully.');
+                                } else if (result.status === 'cancelled') {
+                                  if (benchmarkPollRef.current) { clearInterval(benchmarkPollRef.current); benchmarkPollRef.current = null; }
+                                  setRunStatus('Benchmark stopped');
+                                  appendWorkflowEvent('benchmark', 'info', 'Benchmark stopped by user');
                                 }
                               } catch (e) {
                                 console.error('Failed to fetch logs:', e);
                               }
                             }, 2000);
-                            setTimeout(() => clearInterval(pollLogs), 1800000);
+                            benchmarkPollRef.current = pollLogs;
+                            setTimeout(() => {
+                              if (benchmarkPollRef.current) { clearInterval(benchmarkPollRef.current); benchmarkPollRef.current = null; }
+                            }, 1800000);
                           } catch (e) {
                             setWorkflowBenchmarkStatus({ ...workflowBenchmarkStatus, loading: false, status: 'error', message: e.response?.data?.detail || e.message });
                             setRunStatus(`Benchmark failed: ${e.response?.data?.detail || e.message}`);
@@ -2542,6 +2637,19 @@ const Benchmarking = () => {
                       >
                         {workflowBenchmarkStatus.loading ? 'Running...' : 'Run Benchmark'}
                 </Button>
+                      {(workflowBenchmarkStatus.loading || workflowBenchmarkStatus.status === 'running' || workflowBenchmarkStatus.status === 'started') && (
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          startIcon={<PowerIcon />}
+                          onClick={handleStopBenchmark}
+                          disabled={!rwSshHost || !rwSshKey || !workflowBenchmarkStatus.workflowId}
+                          sx={{ borderRadius: 2 }}
+                        >
+                          Stop Benchmark
+                        </Button>
+                      )}
+                </Stack>
 
                       {(workflowBenchmarkStatus.loading || workflowBenchmarkStatus.status === 'running' || workflowBenchmarkStatus.status === 'started' || workflowBenchmarkStatus.logs) && (
                         <Box sx={{ mt: 3 }}>

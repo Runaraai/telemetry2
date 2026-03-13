@@ -1858,9 +1858,16 @@ volumes:
             # 3. Check NVIDIA Container Toolkit
             # ==================================================================
             log_info "Checking NVIDIA Container Toolkit..."
-            
+
+            # Fix missing Vulkan layer file that causes container mount failures
+            if [ ! -f /usr/share/vulkan/implicit_layer.d/nvidia_layers.json ]; then
+                sudo mkdir -p /usr/share/vulkan/implicit_layer.d
+                echo '{"file_format_version":"1.0.0","layer":{"name":"VK_LAYER_NV_optimus","type":"INSTANCE","library_path":"libGLX_nvidia.so.0","api_version":"1.3.260","implementation_version":"1","description":"NVIDIA optimus layer"}}' | sudo tee /usr/share/vulkan/implicit_layer.d/nvidia_layers.json > /dev/null
+                log_info "Created missing Vulkan layer file"
+            fi
+
             # Test if GPU access works in Docker
-            if ! docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi &>/dev/null 2>&1; then
+            if ! docker run --rm --gpus all -e NVIDIA_DRIVER_CAPABILITIES=compute,utility nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi &>/dev/null 2>&1; then
                 log_info "NVIDIA Container Toolkit not functional, installing..."
                 
                 # Fix broken apt state (common on fresh Scaleway/cloud images)
@@ -1903,7 +1910,7 @@ volumes:
                 sleep 5
                 
                 # Verify GPU access now works
-                if ! docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi &>/dev/null 2>&1; then
+                if ! docker run --rm --gpus all -e NVIDIA_DRIVER_CAPABILITIES=compute,utility nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi &>/dev/null 2>&1; then
                     log_error "GPU access via Docker still not working after toolkit installation"
                     exit 3
                 fi

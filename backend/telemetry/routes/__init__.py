@@ -15,6 +15,7 @@ from .scaleway import router as scaleway_router
 from .nebius import router as nebius_router
 from .ai_insights import router as ai_insights_router
 from .profiling import router as profiling_router
+from .tune import router as tune_router
 
 __all__ = [
     "auth_router",
@@ -32,4 +33,5 @@ __all__ = [
     "scaleway_router",
     "nebius_router",
     "ai_insights_router",
+    "tune_router",
 ]
