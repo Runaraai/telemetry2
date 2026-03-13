@@ -67,7 +67,6 @@ import {
   ReferenceLine,
 } from 'recharts';
 import apiService, { telemetryUtils, friendlyError } from '../services/api';
-import AIInsightsBox from './AIInsightsBox';
 
 // ============================================================================
 // SUB-COMPONENTS
@@ -1060,9 +1059,6 @@ const MetricChartComponent = ({ title, metricKey, unit, domain, data, gpuIds, ic
               </ResponsiveContainer>
             </CardContent>
 
-            <CardContent sx={{ pt: 0, pb: 2, px: 2.5 }}>
-              <AIInsightsBox metricName={title} metricKey={metricKey} unit={unit} data={data} gpuIds={gpuIds} />
-            </CardContent>
           </>
         ) : (
           <CardContent sx={{ pt: 0, px: 2.5 }}>
