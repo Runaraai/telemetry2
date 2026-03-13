@@ -191,12 +191,21 @@ _FIELD_MAPPINGS: Mapping[str, _FieldMapping] = {
     # Throughput gauges — directly displayable, no PromQL rate() needed
     "vllm:avg_generation_throughput_toks_per_s": _FieldMapping("tokens_per_second", lambda v: v),
     "vllm:avg_prompt_throughput_toks_per_s": _FieldMapping("prompt_tokens_per_second", lambda v: v),
+    # Alternative vLLM metric names across versions
+    "vllm:generation_tokens_total": _FieldMapping("tokens_per_second", lambda v: v),
+    "vllm:prompt_tokens_total": _FieldMapping("prompt_tokens_per_second", lambda v: v),
+    "vllm:tokens_total": _FieldMapping("tokens_per_second", lambda v: v),
     # Running/waiting request counts (queue depth)
     "vllm:num_requests_running": _FieldMapping("vllm_requests_running", lambda v: v),
     "vllm:num_requests_waiting": _FieldMapping("vllm_requests_waiting", lambda v: v),
-    # KV-cache utilization (0-1 ratio, converted to percentage)
-    "vllm:gpu_cache_usage_perc": _FieldMapping("vllm_gpu_cache_usage", lambda v: v * 100.0),
-    "vllm:cpu_cache_usage_perc": _FieldMapping("vllm_cpu_cache_usage", lambda v: v * 100.0),
+    "vllm:num_requests_swapped": _FieldMapping("vllm_requests_waiting", lambda v: v),
+    # KV-cache utilization (0-1 ratio → percentage; also handle 0-100 direct values)
+    "vllm:gpu_cache_usage_perc": _FieldMapping("vllm_gpu_cache_usage", lambda v: v * 100.0 if v <= 1.0 else v),
+    "vllm:cpu_cache_usage_perc": _FieldMapping("vllm_cpu_cache_usage", lambda v: v * 100.0 if v <= 1.0 else v),
+    # Alternative KV cache metric names across vLLM versions
+    "vllm:kv_cache_usage_perc": _FieldMapping("vllm_gpu_cache_usage", lambda v: v * 100.0 if v <= 1.0 else v),
+    "vllm:gpu_prefix_cache_hit_rate": _FieldMapping("vllm_gpu_cache_usage", lambda v: v * 100.0 if v <= 1.0 else v),
+    "vllm:cache_config_info": _FieldMapping("vllm_gpu_cache_usage", lambda v: v),
 }
 
 _GPU_LABEL_CANDIDATES: Tuple[str, ...] = ("gpu", "GPU", "gpu_id", "index")
@@ -236,16 +245,21 @@ def parse_remote_write(body: bytes, *, content_encoding: Optional[str] = None) -
         if "SM" in metric_name or "DRAM" in metric_name or "sm_utilization" in metric_name.lower() or "hbm" in metric_name.lower() or "MEM_COPY" in metric_name:
             logger.info(f"Received SM/HBM metric: {metric_name} with labels: {labels}")
         
-        # Debug: log token metrics to see if they're being received
-        token_metric_names = ("tokens_per_second", "token_throughput_per_second", "inference_requests_per_second", 
-                             "ttft_p50_ms", "ttft_p95_ms", "cost_per_watt", "performance_per_watt")
-        if metric_name in token_metric_names:
-            logger.info(f"Received token metric: {metric_name} with labels: {labels}, value: {series.samples[0].value if series.samples else 'N/A'}")
+        # Debug: log all vLLM metrics to diagnose which are arriving
+        if metric_name.startswith("vllm:"):
+            logger.info(f"vLLM metric: {metric_name} labels={labels} value={series.samples[0].value if series.samples else 'N/A'}")
 
         mapping = _FIELD_MAPPINGS.get(metric_name)
         if not mapping:
+            # Fuzzy match for vLLM metrics (handles version differences)
+            if metric_name.startswith("vllm:"):
+                for vllm_name, field_mapping in _FIELD_MAPPINGS.items():
+                    if vllm_name.startswith("vllm:") and (vllm_name in metric_name or metric_name in vllm_name):
+                        mapping = field_mapping
+                        logger.debug(f"Fuzzy-matched vLLM metric {metric_name} -> {vllm_name} -> {field_mapping.field}")
+                        break
             # Try to find partial matches for DCGM metrics
-            if "DCGM" in metric_name:
+            if not mapping and "DCGM" in metric_name:
                 # DCGM exporter might use different naming - try to match
                 # Prioritize device-level metrics over profiling metrics
                 device_matches = []
@@ -383,7 +397,9 @@ def _build_sample(gpu_id: int, time: datetime, metrics: Mapping[str, float]) -> 
         "time": time,
         # Core utilization
         "gpu_utilization": metrics.get("gpu_utilization"),
-        "sm_utilization": metrics.get("sm_utilization"),
+        # sm_utilization comes from DCGM_FI_DEV_SM_ACTIVE or DCGM_FI_PROF_SM_ACTIVE (requires profiling).
+        # Fall back to DCGM_FI_DEV_GPU_UTIL (standard GPU utilization) when profiling metrics unavailable.
+        "sm_utilization": metrics.get("sm_utilization") if metrics.get("sm_utilization") is not None else metrics.get("gpu_utilization"),
         "hbm_utilization": metrics.get("hbm_utilization"),
         "sm_occupancy": metrics.get("sm_occupancy"),
         "tensor_active": metrics.get("tensor_active"),

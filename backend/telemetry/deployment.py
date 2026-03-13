@@ -307,20 +307,13 @@ class DeploymentManager:
             # Force recreate DCGM exporter if profiling mode is enabled to ensure it picks up the configuration
             if request.enable_profiling and system_info.get('dcgm_image'):
                 logger.info("Profiling mode enabled - forcing DCGM exporter restart...")
-                # Check if GPU workloads are running (this will prevent profiling from working)
-                gpu_processes = self._exec_safe(ssh, "nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | wc -l").strip()
-                if gpu_processes and gpu_processes.isdigit() and int(gpu_processes) > 0:
-                    logger.warning(f"WARNING: {gpu_processes} GPU process(es) detected. DCGM profiling requires monitoring to start BEFORE GPU workloads. Profiling will be disabled to prevent crashes.")
-                    # Remove profiling metrics from CSV and disable profiling env var
-                    logger.info("Removing profiling metrics from collectors CSV and disabling profiling...")
-                    self._exec_safe(ssh, f"cd {remote_dir} && sed -i '/DCGM_FI_PROF/d' dcgm-collectors.csv")
-                    # Update docker-compose.yml to disable profiling
-                    self._exec_safe(ssh, f"cd {remote_dir} && sed -i 's/DCGM_EXPORTER_ENABLE_PROFILING: \"true\"/DCGM_EXPORTER_ENABLE_PROFILING: \"false\"/' docker-compose.yml")
-                else:
-                    # Stop DCGM exporter first to ensure clean restart
-                    self._exec_safe(ssh, f"cd {remote_dir} && sudo docker compose stop dcgm-exporter 2>/dev/null || true")
-                    # Remove the container to force recreation
-                    self._exec_safe(ssh, f"cd {remote_dir} && sudo docker compose rm -f dcgm-exporter 2>/dev/null || true")
+                # Note: modern data-centre GPUs (H100, A100) support DCGM profiling counters
+                # alongside running workloads. We attempt profiling and only disable if DCGM
+                # actually crashes (handled in the verification step below).
+                # Stop DCGM exporter first to ensure clean restart with profiling CSV
+                self._exec_safe(ssh, f"cd {remote_dir} && sudo docker compose stop dcgm-exporter 2>/dev/null || true")
+                # Remove the container to force recreation
+                self._exec_safe(ssh, f"cd {remote_dir} && sudo docker compose rm -f dcgm-exporter 2>/dev/null || true")
             compose_output = self._exec(ssh, f"cd {remote_dir} && sudo docker compose up -d")
             logger.info(
                 "telemetry_deploy: docker compose up completed run_id=%s instance=%s output=%s",

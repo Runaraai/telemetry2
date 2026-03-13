@@ -7463,6 +7463,34 @@ def _save_benchmark_results(results: list) -> None:
         logger.warning("Failed to persist benchmark results: %s", e)
 
 
+def _query_gpu_info_via_ssh(ssh) -> dict:
+    """Query basic GPU info from a remote instance via nvidia-smi."""
+    try:
+        line = _ssh_run(
+            ssh,
+            "nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader,nounits 2>/dev/null | head -1",
+            timeout=12,
+        )
+        if line:
+            parts = [p.strip() for p in line.split(",")]
+            count_str = _ssh_run(
+                ssh,
+                "nvidia-smi --query-gpu=count --format=csv,noheader,nounits 2>/dev/null | head -1",
+                timeout=8,
+            )
+            vram_raw = parts[1] if len(parts) > 1 else ""
+            vram_gb = round(int(vram_raw) / 1024) if vram_raw.isdigit() else None
+            return {
+                "gpu_model": parts[0] if len(parts) > 0 else None,
+                "vram_gb": vram_gb,
+                "driver_version": parts[2] if len(parts) > 2 else None,
+                "gpu_count": int(count_str) if count_str.isdigit() else 1,
+            }
+    except Exception as e:
+        logger.debug("Could not query GPU info: %s", e)
+    return {}
+
+
 def _store_benchmark_result(
     ssh_host: str,
     model_name: str,
@@ -7471,6 +7499,7 @@ def _store_benchmark_result(
     telemetry_run_id: str = None,
     started_at: str = None,
     completed_at: str = None,
+    gpu_info: dict = None,
 ) -> dict:
     """Store a benchmark result with optional telemetry run linkage."""
     import uuid
@@ -7484,6 +7513,7 @@ def _store_benchmark_result(
         "telemetry_run_id": telemetry_run_id,
         "started_at": started_at,
         "completed_at": completed_at or datetime.utcnow().isoformat(),
+        "gpu_info": gpu_info or {},
     }
     results = _load_benchmark_results()
     results.insert(0, result)  # newest first
@@ -9597,6 +9627,7 @@ def workflow_benchmark_task(request: RunBenchmarkRequest, pem_file_path: str, lo
 
             # Persist benchmark result for the Benchmark Results page
             try:
+                gpu_info = _query_gpu_info_via_ssh(ssh)
                 _store_benchmark_result(
                     ssh_host=request.ssh_host,
                     model_name=request.model_name or request.model_path,
@@ -9610,6 +9641,7 @@ def workflow_benchmark_task(request: RunBenchmarkRequest, pem_file_path: str, lo
                     },
                     telemetry_run_id=request.telemetry_run_id,
                     started_at=benchmark_started_at,
+                    gpu_info=gpu_info,
                 )
             except Exception as store_err:
                 logger.warning("Failed to store benchmark result: %s", store_err)
@@ -9650,6 +9682,163 @@ def workflow_benchmark_task(request: RunBenchmarkRequest, pem_file_path: str, lo
 
 
 
+def _ssh_run(ssh, cmd: str, timeout: int = 15) -> str:
+    """Run a command via SSH and return stdout as a string (with timeout)."""
+    import time as _t
+    _, stdout, _ = ssh.exec_command(cmd)
+    channel = stdout.channel
+    channel.settimeout(timeout)
+    deadline = _t.time() + timeout
+    out = []
+    try:
+        while True:
+            if channel.recv_ready():
+                out.append(channel.recv(4096).decode("utf-8", errors="replace"))
+            elif channel.exit_status_ready():
+                break
+            elif _t.time() > deadline:
+                logger.warning("SSH command timed out after %ds: %s", timeout, cmd[:80])
+                break
+            else:
+                _t.sleep(0.1)
+    except Exception:
+        pass
+    return "".join(out).strip()
+
+
+def _restart_vllm_with_profiler(ssh) -> bool:
+    """Restart the running vLLM Docker container with --profiler-config enabled.
+    Uses GET (not POST) to check the endpoint — POST triggers actual profiling.
+    Returns True if vLLM becomes ready with the profiler endpoint, False otherwise.
+    """
+    import json as _json, time as _time, io
+
+    # Use GET to probe endpoint existence (POST would trigger profiling and block)
+    code = _ssh_run(ssh,
+        "curl -s -o /dev/null -w '%{http_code}' -X GET http://localhost:8000/start_profile 2>/dev/null || echo 000",
+        timeout=12,
+    )
+    if code not in ("000", "404", ""):
+        # Profiler endpoint is present — but vLLM may still be loading the model.
+        # Check /v1/models; if not ready yet, wait up to 5 min.
+        models_code = _ssh_run(ssh,
+            "curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/v1/models 2>/dev/null || echo 000",
+            timeout=10,
+        )
+        if models_code == "200":
+            logger.info("vLLM profiler endpoint already available and model ready (http %s)", code)
+            return True
+        logger.info("vLLM profiler endpoint found (http %s) but model not ready yet (v1/models=%s), waiting...", code, models_code)
+        # Fall through to wait loop below (skip the restart)
+        for attempt in range(60):
+            import time as _t2; _t2.sleep(5)
+            models_code = _ssh_run(ssh,
+                "curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/v1/models 2>/dev/null || echo 000",
+                timeout=10,
+            )
+            if models_code == "200":
+                logger.info("vLLM ready while waiting for model load (attempt %d)", attempt + 1)
+                return True
+            if attempt % 6 == 0:
+                logger.info("Waiting for vLLM model to load... attempt %d/60 (v1/models=%s)", attempt + 1, models_code)
+        logger.error("vLLM model did not become ready within 5 minutes")
+        return False
+
+    logger.info("vLLM profiler endpoint not available (http %s) — restarting with --profiler-config", code)
+
+    # Get current container configuration via SFTP-safe approach
+    inspect_raw = _ssh_run(ssh, "sudo docker inspect vllm 2>/dev/null", timeout=15)
+    if not inspect_raw or inspect_raw == "[]":
+        logger.warning("vLLM container not found, cannot restart with profiler config")
+        return False
+
+    try:
+        info = _json.loads(inspect_raw)[0]
+    except Exception as e:
+        logger.warning("Failed to parse docker inspect: %s", e)
+        return False
+
+    image = info.get("Config", {}).get("Image", "vllm/vllm-openai:latest")
+    args = info.get("Args", [])
+
+    # Strip any existing --profiler-config from args
+    clean_args, skip = [], False
+    for a in args:
+        if skip:
+            skip = False
+            continue
+        if a == "--profiler-config":
+            skip = True
+            continue
+        clean_args.append(a)
+
+    # Build port / volume / env flags from inspect
+    port_flags = []
+    for cport, hcfgs in (info.get("HostConfig", {}).get("PortBindings") or {}).items():
+        if hcfgs:
+            port_flags.append(f"-p {hcfgs[0].get('HostPort', cport.split('/')[0])}:{cport.split('/')[0]}")
+    vol_flags = [f"-v '{b}'" for b in (info.get("HostConfig", {}).get("Binds") or [])]
+    env_flags = [f"-e '{e}'" for e in (info.get("Config", {}).get("Env") or []) if e.startswith("NVIDIA_")]
+
+    profiler_cfg = _json.dumps({
+        "profiler": "torch",
+        "torch_profiler_dir": "/tmp/vllm_traces",
+        "torch_profiler_with_flops": True,
+        "torch_profiler_use_gzip": False,
+    })
+
+    # Build vLLM args string (quote args containing spaces/special chars)
+    def _q(s):
+        if any(c in s for c in (' ', '"', "'", '(', ')')):
+            return "'" + s.replace("'", "'\"'\"'") + "'"
+        return s
+    vllm_args_str = " ".join(_q(a) for a in clean_args)
+
+    # Write restart script via SFTP to avoid heredoc quoting issues
+    restart_script = (
+        "#!/bin/bash\n"
+        "set -e\n"
+        "sudo docker rm -f vllm 2>/dev/null || true\n"
+        "sleep 2\n"
+        f"PROFILER_CFG='{profiler_cfg}'\n"
+        f"sudo docker run --rm -d --name vllm --gpus all "
+        f"{' '.join(env_flags)} {' '.join(port_flags)} {' '.join(vol_flags)} "
+        f"{image} {vllm_args_str} --profiler-config \"$PROFILER_CFG\"\n"
+        "echo 'vLLM started with profiler config'\n"
+    )
+
+    try:
+        sftp = ssh.open_sftp()
+        with sftp.open("/tmp/restart_vllm_profiler.sh", "w") as f:
+            f.write(restart_script)
+        sftp.close()
+    except Exception as e:
+        logger.warning("SFTP write failed (%s), falling back to echo", e)
+        # Fallback: write via Python-escaped echo
+        escaped = restart_script.replace("'", "'\"'\"'")
+        _ssh_run(ssh, f"printf '%s' '{escaped}' > /tmp/restart_vllm_profiler.sh", timeout=10)
+
+    out = _ssh_run(ssh, "bash /tmp/restart_vllm_profiler.sh 2>&1", timeout=30)
+    logger.info("vLLM restart output: %s", out[:300])
+
+    # Wait up to 5 minutes for vLLM to be ready (model must be loaded, not just API server up)
+    logger.info("Waiting for vLLM to become ready after profiler restart...")
+    for attempt in range(60):
+        _time.sleep(5)
+        models_code = _ssh_run(ssh,
+            "curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/v1/models 2>/dev/null || echo 000",
+            timeout=10,
+        )
+        if models_code == "200":
+            logger.info("vLLM ready after restart (attempt %d)", attempt + 1)
+            return True
+        if attempt % 6 == 0:
+            logger.info("Waiting for vLLM model load... attempt %d/60 (v1/models=%s)", attempt + 1, models_code)
+
+    logger.error("vLLM did not become ready within 5 minutes after profiler restart")
+    return False
+
+
 def workflow_kernel_profile_task(request: KernelProfileRequest, pem_file_path: str, log_dir: str):
     """Background task for kernel profiling — runs agent.py --mode kernel.
 
@@ -9678,6 +9867,27 @@ def workflow_kernel_profile_task(request: KernelProfileRequest, pem_file_path: s
         with open(status_file, 'w') as f:
             json.dump({"status": "running", "message": "Uploading agent package..."}, f)
         remote_dir = _upload_agent_package_via_ssh(ssh, remote_home)
+
+        # Step 1.5: Ensure vLLM has profiler endpoint (restart if needed)
+        with open(status_file, 'w') as f:
+            json.dump({"status": "running", "message": "Checking vLLM profiler endpoint (may restart vLLM ~2-3 min)..."}, f)
+        profiler_ready = _restart_vllm_with_profiler(ssh)
+        if not profiler_ready:
+            # Check again — sometimes vLLM just needs a moment
+            import time as _t; _t.sleep(5)
+            code2 = _ssh_run(ssh,
+                "curl -s -o /dev/null -w '%{http_code}' -X GET http://localhost:8000/start_profile 2>/dev/null || echo 000",
+                timeout=12,
+            )
+            profiler_ready = code2 not in ("000", "404", "")
+        if not profiler_ready:
+            with open(status_file, 'w') as f:
+                json.dump({
+                    "status": "failed",
+                    "message": "Could not enable vLLM profiler endpoint. Ensure vLLM is running and try redeploying inference.",
+                }, f)
+            ssh.close()
+            return
 
         # Step 2: Create a kernel run
         with open(status_file, 'w') as f:

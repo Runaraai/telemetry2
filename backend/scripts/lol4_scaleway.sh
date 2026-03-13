@@ -177,7 +177,8 @@ sudo docker run --rm -d --name vllm \
   --enforce-eager \
   --host 0.0.0.0 \
   --port 8000 \
-  --uvicorn-log-level info
+  --uvicorn-log-level info \
+  --profiler-config '{"profiler":"torch","torch_profiler_dir":"/tmp/vllm_traces","torch_profiler_with_flops":true,"torch_profiler_use_gzip":false}'
 
 # Alternative configuration (commented out - uncomment to use)
 # docker rm -f vllm 2>/dev/null || true

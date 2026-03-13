@@ -527,6 +527,7 @@ const METRIC_DEFINITIONS = [
     domain: [0, 'auto'],
     icon: SpeedIcon,
     category: 'inference',
+    lowerIsBetter: true,
     description: 'Number of requests waiting in the queue (num_requests_waiting). A sustained non-zero value indicates the server is at capacity.',
   },
   {
@@ -549,6 +550,7 @@ const METRIC_DEFINITIONS = [
     domain: [0, 'auto'],
     icon: TimelineIcon,
     category: 'inference',
+    lowerIsBetter: true,
     description: 'P50 (median) time to first token in milliseconds. Measures the latency from request start to first token generation.',
   },
   {
@@ -560,6 +562,7 @@ const METRIC_DEFINITIONS = [
     domain: [0, 'auto'],
     icon: TimelineIcon,
     category: 'inference',
+    lowerIsBetter: true,
     description: 'P95 time to first token in milliseconds. 95th percentile latency — useful for catching tail latency spikes.',
   },
   {
@@ -759,7 +762,7 @@ const ENTERPRISE_METRIC_IDS = new Set([
   'memory-util',
 ]);
 
-const MetricChartComponent = ({ title, metricKey, unit, domain, data, gpuIds, icon: IconComponent, description, activeRun, sshHost, sshUser, sshKey }) => {
+const MetricChartComponent = ({ title, metricKey, unit, domain, data, gpuIds, icon: IconComponent, description, activeRun, sshHost, sshUser, sshKey, lowerIsBetter }) => {
   const isTokenMetric = ['tokens_per_second', 'prompt_tokens_per_second', 'requests_per_second',
     'ttft_p50_ms', 'ttft_p95_ms', 'cost_per_watt',
     'vllm_requests_running', 'vllm_requests_waiting', 'vllm_gpu_cache_usage'].includes(metricKey);
@@ -828,9 +831,9 @@ const MetricChartComponent = ({ title, metricKey, unit, domain, data, gpuIds, ic
   };
 
   const trendColor =
-    trendDirection === 'up' ? theme.palette.success.main :
-    trendDirection === 'down' ? theme.palette.error.main :
-    theme.palette.text.secondary;
+    trendDirection === 'flat' ? theme.palette.text.secondary :
+    (trendDirection === 'up') !== lowerIsBetter ? theme.palette.success.main :
+    theme.palette.error.main;
 
   const sparklineColor = trendDirection === 'up' ? '#4caf50' : trendDirection === 'down' ? '#ef5350' : '#818cf8';
 
@@ -2674,6 +2677,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                     sshHost={sshHost}
                     sshUser={sshUser}
                     sshKey={sshKey}
+                    lowerIsBetter={metric.lowerIsBetter}
                   />
                 </Grid>
               ))}
@@ -2711,6 +2715,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                       sshHost={sshHost}
                       sshUser={sshUser}
                       sshKey={sshKey}
+                      lowerIsBetter={metric.lowerIsBetter}
                     />
                   </Grid>
                 ))}
@@ -2737,6 +2742,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                     sshHost={sshHost}
                     sshUser={sshUser}
                     sshKey={sshKey}
+                    lowerIsBetter={metric.lowerIsBetter}
                   />
                 </Grid>
               ))}
@@ -2952,6 +2958,7 @@ const TelemetryTab = ({ instanceData, onNavigateToInstances }) => {
                               sshHost={sshHost}
                               sshUser={sshUser}
                               sshKey={sshKey}
+                              lowerIsBetter={metric.lowerIsBetter}
                             />
                           </Grid>
                         ))}
