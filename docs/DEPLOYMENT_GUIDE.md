@@ -170,6 +170,8 @@ Ensure the server has correct `.env` at `/opt/omniference/.env` or wherever the 
 - `TELEMETRY_DATABASE_URL`
 - `API_BASE_URL` (e.g. `http://3.19.87.64` or `https://omniference.com`)
 - `CORS_ORIGINS`
+- `JWT_SECRET_KEY` (required, non-default value; the backend refuses to issue or
+  accept tokens if it is unset or still the placeholder)
 
 ## Troubleshooting
 

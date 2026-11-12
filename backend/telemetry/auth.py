@@ -17,9 +17,27 @@ settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT settings
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+
+# Public placeholder that must never sign or verify tokens. It is documented in
+# the project docs, so a deployment that falls back to it accepts forged tokens.
+JWT_SECRET_PLACEHOLDER = "your-secret-key-change-in-production"
+
+
+def _get_secret_key() -> str:
+    """Return the JWT signing secret, failing closed when it is missing or default.
+
+    Mirrors the credential-encryption guard in crypto.py: the signing secret must
+    be configured explicitly, so the app never signs or accepts tokens with the
+    public placeholder value.
+    """
+    secret = os.getenv("JWT_SECRET_KEY")
+    if not secret or secret == JWT_SECRET_PLACEHOLDER:
+        raise RuntimeError(
+            "JWT_SECRET_KEY must be set to a non-default value for JWT authentication"
+        )
+    return secret
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -52,15 +70,14 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, _get_secret_key(), algorithm=ALGORITHM)
     return encoded_jwt
 
 
 def decode_access_token(token: str) -> Optional[dict]:
     """Decode and verify a JWT access token."""
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, _get_secret_key(), algorithms=[ALGORITHM])
         return payload
     except JWTError:
         return None
-
